@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.23
+
+- Blacklist-Erweiterung um `theme_title` abgeschlossen: `atcinna-catalog` und Dialog speichern, listen, deduplizieren, `undo/clean/clear/remove` und Matching unterstützen jetzt das neue Feld.
+- `theme_title` wird ATPlayer-artig als OR-Filter auf Thema oder Titel gematcht; bestehende gesetzte Felder (`sender`, `genre`, `topic`, `title`, `topic_exact`, `active`) werden mit UND-Logik kombiniert.
+- `atcinna-blacklist-dialog` kann neue `themeTitle`-Regel per Formular erfassen und im Kontext-Menü wird die neue Blacklist-Aktion **„Thema oder Titel direkt in die Blacklist einfügen“** angeboten.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen jetzt `--theme-title` in Blacklist-Add/Remove sowie Matching/Remove-Pfade.
+- Versionssprung auf `0.3.23`, `metadata.json` und Dokumentation aktualisiert; Paritäts-Lücke: Whitelist/negatives Blacklist-Semantik ist weiterhin offen.
+
 ## 0.3.22
 
 - ATPlayer-nahe Filter um `only_new` und dreistufiges `podcast_mode` (`all`, `only`, `none`) erweitert; beide Felder werden aus den echten Audiolisten-Feldern `JSON_AUDIO_NEW` und `JSON_AUDIO_PODCAST` gelesen.

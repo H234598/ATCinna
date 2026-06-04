@@ -66,6 +66,7 @@ def _rule_to_text(rule):
     genre = str(rule.get("genre") or "").strip()
     topic = str(rule.get("topic") or "").strip()
     title = str(rule.get("title") or "").strip()
+    theme_title = str(rule.get("theme_title") or "").strip()
     active = bool(rule.get("active", True))
     topic_exact = bool(rule.get("topic_exact", True))
 
@@ -78,6 +79,8 @@ def _rule_to_text(rule):
         parts.append(f"Thema: {topic}")
     if title:
         parts.append(f"Titel: {title}")
+    if theme_title:
+        parts.append(f"Thema/Titel: {theme_title}")
 
     state = "aktiv" if active else "inaktiv"
     mode = "exakt" if topic_exact else "enthält"
@@ -90,6 +93,7 @@ def _rule_from_row(row):
         "genre": str(row["genre"] or ""),
         "topic": str(row["topic"] or ""),
         "title": str(row["title"] or ""),
+        "theme_title": str(row["theme_title"] or ""),
         "active": bool(row.get("active", True)),
         "topic_exact": bool(row.get("topic_exact", True)),
     }
@@ -101,6 +105,7 @@ def _build_row(rule, gtk_module):
     genre = str(rule.get("genre") or "").strip()
     topic = str(rule.get("topic") or "").strip()
     title = str(rule.get("title") or "").strip()
+    theme_title = str(rule.get("theme_title") or "").strip()
 
     row = Gtk.ListBoxRow()
     container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -118,6 +123,7 @@ def _build_row(rule, gtk_module):
     row.set_data("genre", genre)
     row.set_data("topic", topic)
     row.set_data("title", title)
+    row.set_data("theme_title", theme_title)
     row.set_data("active", bool(rule.get("active", True)))
     row.set_data("topic_exact", bool(rule.get("topic_exact", True)))
     row.set_data("check", check)
@@ -171,10 +177,12 @@ def run_dialog():
     genre_entry = Gtk.Entry()
     topic_entry = Gtk.Entry()
     title_entry = Gtk.Entry()
+    theme_title_entry = Gtk.Entry()
     sender_entry.set_placeholder_text("Sender")
     genre_entry.set_placeholder_text("Genre")
     topic_entry.set_placeholder_text("Thema")
     title_entry.set_placeholder_text("Titel")
+    theme_title_entry.set_placeholder_text("Thema oder Titel")
 
     active_check = Gtk.CheckButton(label="aktiv")
     active_check.set_active(True)
@@ -186,10 +194,11 @@ def run_dialog():
     form.attach(genre_entry, 1, 1, 1, 1)
     form.attach(topic_entry, 2, 1, 1, 1)
     form.attach(title_entry, 3, 1, 1, 1)
-    form.attach(active_check, 4, 1, 1, 1)
-    form.attach(topic_exact_check, 5, 1, 1, 1)
+    form.attach(theme_title_entry, 4, 1, 1, 1)
+    form.attach(active_check, 5, 1, 1, 1)
+    form.attach(topic_exact_check, 6, 1, 1, 1)
     add_rule_button = Gtk.Button(label="Neue Regel hinzufügen")
-    form.attach(add_rule_button, 6, 1, 1, 1)
+    form.attach(add_rule_button, 7, 1, 1, 1)
     root.pack_start(form, False, False, 0)
 
     list_box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
@@ -254,10 +263,11 @@ def run_dialog():
                 "genre": row.get_data("genre"),
                 "topic": row.get_data("topic"),
                 "title": row.get_data("title"),
+                "theme_title": row.get_data("theme_title"),
                 "active": row.get_data("active"),
                 "topic_exact": row.get_data("topic_exact"),
             })
-            if selected_rule["sender"] or selected_rule["genre"] or selected_rule["topic"] or selected_rule["title"]:
+            if selected_rule["sender"] or selected_rule["genre"] or selected_rule["topic"] or selected_rule["title"] or selected_rule["theme_title"]:
                 selected.append(selected_rule)
         return selected
 
@@ -266,7 +276,8 @@ def run_dialog():
         genre = genre_entry.get_text().strip()
         topic = topic_entry.get_text().strip()
         title = title_entry.get_text().strip()
-        if not (sender or genre or topic or title):
+        theme_title = theme_title_entry.get_text().strip()
+        if not (sender or genre or topic or title or theme_title):
             _set_status(status_label, "Bitte mindestens ein Feld befüllen")
             return
 
@@ -283,6 +294,8 @@ def run_dialog():
             args.append(f"--topic={topic}")
         if title:
             args.append(f"--title={title}")
+        if theme_title:
+            args.append(f"--theme-title={theme_title}")
 
         try:
             _run_helper(args)
@@ -290,6 +303,7 @@ def run_dialog():
             genre_entry.set_text("")
             topic_entry.set_text("")
             title_entry.set_text("")
+            theme_title_entry.set_text("")
             refresh_rules()
             _set_status(status_label, "Neue Regel gespeichert")
         except Exception as exc:
@@ -317,6 +331,8 @@ def run_dialog():
                     args.append(f"--topic={rule['topic']}")
                 if rule["title"]:
                     args.append(f"--title={rule['title']}")
+                if rule["theme_title"]:
+                    args.append(f"--theme-title={rule['theme_title']}")
                 remove_payload = _run_helper(args)
                 removed += int(remove_payload.get("removed", 0) or 0)
 

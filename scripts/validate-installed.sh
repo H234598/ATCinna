@@ -223,6 +223,10 @@ if ! python3 -m py_compile "$FILTER_PROFILES_DIALOG"; then
     echo "ERROR: py_compile failed for filter profiles dialog"
     exit 1
 fi
+if ! rg -q -F -- "--theme-title" "$HELPER"; then
+    echo "ERROR: installed helper does not define --theme-title in help output"
+    exit 1
+fi
 
 QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
 if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
@@ -343,6 +347,23 @@ FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "Installtest
 if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "Installtest" and .profile.max_hits == 5 and .profile.title == "Titel" and .profile.theme_title == "ThemaTitel" and .profile.somewhere == "Kurz" and .profile.max_days == 3 and .profile.min_duration == 5 and .profile.max_duration == 55 and .profile.only_new == true and .profile.only_bookmarks == true and .profile.hide_history == true and .profile.podcast_mode == "only"' >/dev/null; then
     echo "ERROR: installed helper filter-profile-save validation failed"
     echo "$FILTER_PROFILE_SAVE"
+    exit 1
+fi
+
+BLACKLIST_THEME_TITLE_INSTALL_ADD="$(python3 "$HELPER" blacklist-add --theme-title "ZWEITE KURZ")"
+if ! echo "$BLACKLIST_THEME_TITLE_INSTALL_ADD" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: installed helper blacklist-add --theme-title failed"
+    echo "$BLACKLIST_THEME_TITLE_INSTALL_ADD"
+    exit 1
+fi
+SEARCH_BLACKLIST_THEME_TITLE_INSTALL="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_THEME_TITLE_INSTALL" | jq -e '.status == "ok" and ([.results[] | select(.title=="Zweite Kurzmeldung")] | length) == 1' >/dev/null; then
+    echo "ERROR: installed helper theme-title blacklist matching failed"
+    echo "$SEARCH_BLACKLIST_THEME_TITLE_INSTALL"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-remove --theme-title "ZWEITE KURZ" >/dev/null; then
+    echo "ERROR: installed helper blacklist-remove --theme-title failed"
     exit 1
 fi
 

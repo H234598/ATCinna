@@ -279,6 +279,10 @@ if ! rg -q -F -- "--topic-exact" "$HELPER"; then
     echo "ERROR: blacklist-add action is missing --topic-exact"
     STATUS=1
 fi
+if ! rg -q -F -- "--theme-title" "$HELPER"; then
+    echo "ERROR: blacklist action is missing --theme-title"
+    STATUS=1
+fi
 for helper_arg in "--title" "--theme-title" "--somewhere" "--max-days" "--min-duration" "--max-duration" "--only-new" "--only-bookmarks" "--hide-history" "--podcast-mode"; do
     if ! rg -q -F -- "$helper_arg" "$HELPER"; then
         echo "ERROR: helper search/profile action is missing ${helper_arg}"
@@ -307,7 +311,13 @@ for filter_label in "Filter" "nach Sender filtern" "nach Genre filtern" "nach Th
         STATUS=1
     fi
 done
-for blacklist_label in "Blacklist-Eintrag für das Audio erstellen" "Sender und Genre direkt in die Blacklist einfügen" "Sender und Thema direkt in die Blacklist einfügen" "Thema direkt in die Blacklist einfügen" "Titel direkt in die Blacklist einfügen"; do
+for blacklist_label in \
+    "Blacklist-Eintrag für das Audio erstellen" \
+    "Sender und Genre direkt in die Blacklist einfügen" \
+    "Sender und Thema direkt in die Blacklist einfügen" \
+    "Thema direkt in die Blacklist einfügen" \
+    "Titel direkt in die Blacklist einfügen" \
+    "Thema oder Titel direkt in die Blacklist einfügen"; do
     if ! rg -q -F "${blacklist_label}" "$APPLET_JS"; then
         echo "ERROR: applet blacklist action label is missing: ${blacklist_label}"
         STATUS=1
@@ -891,6 +901,7 @@ if ! python3 "$HELPER" blacklist-remove --topic the --topic-exact false >/dev/nu
     echo "ERROR: blacklist-remove for partial topic test failed"
     exit 1
 fi
+
 BLACKLIST_REMOVE_DUP="$(python3 "$HELPER" blacklist-remove --sender wdr)"
 if ! echo "$BLACKLIST_REMOVE_DUP" | jq -e '.status == "ok" and .removed >= 1' >/dev/null; then
     echo "ERROR: blacklist-remove should remove matching rule"
@@ -968,6 +979,36 @@ if ! echo "$SEARCH_BLACKLIST_PARTIAL_TITLE" | jq -e '.status == "ok" and .count 
     exit 1
 fi
 python3 "$HELPER" blacklist-remove --title "Kurz" >/dev/null
+BLACKLIST_THEME_TITLE_ADD="$(python3 "$HELPER" blacklist-add --theme-title "ZWEITE KURZ")"
+if ! echo "$BLACKLIST_THEME_TITLE_ADD" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add with theme-title failed"
+    echo "$BLACKLIST_THEME_TITLE_ADD"
+    exit 1
+fi
+BLACKLIST_THEME_TITLE_ADD_SCOPED="$(python3 "$HELPER" blacklist-add --theme-title "ZWEITE KURZ" --sender ARD)"
+if ! echo "$BLACKLIST_THEME_TITLE_ADD_SCOPED" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: scoped blacklist-add with theme-title and sender failed"
+    echo "$BLACKLIST_THEME_TITLE_ADD_SCOPED"
+    exit 1
+fi
+SEARCH_BLACKLIST_THEME_TITLE_ONLY="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_THEME_TITLE_ONLY" | jq -e '.status == "ok" and .count == 1 and all(.results[]; .title == "Zweite Kurzmeldung")' >/dev/null; then
+    echo "ERROR: theme-title blacklist matching should match both topic or title (substring) without sender"
+    echo "$SEARCH_BLACKLIST_THEME_TITLE_ONLY"
+    exit 1
+fi
+BLACKLIST_THEME_TITLE_REMOVE="$(python3 "$HELPER" blacklist-remove --theme-title "ZWEITE KURZ")"
+if ! echo "$BLACKLIST_THEME_TITLE_REMOVE" | jq -e '.status == "ok" and .removed == 2' >/dev/null; then
+    echo "ERROR: blacklist-remove with --theme-title should remove scoped and unscoped variants"
+    echo "$BLACKLIST_THEME_TITLE_REMOVE"
+    exit 1
+fi
+BLACKLIST_THEME_TITLE_LIST="$(python3 "$HELPER" blacklist-list)"
+if ! echo "$BLACKLIST_THEME_TITLE_LIST" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: blacklist theme-title test should leave blacklist empty"
+    echo "$BLACKLIST_THEME_TITLE_LIST"
+    exit 1
+fi
 if python3 "$HELPER" blacklist-add >/dev/null 2>&1; then
     echo "ERROR: blacklist-add without fields should fail"
     exit 1

@@ -152,6 +152,7 @@ def _normalize_rule(rule):
         "genre": _normalize_entry_value(getter("genre")),
         "topic": _normalize_entry_value(getter("topic")),
         "title": _normalize_entry_value(getter("title")),
+        "theme_title": _normalize_entry_value(getter("theme_title")),
         "timestamp": timestamp,
     }
 
@@ -465,7 +466,7 @@ def _list_store(path):
 def action_blacklist_add(args):
     # pylint: disable=too-many-locals
     rule = _normalize_rule(args)
-    if not (rule["sender"] or rule["genre"] or rule["topic"] or rule["title"]):
+    if not (rule["sender"] or rule["genre"] or rule["topic"] or rule["title"] or rule["theme_title"]):
         die("at least one blacklist field is required")
 
     active = _parse_bool_arg(args.active, "active") if args.active is not None else True
@@ -503,9 +504,10 @@ def action_blacklist_remove(args):
     target_genre = target_rule["genre"]
     target_topic = target_rule["topic"]
     target_title = target_rule["title"]
+    target_theme_title = target_rule["theme_title"]
     target_active = _parse_bool_arg(args.active, "active") if args.active is not None else None
     target_topic_exact = _parse_bool_arg(args.topic_exact, "topic-exact") if args.topic_exact is not None else None
-    if not (target_sender or target_genre or target_topic or target_title):
+    if not (target_sender or target_genre or target_topic or target_title or target_theme_title):
         die("at least one blacklist field is required")
 
     path = _blacklist_path()
@@ -521,6 +523,7 @@ def action_blacklist_remove(args):
                 (not target_genre or normalized["genre"] == target_genre) and
                 (not target_topic or normalized["topic"] == target_topic) and
                 (not target_title or normalized["title"] == target_title) and
+                (not target_theme_title or normalized["theme_title"] == target_theme_title) and
                 (target_active is None or normalized["active"] == target_active) and
                 (target_topic_exact is None or normalized["topic_exact"] == target_topic_exact)
             )
@@ -715,6 +718,7 @@ def _load_blacklist_rule(rule):
         "genre": normalized["genre"].lower(),
         "topic": normalized["topic"].lower(),
         "title": normalized["title"].lower(),
+        "theme_title": normalized["theme_title"].lower(),
         "active": _normalize_bool_value(rule.get("active"), True),
         "topic_exact": _normalize_bool_value(rule.get("topic_exact"), True),
         "timestamp": _normalize_timestamp(rule.get("timestamp"), normalized["timestamp"]),
@@ -731,6 +735,7 @@ def _blacklist_rule_is_empty(rule):
         or _normalize_blacklist_field(rule.get("genre"))
         or _normalize_blacklist_field(rule.get("topic"))
         or _normalize_blacklist_field(rule.get("title"))
+        or _normalize_blacklist_field(rule.get("theme_title"))
     )
 
 
@@ -741,6 +746,7 @@ def _blacklist_rule_key(rule):
         _normalize_blacklist_field(rule.get("genre")),
         topic,
         _normalize_blacklist_field(rule.get("title")),
+        _normalize_blacklist_field(rule.get("theme_title")),
         _normalize_bool_value(rule.get("topic_exact"), True) if topic else True,
     )
 
@@ -754,6 +760,7 @@ def _rule_matches_result(rule, item):
         "genre": _normalize_blacklist_field(item.get("genre")),
         "topic": _normalize_blacklist_field(item.get("topic")),
         "title": _normalize_blacklist_field(item.get("title")),
+        "theme_title": "",
     }
     for key, rule_value in rule.items():
         if key == "timestamp":
@@ -767,6 +774,10 @@ def _rule_matches_result(rule, item):
             matches = item_value == rule_value
         elif key == "topic":
             matches = rule_value in item_value
+        elif key == "theme_title":
+            topic_text = fields.get("topic", "")
+            title_text = fields.get("title", "")
+            matches = rule_value in topic_text or rule_value in title_text
         else:
             matches = rule_value in item_value
         if not matches:
@@ -1679,6 +1690,7 @@ def parse_args():
     blacklist_add.add_argument("--genre", default="", help="Blacklist genre")
     blacklist_add.add_argument("--topic", default="", help="Blacklist topic")
     blacklist_add.add_argument("--title", default="", help="Blacklist title")
+    blacklist_add.add_argument("--theme-title", dest="theme_title", default="", help="Blacklist topic or title")
     blacklist_add.add_argument("--active", default=None, help="Whether rule is active (true/false)")
     blacklist_add.add_argument("--topic-exact", default=None, help="Whether topic matches exactly (true/false)")
 
@@ -1689,6 +1701,7 @@ def parse_args():
     blacklist_remove.add_argument("--genre", default="", help="Blacklist genre")
     blacklist_remove.add_argument("--topic", default="", help="Blacklist topic")
     blacklist_remove.add_argument("--title", default="", help="Blacklist title")
+    blacklist_remove.add_argument("--theme-title", dest="theme_title", default="", help="Blacklist topic or title rule")
     blacklist_remove.add_argument("--active", default=None, help="Only remove rules with this active state (true/false)")
     blacklist_remove.add_argument("--topic-exact", default=None, help="Only remove rules with this topic mode (true/false)")
 

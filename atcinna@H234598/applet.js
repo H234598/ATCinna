@@ -2114,6 +2114,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             title: item.title || ""
         }));
         menu.addMenuItem(addTitle);
+
+        const addThemeTitle = new PopupMenu.PopupMenuItem("Thema oder Titel direkt in die Blacklist einfügen");
+        addThemeTitle.connect("activate", () => {
+            const themeTitle = this._toTrimmed(item.topic || item.title || "");
+            this._runBlacklistAdd(item, {
+                themeTitle
+            });
+        });
+        menu.addMenuItem(addThemeTitle);
     }
 
     _addCopyFieldAction(menu, label, value) {
@@ -2240,7 +2249,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const genre = this._toTrimmed(fields.genre || "");
         const topic = this._toTrimmed(fields.topic || "");
         const title = this._toTrimmed(fields.title || "");
-        if (!sender && !genre && !topic && !title) {
+        const themeTitle = this._toTrimmed(fields.themeTitle || fields.theme_title || "");
+        if (!sender && !genre && !topic && !title && !themeTitle) {
             this._setStatus("Blacklist: keine Daten für Eintrag");
             return;
         }
@@ -2255,6 +2265,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (title) {
             args.push(`--title=${title}`);
+        }
+        if (themeTitle) {
+            args.push(`--theme-title=${themeTitle}`);
         }
 
         this._setStatus(`Blacklist aktualisiere: ${item.title || item.topic || item.sender || "Eintrag"}`);
