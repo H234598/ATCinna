@@ -474,8 +474,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         runNext.connect("activate", () => this._runQueueRunNext());
         this._queueSection.addMenuItem(runNext);
 
-        const stopQueued = new PopupMenu.PopupMenuItem("Wartende stoppen");
-        stopQueued.connect("activate", () => this._runQueueCancelAll());
+        const runAll = new PopupMenu.PopupMenuItem("Alle Downloads starten");
+        runAll.connect("activate", () => this._runQueueRunAll());
+        this._queueSection.addMenuItem(runAll);
+
+        const stopAll = new PopupMenu.PopupMenuItem("Alle Downloads stoppen");
+        stopAll.connect("activate", () => this._runQueueCancelAll());
+        this._queueSection.addMenuItem(stopAll);
+
+        const stopQueued = new PopupMenu.PopupMenuItem("Alle wartenden Downloads stoppen");
+        stopQueued.connect("activate", () => this._runQueueCancelQueued());
         this._queueSection.addMenuItem(stopQueued);
 
         const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");
@@ -563,6 +571,99 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
+    _runQueueRunAll() {
+        let remaining = 100;
+        let finishedCount = 0;
+        let errorCount = 0;
+
+        const runQueued = () => {
+            if (remaining <= 0) {
+                this._setStatus(`Alle Downloads gestartet: erledigt ${finishedCount}, Fehler ${errorCount} (Limit erreicht)`);
+                this._runQueueList();
+                return;
+            }
+
+            this._runHelper([
+                "download-run-next"
+            ], (status, stdout, stderr) => {
+                if (status !== CMD_SUCCESS) {
+                    this._setStatus(`download-run-next fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                    this._runQueueList();
+                    return;
+                }
+
+                try {
+                    const payload = JSON.parse(stdout || "{}");
+                    if (payload.status !== "ok") {
+                        this._setStatus("download-run-next: unerwartete Antwort");
+                        this._runQueueList();
+                        return;
+                    }
+
+                    if (payload.state === "empty") {
+                        this._setStatus(`Alle Downloads abgearbeitet: erledigt ${finishedCount}, Fehler ${errorCount}`);
+                        this._runQueueList();
+                        return;
+                    }
+
+                    if (payload.result && payload.result.status === "finished") {
+                        finishedCount += 1;
+                    } else if (payload.result && payload.result.status === "error") {
+                        errorCount += 1;
+                    } else if (!payload.result && payload.state !== "empty") {
+                        errorCount += 1;
+                    }
+
+                    remaining -= 1;
+                    runQueued();
+                } catch (error) {
+                    this._setStatus(`download-run-next ungültige Antwort: ${error.message}`);
+                    this._runQueueList();
+                }
+            });
+        };
+
+        this._setStatus("starte alle Downloads");
+        runQueued();
+    }
+
+    _runQueueCancelItem(item) {
+        const url = item && item.url ? `${item.url}`.trim() : "";
+        if (!this._normalizeQueueItemUrl(item)) {
+            this._setStatus("Download stoppen fehlgeschlagen: keine URL");
+            return;
+        }
+        this._setStatus(`storniere Download: ${item.title || "Eintrag"}`);
+        this._runHelper([
+            "download-cancel",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-cancel fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-cancel: unerwartete Antwort");
+                    return;
+                }
+                if (payload.changed === 0 && payload.running_blocks > 0) {
+                    this._setStatus("läuft: Eintrag ist bereits inaktiv");
+                } else if (payload.changed === 0) {
+                    this._setStatus("nichts geändert");
+                } else if (payload.changed >= 1) {
+                    this._setStatus(`Download gestoppt: ${payload.changed}`);
+                } else {
+                    this._setStatus("Download wurde abgeschlossen oder nicht aktiv");
+                }
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-cancel ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
     _runQueueCancelAll() {
         this._setStatus("stoppe Warteschlange");
         this._runHelper([
@@ -574,6 +675,30 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 return;
             }
             this._runQueueList();
+        });
+    }
+
+    _runQueueCancelQueued() {
+        this._setStatus("stoppe wartende Downloads");
+        this._runHelper([
+            "download-cancel",
+            "--queued-only"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-cancel fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-cancel: unerwartete Antwort");
+                    return;
+                }
+                this._setStatus(`wartende Downloads gestoppt: ${payload.changed || 0}`);
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-cancel ungültige Antwort: ${error.message}`);
+            }
         });
     }
 
@@ -611,11 +736,23 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const subtitle = item.status === "finished" && item.path ? ` — ${item.path}` : "";
             const row = new PopupMenu.PopupSubMenuMenuItem(`${title} (${status})${subtitle}`);
 
-            const copy = new PopupMenu.PopupMenuItem("URL kopieren");
+            const cancel = new PopupMenu.PopupMenuItem("Download stoppen");
+            cancel.connect("activate", () => this._runQueueCancelItem(item));
+            row.menu.addMenuItem(cancel);
+
+            const play = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");
+            play.connect("activate", () => this._playItem(item));
+            row.menu.addMenuItem(play);
+
+            const copy = new PopupMenu.PopupMenuItem("Download (URL) kopieren");
             copy.connect("activate", () => this._copyQueueUrl(item));
             row.menu.addMenuItem(copy);
 
-            const openFolder = new PopupMenu.PopupMenuItem("Ordner öffnen");
+            const openFile = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) abspielen");
+            openFile.connect("activate", () => this._openQueueFile(item));
+            row.menu.addMenuItem(openFile);
+
+            const openFolder = new PopupMenu.PopupMenuItem("Zielordner öffnen");
             openFolder.connect("activate", () => this._openQueuePathFolder(item));
             row.menu.addMenuItem(openFolder);
 
@@ -846,6 +983,41 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._setStatus(`öffne Ordner: ${folderToOpen}`);
         Util.spawn(["xdg-open", folderToOpen]);
+    }
+
+    _openQueueFile(item) {
+        const pathValue = item && item.path ? `${item.path}`.trim() : "";
+        if (!pathValue) {
+            this._setStatus("Datei öffnen fehlgeschlagen: kein Pfad gespeichert");
+            return;
+        }
+        if (pathValue.includes("\u0000") || !GLib.path_is_absolute(pathValue)) {
+            this._setStatus("Datei öffnen fehlgeschlagen: ungültiger Pfad");
+            return;
+        }
+
+        try {
+            const fileTarget = Gio.File.new_for_path(pathValue);
+            if (!fileTarget.query_exists(null)) {
+                this._setStatus("Datei öffnen fehlgeschlagen: Datei nicht vorhanden");
+                return;
+            }
+            const fileInfo = fileTarget.query_info("standard::type", Gio.FileQueryInfoFlags.NONE, null);
+            if (!fileInfo) {
+                this._setStatus("Datei öffnen fehlgeschlagen: Ziel nicht prüfbar");
+                return;
+            }
+            if (fileInfo.get_file_type() !== Gio.FileType.REGULAR) {
+                this._setStatus("Datei öffnen fehlgeschlagen: kein regulärer File-Typ");
+                return;
+            }
+        } catch (error) {
+            this._setStatus(`Datei öffnen fehlgeschlagen: ${error.message}`);
+            return;
+        }
+
+        this._setStatus(`spiele Datei ab: ${pathValue}`);
+        Util.spawn(["xdg-open", pathValue]);
     }
 
     _queueFolderCandidate(item) {

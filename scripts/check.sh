@@ -132,6 +132,10 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Nächsten Download starten")' "$APPL
     echo "ERROR: applet menu does not contain queue run-next item"
     STATUS=1
 fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Downloads starten")' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain queue run-all item"
+    STATUS=1
+fi
 for helper_action in download-enqueue download-list download-run-next download-cancel download-clear; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
@@ -144,18 +148,46 @@ for helper_action in download-remove download-undo download-prefer download-put-
         STATUS=1
     fi
 done
-for queue_label in "URL kopieren" "Ordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
+for queue_label in "Download stoppen" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Zielordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue menu label is missing: ${queue_label}"
         STATUS=1
     fi
 done
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Downloads stoppen")' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain queue stop-all item"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle wartenden Downloads stoppen")' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain queue pending-stop item"
+    STATUS=1
+fi
 if ! rg -q -F '_queueFolderCandidate(item)' "$APPLET_JS"; then
     echo "ERROR: queue folder opener does not use a path/folder candidate helper"
     STATUS=1
 fi
+if ! rg -q -F '_runQueueRunAll()' "$APPLET_JS"; then
+    echo "ERROR: applet queue run-all action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueCancelItem(item)' "$APPLET_JS"; then
+    echo "ERROR: applet queue cancel-item action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueCancelQueued()' "$APPLET_JS"; then
+    echo "ERROR: applet queue cancel-queued action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_openQueueFile(item)' "$APPLET_JS"; then
+    echo "ERROR: applet queue file open action handler is missing"
+    STATUS=1
+fi
 if ! rg -q -F '_defaultDownloadFolder()' "$APPLET_JS"; then
     echo "ERROR: queue folder opener does not expose the helper download-folder fallback"
+    STATUS=1
+fi
+if ! rg -q -F '"--queued-only"' "$HELPER"; then
+    echo "ERROR: helper queued-only cancel option is missing"
     STATUS=1
 fi
 
@@ -570,7 +602,7 @@ if python3 "$HELPER" download-cancel >"$TMP_DIR/queue-cancel-missing-url.out" 2>
     echo "ERROR: download-cancel without --url/--all unexpectedly succeeded"
     exit 1
 fi
-if ! jq -e '.status == "error" and .message == "url is required unless --all is used"' "$TMP_DIR/queue-cancel-missing-url.out" >/dev/null 2>&1; then
+if ! jq -e '.status == "error" and .message == "url is required unless --all or --queued-only is used"' "$TMP_DIR/queue-cancel-missing-url.out" >/dev/null 2>&1; then
     echo "ERROR: download-cancel missing URL did not return expected error JSON"
     cat "$TMP_DIR/queue-cancel-missing-url.out"
     exit 1
@@ -688,6 +720,23 @@ fi
 if ! echo "$QUEUE_LIST_AFTER_UNDO" | jq -e '.results | map(select(.url=="https://example.com/queued" or .url=="https://example.com/running")) | length == 2' >/dev/null; then
     echo "ERROR: download-undo changed unexpected queue state"
     echo "$QUEUE_LIST_AFTER_UNDO"
+    exit 1
+fi
+QUEUE_CANCEL_QUEUED_ONLY="$(python3 "$HELPER" download-cancel --queued-only)"
+if ! echo "$QUEUE_CANCEL_QUEUED_ONLY" | jq -e '.status == "ok" and .changed == 1' >/dev/null; then
+    echo "ERROR: download-cancel --queued-only should cancel queued entries only"
+    echo "$QUEUE_CANCEL_QUEUED_ONLY"
+    exit 1
+fi
+QUEUE_LIST_AFTER_QUEUED_ONLY="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_QUEUED_ONLY" | jq -e '.results | map(select(.url=="https://example.com/running" and .status=="running")) | length == 1' >/dev/null; then
+    echo "ERROR: download-cancel --queued-only changed running entry"
+    echo "$QUEUE_LIST_AFTER_QUEUED_ONLY"
+    exit 1
+fi
+if ! echo "$QUEUE_LIST_AFTER_QUEUED_ONLY" | jq -e '.results | map(select(.url=="https://example.com/queued" and .status=="cancelled")) | length == 1' >/dev/null; then
+    echo "ERROR: download-cancel --queued-only did not cancel queued entry"
+    echo "$QUEUE_LIST_AFTER_QUEUED_ONLY"
     exit 1
 fi
 

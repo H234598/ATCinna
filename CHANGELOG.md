@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.10
+
+- Queue-Parität im Applet-Menü erweitert: Globaler Durchlauf „Alle Downloads starten/stoppen“, „Nächsten Download starten“ bleibt erhalten, ergänzt um „Alle wartenden Downloads stoppen“ als eigener Warteschlangen-Pfad.
+- Neue pro Queue-Eintrag Aktionen im Untermenü: „Download stoppen“, „Audio (URL) abspielen“, „Download (URL) kopieren“, „Gespeichertes Audio (Datei) abspielen“, „Zielordner öffnen“.
+- „Alle Downloads starten“ ruft `download-run-next` nacheinander mit defensivem Limit bis `state: empty` auf; danach wird Queue-Status (Erfolge/Fehler) gesetzt und die Liste aktualisiert.
+- Keine neuen Helper-Aktionen eingeführt; `download-cancel` wurde um `--queued-only` erweitert, damit wartende und laufende Downloads getrennt gestoppt werden können.
+
 ## 0.3.9
 
 - Queue-Management erweitert auf ATPlayer-Parität für Warteschlangen-Bearbeitung: `download-remove`, `download-undo`, `download-prefer`, `download-put-back`.

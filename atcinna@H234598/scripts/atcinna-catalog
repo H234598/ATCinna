@@ -492,19 +492,22 @@ def action_download_run_next(args):
 
 
 def action_download_cancel(args):
-    if not args.all:
+    if not args.all and not args.queued_only:
         if not _normalize_entry_value(args.url):
-            die("url is required unless --all is used")
+            die("url is required unless --all or --queued-only is used")
+    if _normalize_entry_value(args.url):
         _validate_and_normalize_url("url", args.url)
 
     target = _normalize_entry_value(args.url)
     changed = 0
+    cancellable_statuses = ("queued",) if args.queued_only else ("queued", "running")
     with _store_lock(_queue_path()):
         entries = _load_queue()
         for entry in entries:
-            if entry.get("status") not in ("queued", "running"):
+            if entry.get("status") not in cancellable_statuses:
                 continue
-            if args.all or entry.get("url") == target:
+            matches_all_target = args.all or (args.queued_only and not target)
+            if matches_all_target or entry.get("url") == target:
                 entry["status"] = "cancelled"
                 entry["path"] = ""
                 entry["error"] = ""
@@ -748,6 +751,7 @@ def parse_args():
     download_cancel = sub.add_parser("download-cancel", help="Cancel queued/running queue entry")
     download_cancel.add_argument("--url", default="", help="Media URL")
     download_cancel.add_argument("--all", action="store_true", default=False, help="Cancel all queued/running entries")
+    download_cancel.add_argument("--queued-only", action="store_true", default=False, help="Cancel queued entries only")
 
     sub.add_parser("download-clear", help="Remove finished/error/cancelled queue entries")
     download_remove = sub.add_parser("download-remove", help="Remove non-running queue entry by URL")

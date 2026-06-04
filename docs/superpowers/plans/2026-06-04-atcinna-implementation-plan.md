@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.8`.
+- `VERSION` is `0.3.10`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, direct `download`, `download-*` queue actions, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog` provides the optional external GTK search dialog used by the "Suche öffnen" popup action; the primary in-popup search remains active when it works locally.
@@ -58,6 +58,13 @@ Next parity implementation priority: expand the download queue with edit/delete/
   - Add `download-remove`, `download-undo`, `download-prefer`, `download-put-back`.
   - Add queue-entry context actions (`URL kopieren`, `Ordner öffnen`, `Aus Liste entfernen`, `Vorziehen`, `Zurückstellen`) and global restore.
   - Run helper checks that validate remove/undo/reorder and running-entry safety.
+
+- [x] **Task 10: Add ATPlayer queue parity expansion**
+
+  - [x] Add global queue control actions: `Nächsten Download starten`, `Alle Downloads starten`, `Alle Downloads stoppen`, and `Alle wartenden Downloads stoppen`.
+  - [x] Expand per-entry queue submenu with:
+    `Download stoppen`, `Audio (URL) abspielen`, `Download (URL) kopieren`, `Gespeichertes Audio (Datei) abspielen`, `Zielordner öffnen`.
+  - [x] Add applet/static checks for new labels and new handlers (`_runQueueRunAll`, `_runQueueCancelItem`, `_runQueueCancelQueued`, `_openQueueFile`), plus helper coverage for `download-cancel --queued-only`.
 
 ### URL-Trust-Boundary-Härtung
 
