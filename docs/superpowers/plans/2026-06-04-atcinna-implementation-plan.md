@@ -36,6 +36,24 @@ Known parity gaps from `/home/teladi/ATPlayer`:
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
 
+### Task 16: Add ATPlayer-Style Filter Submenu (0.3.16)
+
+- [x] **Filtern-Menü in Einträgen hinzufügen**
+  - Treffer-, Verlauf-, Favoriten- und Warteschlange-Untermenüs enthalten ein Untermenü **Filter**.
+- [x] **Filtern-Aktionen verdrahten**
+  - `nach Sender filtern`, `nach Genre filtern`, `nach Thema filtern`, `nach Titel filtern`,
+    `nach Sender und Thema filtern`, `nach Sender, und Titel filtern`.
+- [x] **Settings setzen statt lokale Suche**
+  - Aktionen schreiben `sender-filter`, `genre-filter`, `topic-filter` und `search-query`.
+- [x] **Kein Erzwingen leerer Werte**
+  - Bei fehlendem Feld wird ein Status gesetzt und die Aktion bricht ohne Setzen ab.
+- [x] **Aktualisierungsfluss sichern**
+  - Filter-/Suchänderung triggert anschließend `Refresh` der Trefferansicht.
+- [x] **Lokale Checks ergänzen**
+  - Label-Checks für neues Filter-Menü.
+  - Wiring-Checks auf alle 4 Menükontexte (`_addFilterActions`).
+  - Regex-Check auf kombinierte `Sender + Titel`-Aktion (`sender-filter` + `search-query`).
+
 Next parity implementation priority: full Blacklist/filter-profile editing, program/help/reset menu surfaces, and legacy settings/config migration.
 
 ### Task 15: Add Queue Download Edit Action (0.3.15)

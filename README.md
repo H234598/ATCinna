@@ -24,6 +24,8 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Warteschlange im Applet kann per Untermenü pro Eintrag bearbeitet werden: Download ändern, Download stoppen, Audio (URL) abspielen, Download (URL) kopieren, gespeichertes Audio (Datei) abspielen, gespeicherte Datei löschen, Zielordner öffnen, aus Liste entfernen, vorziehen und zurückstellen.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen zeigen jetzt zusätzliche Metadatenaktion:
   "Audioinformation anzeigen", plus Kopieraktionen für Titel, Genre und Thema.
+- Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen besitzen zusätzlich das Untermenü **Filter** mit filtern- und kombinierten Filteraktionen im ATPlayer-Stil:
+  Sender, Genre, Thema, Titel, Sender+Thema sowie Sender+Titel.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen bieten ATPlayer-ähnliche Blacklist-Aktionen fuer Audio, Sender/Genre/Thema, Sender/Thema, Thema und Titel.
 - Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
 - Das Script `atcinna@H234598/scripts/atcinna-queue-edit-dialog` bietet einen optionalen GTK-Dialog fuer **Download ändern** und nutzt `download-update` im Helper.
@@ -36,7 +38,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.15`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.16`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

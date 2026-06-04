@@ -466,6 +466,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             entry.menu.addMenuItem(play);
 
             this._addWebsiteAction(entry.menu, item);
+            this._addFilterActions(entry.menu, item);
             this._addInfoAction(entry.menu, item);
             this._addMetadataCopyActions(entry.menu, item);
             this._addBlacklistActions(entry.menu, item);
@@ -786,6 +787,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             row.menu.addMenuItem(cancel);
 
             this._addInfoAction(row.menu, item);
+            this._addFilterActions(row.menu, item);
             this._addMetadataCopyActions(row.menu, item);
             this._addBlacklistActions(row.menu, item);
 
@@ -1269,6 +1271,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         row.menu.addMenuItem(play);
 
         this._addWebsiteAction(row.menu, item);
+        this._addFilterActions(row.menu, item);
         this._addInfoAction(row.menu, item);
         this._addMetadataCopyActions(row.menu, item);
         this._addBlacklistActions(row.menu, item);
@@ -1307,6 +1310,149 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._addCopyFieldAction(menu, "Titel in die Zwischenablage kopieren", item.title);
         this._addCopyFieldAction(menu, "Genre in die Zwischenablage kopieren", item.genre);
         this._addCopyFieldAction(menu, "Thema in die Zwischenablage kopieren", item.topic);
+    }
+
+    _addFilterActions(menu, item) {
+        const sender = this._toTrimmed(item.sender || "");
+        const genre = this._toTrimmed(item.genre || "");
+        const topic = this._toTrimmed(item.topic || "");
+        const title = this._toTrimmed(item.title || "");
+
+        const filterMenu = new PopupMenu.PopupSubMenuMenuItem("Filter");
+
+        const senderFilterItem = new PopupMenu.PopupMenuItem("nach Sender filtern");
+        senderFilterItem.connect("activate", () => {
+            this._applyFilterSettings("sender-filter", sender, {
+                fallback: item.topic || item.title || item.genre || ""
+            });
+        });
+        filterMenu.menu.addMenuItem(senderFilterItem);
+
+        const genreFilterItem = new PopupMenu.PopupMenuItem("nach Genre filtern");
+        genreFilterItem.connect("activate", () => {
+            this._applyFilterSettings("genre-filter", genre, {
+                fallback: item.sender || item.title || item.topic || ""
+            });
+        });
+        filterMenu.menu.addMenuItem(genreFilterItem);
+
+        const topicFilterItem = new PopupMenu.PopupMenuItem("nach Thema filtern");
+        topicFilterItem.connect("activate", () => {
+            this._applyFilterSettings("topic-filter", topic, {
+                fallback: item.sender || item.title || item.genre || ""
+            });
+        });
+        filterMenu.menu.addMenuItem(topicFilterItem);
+
+        const titleFilterItem = new PopupMenu.PopupMenuItem("nach Titel filtern");
+        titleFilterItem.connect("activate", () => {
+            this._applySearchQueryFilter(title, {
+                fallback: item.sender || item.topic || item.genre || ""
+            });
+        });
+        filterMenu.menu.addMenuItem(titleFilterItem);
+
+        const senderTopicFilterItem = new PopupMenu.PopupMenuItem("nach Sender und Thema filtern");
+        senderTopicFilterItem.connect("activate", () => {
+            this._applyFilterSettings("sender-filter", sender, {
+                fallback: item.genre || item.title || ""
+            }, "topic-filter", topic, {
+                fallback: item.sender || item.title || ""
+            });
+        });
+        filterMenu.menu.addMenuItem(senderTopicFilterItem);
+
+        const senderTitleFilterItem = new PopupMenu.PopupMenuItem("nach Sender, und Titel filtern");
+        senderTitleFilterItem.connect("activate", () => {
+            this._applyFilterSettings("sender-filter", sender, {
+                fallback: item.topic || item.genre || ""
+            }, "search-query", title, {
+                fallback: item.sender || item.topic || item.genre || ""
+            });
+        });
+        filterMenu.menu.addMenuItem(senderTitleFilterItem);
+
+        menu.addMenuItem(filterMenu);
+    }
+
+    _applyFilterSettings(settingName, rawValue, statusMeta, secondaryName, secondaryRawValue, secondaryStatusMeta) {
+        const value = this._toTrimmed(rawValue);
+        if (!value) {
+            const fallback = statusMeta && statusMeta.fallback ? ` (${statusMeta.fallback})` : "";
+            this._setStatus(`Filter kann nicht gesetzt werden: kein ${settingName.replace(/-/g, " ")}wert${fallback}`);
+            return;
+        }
+
+        const updates = [{
+            name: settingName,
+            value
+        }];
+
+        if (secondaryName) {
+            const secondaryValue = this._toTrimmed(secondaryRawValue);
+            if (!secondaryValue) {
+                const fallback = secondaryStatusMeta && secondaryStatusMeta.fallback ? ` (${secondaryStatusMeta.fallback})` : "";
+                this._setStatus(`Filter kann nicht gesetzt werden: kein ${secondaryName.replace(/-/g, " ")}wert${fallback}`);
+                return;
+            }
+            updates.push({
+                name: secondaryName,
+                value: secondaryValue
+            });
+        }
+
+        this._isSyncingFilterSettingsFromSettings = true;
+        try {
+            this._isSyncingSearchQueryFromSettings = secondaryName === "search-query" || settingName === "search-query";
+            for (const update of updates) {
+                if (update.name === "sender-filter") {
+                    this.senderFilter = update.value;
+                    this.settings.setValue("sender-filter", update.value);
+                } else if (update.name === "genre-filter") {
+                    this.genreFilter = update.value;
+                    this.settings.setValue("genre-filter", update.value);
+                } else if (update.name === "topic-filter") {
+                    this.topicFilter = update.value;
+                    this.settings.setValue("topic-filter", update.value);
+                } else if (update.name === "search-query") {
+                    this.searchQuery = update.value;
+                    this._activeSearchQuery = update.value;
+                    this.settings.setValue("search-query", update.value);
+                    if (this._searchEntry && this._searchEntry.get_text() !== update.value) {
+                        this._searchEntry.set_text(update.value);
+                    }
+                }
+            }
+        } finally {
+            this._isSyncingSearchQueryFromSettings = false;
+            this._isSyncingFilterSettingsFromSettings = false;
+        }
+
+        this._refreshFilterSummary();
+        this._runSearch();
+    }
+
+    _applySearchQueryFilter(rawValue, statusMeta) {
+        const value = this._toTrimmed(rawValue);
+        if (!value) {
+            const fallback = statusMeta && statusMeta.fallback ? ` (${statusMeta.fallback})` : "";
+            this._setStatus(`Filter kann nicht gesetzt werden: kein Titelwert${fallback}`);
+            return;
+        }
+
+        this._isSyncingSearchQueryFromSettings = true;
+        this._activeSearchQuery = value;
+        try {
+            this.searchQuery = value;
+            this.settings.setValue("search-query", value);
+            if (this._searchEntry && this._searchEntry.get_text() !== value) {
+                this._searchEntry.set_text(value);
+            }
+        } finally {
+            this._isSyncingSearchQueryFromSettings = false;
+        }
+
+        this._runSearch(value);
     }
 
     _addBlacklistActions(menu, item) {

@@ -179,6 +179,12 @@ for info_label in "Audioinformation anzeigen" "Titel in die Zwischenablage kopie
         STATUS=1
     fi
 done
+for filter_label in "Filter" "nach Sender filtern" "nach Genre filtern" "nach Thema filtern" "nach Titel filtern" "nach Sender und Thema filtern" "nach Sender, und Titel filtern"; do
+    if ! rg -q -F "${filter_label}" "$APPLET_JS"; then
+        echo "ERROR: applet filter action label is missing: ${filter_label}"
+        STATUS=1
+    fi
+done
 for blacklist_label in "Blacklist-Eintrag für das Audio erstellen" "Sender und Genre direkt in die Blacklist einfügen" "Sender und Thema direkt in die Blacklist einfügen" "Thema direkt in die Blacklist einfügen" "Titel direkt in die Blacklist einfügen"; do
     if ! rg -q -F "${blacklist_label}" "$APPLET_JS"; then
         echo "ERROR: applet blacklist action label is missing: ${blacklist_label}"
@@ -251,6 +257,20 @@ if [ "$BLACKLIST_ACTION_CALLS" -lt 4 ]; then
     echo "ERROR: applet blacklist actions are not wired into all expected menus"
     STATUS=1
 fi
+FILTER_ACTION_CALLS="$(rg -n -F 'this._addFilterActions(' "$APPLET_JS" | wc -l | tr -d ' ')"
+FILTER_ACTION_CALLS="${FILTER_ACTION_CALLS:-0}"
+if [ "$FILTER_ACTION_CALLS" -lt 3 ]; then
+    echo "ERROR: applet filter actions are not wired into all expected render paths"
+    STATUS=1
+fi
+if ! rg -q -F '_applyFilterSettings("sender-filter", sender' "$APPLET_JS"; then
+    echo "ERROR: applet filter wiring does not map sender to sender-filter"
+    STATUS=1
+fi
+if ! rg -q -F '_applySearchQueryFilter(title' "$APPLET_JS"; then
+    echo "ERROR: applet filter wiring does not map title to search-query"
+    STATUS=1
+fi
 python3 - "$APPLET_JS" <<'PY' || STATUS=1
 import re
 import sys
@@ -263,6 +283,14 @@ match = re.search(
 )
 if not match or "sender:" not in match.group("body") or "genre:" not in match.group("body") or "topic:" not in match.group("body"):
     print("ERROR: Sender-und-Genre blacklist action must include sender, genre, and topic like ATPlayer")
+    raise SystemExit(1)
+
+match = re.search(
+    r'nach Sender, und Titel filtern[\s\S]*?_applyFilterSettings\("sender-filter",\s*sender[\s\S]*?"search-query",\s*title',
+    source,
+)
+if not match:
+    print("ERROR: Sender+Titel filter action must set sender-filter and search-query")
     raise SystemExit(1)
 PY
 if ! rg -q -F '"blacklist-mode"' "$SETTINGS_SCHEMA"; then

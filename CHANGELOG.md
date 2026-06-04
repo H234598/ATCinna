@@ -1,4 +1,17 @@
 # Changelog
+## 0.3.16
+
+- Kontextmenü im Treffer-, Verlauf-, Favoriten- und Warteschlangenbereich um ein ATPlayer-artiges Untermenü **Filter** ergänzt.
+- Neue Filteraktionen setzen bestehende Applet-Settings und aktualisieren automatisch die Trefferansicht:
+  - `nach Sender filtern` → `sender-filter`
+  - `nach Genre filtern` → `genre-filter`
+  - `nach Thema filtern` → `topic-filter`
+  - `nach Titel filtern` → `search-query`
+  - `nach Sender und Thema filtern` → `sender-filter` + `topic-filter`
+  - `nach Sender, und Titel filtern` → `sender-filter` + `search-query`
+- Leere Metadaten führen zu klarer Statusmeldung und erzwingen keine leeren Filterwerte.
+- Lokale Checks prüfen neue Filterlabels, Wiring-Aufrufe sowie die kombinierte Sender+Titel-Aktion auf `sender-filter` und `search-query`.
+
 ## 0.3.15
 
 - ATPlayer-Queue-Aktion **„Download ändern“** ergänzt: Queue-Einträge können vor dem Start über einen optionalen GTK-Dialog bearbeitet werden.
