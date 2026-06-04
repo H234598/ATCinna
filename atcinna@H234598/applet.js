@@ -770,6 +770,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             openFile.connect("activate", () => this._openQueueFile(item));
             row.menu.addMenuItem(openFile);
 
+            const trashFile = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) löschen");
+            trashFile.connect("activate", () => this._runQueueTrashFile(item));
+            row.menu.addMenuItem(trashFile);
+
             const openFolder = new PopupMenu.PopupMenuItem("Zielordner öffnen");
             openFolder.connect("activate", () => this._openQueuePathFolder(item));
             row.menu.addMenuItem(openFolder);
@@ -1023,6 +1027,40 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._setStatus(`spiele Datei ab: ${pathValue}`);
         Util.spawn(["xdg-open", pathValue]);
+    }
+
+    _runQueueTrashFile(item) {
+        const url = this._normalizeQueueItemUrl(item);
+        if (!url) {
+            this._setStatus("Datei löschen fehlgeschlagen: keine URL");
+            return;
+        }
+
+        this._setStatus(`lösche gespeicherte Datei: ${item.title || "Eintrag"}`);
+        this._runHelper([
+            "download-trash-file",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-trash-file fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-trash-file: unerwartete Antwort");
+                    return;
+                }
+                if (!payload.trashed) {
+                    this._setStatus("Datei konnte nicht gelöscht werden");
+                    return;
+                }
+                this._setStatus("Datei in den Papierkorb verschoben");
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-trash-file ungültige Antwort: ${error.message}`);
+            }
+        });
     }
 
     _queueFolderCandidate(item) {

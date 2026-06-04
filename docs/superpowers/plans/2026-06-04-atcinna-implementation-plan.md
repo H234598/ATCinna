@@ -80,6 +80,22 @@ Next parity implementation priority: expand the download queue with edit/delete/
   - Kompakter, nichtreaktiver Info-Bereich im Popup (`this._infoSection`) mit Titel, Sender, Genre, Thema, Datum/Uhrzeit/Dauer, Beschreibung, URL, Website, Pfad.
   - `scripts/check.sh` ergänzt um Label-/Methoden-Checks und funktionale Persistenzprüfungen für `date/time/duration/description` in History/Bookmark/Queue.
 
+### Task 12: Add Queue Trash Action (0.3.12)
+
+- [x] **Helper Action ergänzen**
+  - Neue Aktion `download-trash-file --url URL` implementiert.
+  - Queue-Eintrag wird per URL gesucht; `path` wird auf absolute Pfadangabe, Existenz, `regular` und Zugehörigkeit zu Queue-`folder` geprüft (Fallback `~/Downloads`).
+  - Pfadauflösung auf `resolve(strict=True)` gesetzt, kein neues Queue-Verzeichnis anlegen.
+  - Löschen nur über `gio trash <path>` mit Argumentliste; Fehler werden als JSON-Fehler zurückgegeben.
+
+- [x] **Applet anreichern**
+  - Queue-Menüpunkterweiterung um **„Gespeichertes Audio (Datei) löschen“**.
+  - Neue Aktion ruft Helper auf, übernimmt Queue-Refresh und Statusmeldung.
+
+- [x] **Check/Test erweitern**
+  - `scripts/check.sh` um neue Action-/Handler-/Label-Checks ergänzt.
+  - Funktionale Tests für gültigen Trash, außerhalb-Queue-Ablehnung und fehlende URL/Path (JSON-Fehler).
+
 ### URL-Trust-Boundary-Härtung
 
 - [x] **Suchergebnisse filtern Audio-URLs auf http/https, nicht-http(s)-Audiozeilen auslassen**

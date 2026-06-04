@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.12
+
+- Queue-Management um sichere gespeicherte-Datei-Löschung ergänzt: neue Helper-Action `download-trash-file --url URL`, die Queue-Eintrag mit vorhandenem `path` prüft, den Download-Pfad per `gio trash` in den Papierkorb verschiebt und den Eintrag defensiv auf `cancelled` setzt.
+- Queue-Menü im Applet ergänzt um **„Gespeichertes Audio (Datei) löschen“**, inkl. Refresh nach der Aktion.
+- `scripts/check.sh` erweitert um statische Checks für neue Action/Label/Handler und funktionale Tests (Trash innerhalb Queue-Ordner, Außenbereich-Verbot, fehlende URL/Path).
+
 ## 0.3.11
 
 - History/Favorites/Queue- und Suchergebnis-Einträge um neue Metadaten-Felder ergänzt: `date`, `time`, `duration`, `description`.

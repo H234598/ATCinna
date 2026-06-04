@@ -142,13 +142,13 @@ for helper_action in download-enqueue download-list download-run-next download-c
         STATUS=1
     fi
 done
-for helper_action in download-remove download-undo download-prefer download-put-back; do
+for helper_action in download-remove download-undo download-prefer download-put-back download-trash-file; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
         STATUS=1
     fi
 done
-for queue_label in "Download stoppen" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Zielordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
+for queue_label in "Download stoppen" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue menu label is missing: ${queue_label}"
         STATUS=1
@@ -202,6 +202,10 @@ if ! rg -q -F '_runQueueCancelQueued()' "$APPLET_JS"; then
 fi
 if ! rg -q -F '_openQueueFile(item)' "$APPLET_JS"; then
     echo "ERROR: applet queue file open action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueTrashFile(item)' "$APPLET_JS"; then
+    echo "ERROR: applet queue trash-file action handler is missing"
     STATUS=1
 fi
 if ! rg -q -F '_defaultDownloadFolder()' "$APPLET_JS"; then
@@ -801,6 +805,128 @@ if ! echo "$QUEUE_LIST_AFTER_QUEUED_ONLY" | jq -e '.results | map(select(.url=="
     echo "ERROR: download-cancel --queued-only did not cancel queued entry"
     echo "$QUEUE_LIST_AFTER_QUEUED_ONLY"
     exit 1
+fi
+
+if ! command -v gio >/dev/null 2>&1; then
+    echo "WARN: gio not installed; skipping download-trash-file functional tests"
+else
+    QUEUE_TRASH_BASE="$HOME/.cache/atcinna-check-trash-$RANDOM-$$"
+    QUEUE_TRASH_XDG_DATA_HOME="$QUEUE_TRASH_BASE/data"
+    QUEUE_TRASH_AUDIO_DIR="$QUEUE_TRASH_BASE/audio"
+    QUEUE_TRASH_OUTSIDE_DIR="$QUEUE_TRASH_BASE/outside"
+    rm -rf "$QUEUE_TRASH_BASE"
+    mkdir -p "$QUEUE_TRASH_AUDIO_DIR" "$QUEUE_TRASH_OUTSIDE_DIR" "$QUEUE_TRASH_XDG_DATA_HOME/atcinna@H234598"
+
+    printf 'trashable fixture\n' > "$QUEUE_TRASH_AUDIO_DIR/audio-trash.mp3"
+    printf 'outside fixture\n' > "$QUEUE_TRASH_OUTSIDE_DIR/audio-outside.mp3"
+    cat > "$QUEUE_TRASH_XDG_DATA_HOME/atcinna@H234598/download-queue.json" <<JSON
+[
+  {
+    "title": "Trash candidate",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "https://example.com/trash/candidate",
+    "website": "",
+    "folder": "$QUEUE_TRASH_AUDIO_DIR",
+    "timestamp": 100,
+    "status": "finished",
+    "path": "$QUEUE_TRASH_AUDIO_DIR/audio-trash.mp3",
+    "error": ""
+  },
+  {
+    "title": "Outside candidate",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "https://example.com/trash/outside",
+    "website": "",
+    "folder": "$QUEUE_TRASH_AUDIO_DIR",
+    "timestamp": 101,
+    "status": "finished",
+    "path": "$QUEUE_TRASH_OUTSIDE_DIR/audio-outside.mp3",
+    "error": ""
+  },
+  {
+    "title": "Missing path candidate",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "https://example.com/trash/missing-path",
+    "website": "",
+    "folder": "$QUEUE_TRASH_AUDIO_DIR",
+    "timestamp": 102,
+    "status": "finished",
+    "path": "",
+    "error": ""
+  }
+]
+JSON
+
+    QUEUE_TRASH_REJECT="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-trash-file --url "https://example.com/trash/outside" 2>&1 || true)"
+    if [ -f "$QUEUE_TRASH_OUTSIDE_DIR/audio-outside.mp3" ]; then :; else
+        echo "ERROR: outside fixture file missing before validation"
+        exit 1
+    fi
+    if ! echo "$QUEUE_TRASH_REJECT" | jq -e '.status == "error" and (.message | startswith("file path is outside queue folder"))' >/dev/null; then
+        echo "ERROR: download-trash-file should reject path outside queue folder"
+        echo "$QUEUE_TRASH_REJECT"
+        exit 1
+    fi
+    if [ ! -f "$QUEUE_TRASH_OUTSIDE_DIR/audio-outside.mp3" ]; then
+        echo "ERROR: outside file must remain after rejected trash attempt"
+        exit 1
+    fi
+    QUEUE_LIST_AFTER_TRASH_REJECT="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-list)"
+    if ! echo "$QUEUE_LIST_AFTER_TRASH_REJECT" | jq -e '.results | map(select(.url=="https://example.com/trash/outside")) | length == 1' >/dev/null; then
+        echo "ERROR: outside queue entry should remain in list after rejected trash attempt"
+        echo "$QUEUE_LIST_AFTER_TRASH_REJECT"
+        exit 1
+    fi
+
+    QUEUE_TRASH_RESULT="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-trash-file --url "https://example.com/trash/candidate" 2>&1 || true)"
+    if ! echo "$QUEUE_TRASH_RESULT" | jq -e '.status == "ok" and .trashed == true' >/dev/null; then
+        if echo "$QUEUE_TRASH_RESULT" | jq -e '.status == "error" and (.message | test("not supported|across filesystem boundaries|not supported by"))' >/dev/null 2>&1; then
+            echo "WARN: gio trash backend unsupported in this environment; skipping valid trash validation"
+            rm -rf "$QUEUE_TRASH_BASE"
+        else
+            echo "ERROR: download-trash-file should trash file for valid queue entry"
+            echo "$QUEUE_TRASH_RESULT"
+            rm -rf "$QUEUE_TRASH_BASE"
+            exit 1
+        fi
+    else
+        if [ -f "$QUEUE_TRASH_AUDIO_DIR/audio-trash.mp3" ]; then
+            echo "ERROR: queued file still exists after successful download-trash-file"
+            rm -rf "$QUEUE_TRASH_BASE"
+            exit 1
+        fi
+        QUEUE_LIST_AFTER_TRASH="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-list)"
+        if ! echo "$QUEUE_LIST_AFTER_TRASH" | jq -e '.results | map(select(.url=="https://example.com/trash/candidate" and .path == "" and .status=="cancelled")) | length == 1' >/dev/null; then
+            echo "ERROR: queue entry was not marked cancelled/cleared after trash"
+            echo "$QUEUE_LIST_AFTER_TRASH"
+            rm -rf "$QUEUE_TRASH_BASE"
+            exit 1
+        fi
+    fi
+
+    QUEUE_TRASH_MISSING_URL="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-trash-file 2>&1 || true)"
+    if ! jq -e '.status == "error" and .message == "url is required"' <<<"$QUEUE_TRASH_MISSING_URL" >/dev/null 2>&1; then
+        echo "ERROR: download-trash-file without URL should return JSON error"
+        echo "$QUEUE_TRASH_MISSING_URL"
+        rm -rf "$QUEUE_TRASH_BASE"
+        exit 1
+    fi
+
+    QUEUE_TRASH_MISSING_PATH="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-trash-file --url "https://example.com/trash/missing-path" 2>&1 || true)"
+    if ! echo "$QUEUE_TRASH_MISSING_PATH" | jq -e '.status == "error" and .message == "path is required"' >/dev/null; then
+        echo "ERROR: download-trash-file should reject entry with missing path"
+        echo "$QUEUE_TRASH_MISSING_PATH"
+        rm -rf "$QUEUE_TRASH_BASE"
+        exit 1
+    fi
+
+    rm -rf "$QUEUE_TRASH_BASE"
 fi
 
 if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then

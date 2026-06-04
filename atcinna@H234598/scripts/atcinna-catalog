@@ -305,6 +305,24 @@ def _resolve_download_folder(folder):
     return folder_path
 
 
+def _resolve_existing_queue_folder(entry):
+    folder_path = Path(_normalize_entry_value(entry.get("folder")) or "~/Downloads").expanduser()
+    if not folder_path.is_absolute():
+        folder_path = folder_path.resolve()
+    resolved_folder = folder_path.resolve(strict=True)
+    if not resolved_folder.is_dir():
+        die("queue folder is not a directory")
+    return resolved_folder
+
+
+def _path_within_folder(file_path, folder_path):
+    try:
+        Path(file_path).relative_to(Path(folder_path))
+    except ValueError:
+        return False
+    return Path(file_path) != Path(folder_path)
+
+
 def action_download_enqueue(args):
     _validate_and_normalize_url("url", args.url)
     _validate_and_normalize_url("website", args.website)
@@ -532,6 +550,79 @@ def action_download_clear(args):
         removed = len(entries) - len(filtered)
         _store_queue(filtered)
     print(json.dumps({"status": "ok", "removed": removed}))
+
+
+def action_download_trash_file(args):
+    _validate_and_normalize_url("url", args.url)
+    target = _normalize_entry_value(args.url)
+    if not target:
+        die("url is required")
+
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        target_entry = None
+        target_index = None
+        for index, entry in enumerate(entries):
+            if entry.get("url") == target:
+                target_entry = entry
+                target_index = index
+                break
+        if target_entry is None:
+            die("url not found in queue")
+
+        raw_path = _normalize_entry_value(target_entry.get("path"))
+        if not raw_path:
+            die("path is required")
+
+        file_path = Path(raw_path)
+        if not file_path.is_absolute():
+            die("path is not absolute")
+
+        try:
+            resolved_file = file_path.resolve(strict=True)
+        except FileNotFoundError:
+            die("file does not exist")
+        except OSError as exc:
+            die(f"failed to resolve file path: {exc}")
+        if not resolved_file.is_file():
+            die("path is not a regular file")
+
+        try:
+            folder_path = _resolve_existing_queue_folder(target_entry)
+        except FileNotFoundError:
+            die("queue folder does not exist")
+        except OSError as exc:
+            die(f"failed to resolve queue folder: {exc}")
+
+        if not _path_within_folder(resolved_file, folder_path):
+            die("file path is outside queue folder")
+
+        gio = shutil.which("gio")
+        if not gio:
+            die("gio not found")
+
+        try:
+            completed = subprocess.run(
+                [gio, "trash", str(resolved_file)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=30,
+            )
+        except Exception as exc:
+            die(f"failed to execute gio trash: {exc}")
+
+        if completed.returncode != 0:
+            error = (completed.stderr or b"").decode("utf-8", "replace").strip()
+            die(error or f"gio trash failed with exit {completed.returncode}")
+
+        target_entry["path"] = ""
+        target_entry["status"] = "cancelled"
+        target_entry["error"] = "Datei in den Papierkorb verschoben"
+        target_entry["timestamp"] = int(time.time())
+        entries[target_index] = target_entry
+        _store_queue(entries)
+    print(json.dumps({"status": "ok", "trashed": True, "url": target}))
 
 
 def _iter_audio_rows(path):
@@ -777,6 +868,11 @@ def parse_args():
     download_remove = sub.add_parser("download-remove", help="Remove non-running queue entry by URL")
     download_remove.add_argument("--url", required=True, help="Media URL")
     sub.add_parser("download-undo", help="Restore last removed queue entries")
+    sub.add_parser("download-trash-file", help="Move stored queue file to trash").add_argument(
+        "--url",
+        default="",
+        help="Media URL"
+    )
     download_prefer = sub.add_parser("download-prefer", help="Move queued entry before other queued entries")
     download_prefer.add_argument("--url", required=True, help="Media URL")
     download_put_back = sub.add_parser("download-put-back", help="Move queued entry behind other queued entries")
@@ -807,6 +903,8 @@ def main():
         action_download_remove(args)
     elif args.action == "download-undo":
         action_download_undo(args)
+    elif args.action == "download-trash-file":
+        action_download_trash_file(args)
     elif args.action == "download-prefer":
         action_download_prefer(args)
     elif args.action == "download-put-back":
