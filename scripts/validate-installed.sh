@@ -156,7 +156,7 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
-for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter"; do
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section"; do
     if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
         echo "ERROR: settings-schema key missing: $key"
         exit 1
@@ -235,6 +235,12 @@ for applet_label in "Download starten" "Downloads aktualisieren" "Liste der Down
     fi
 done
 for applet_label in "Abspielen" "Speichern" "Filminformation anzeigen"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
+for applet_label in "Filter ein-/ausblenden" "Infos ein-/ausblenden"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
         exit 1

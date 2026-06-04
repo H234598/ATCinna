@@ -121,6 +121,18 @@
     "max": 100,
     "step": 1
   },
+  "show-filter-section": {
+    "type": "switch",
+    "description": "Filter anzeigen",
+    "tooltip": "Zeigt den Filterbereich im Popup an. Der Menuepunkt Filter ein-/ausblenden kann den Bereich ebenfalls umschalten.",
+    "default": true
+  },
+  "show-info-section": {
+    "type": "switch",
+    "description": "Infos anzeigen",
+    "tooltip": "Zeigt den Infobereich im Popup an. Der Menuepunkt Infos ein-/ausblenden kann den Bereich ebenfalls umschalten.",
+    "default": true
+  },
   "download-folder": {
     "type": "filechooser",
     "description": "Download-Ordner",

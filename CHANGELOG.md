@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.36
+
+- ATPlayer-nahe Menüaktionen **Filter ein-/ausblenden** und **Infos ein-/ausblenden** ergänzt.
+- Sichtbarkeit von Filter- und Infobereich wird über Cinnamon-Settings persistiert und durch den Programm-Reset wieder aktiviert.
+- Source- und Installationschecks schützen Labels, Handler, Reset-Defaults und neue Schema-Keys.
+- Versionssprung auf `0.3.36`; `metadata.json`, `settings-schema.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.35
 
 - ATPlayer-nahe History-Batch-Aktionen für markierte Treffer ergänzt: **Markierte als gesehen markieren** und **Markierte als ungesehen markieren**.

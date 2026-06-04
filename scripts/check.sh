@@ -199,6 +199,18 @@ if ! rg -q -F "new PopupMenu.PopupMenuItem(\"Über dieses Programm\")" "$APPLET_
     echo "ERROR: applet about menu label is missing"
     STATUS=1
 fi
+for visibility_label in "Filter ein-/ausblenden" "Infos ein-/ausblenden"; do
+    if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${visibility_label}\")" "$APPLET_JS"; then
+        echo "ERROR: applet visibility label is missing: ${visibility_label}"
+        STATUS=1
+    fi
+done
+for visibility_handler in "_toggleFilterSectionVisibility" "_toggleInfoSectionVisibility" "_applySectionVisibility" "_setSectionVisible" "_onSectionVisibilityChanged"; do
+    if ! rg -q -F "${visibility_handler}" "$APPLET_JS"; then
+        echo "ERROR: applet visibility handler is missing: ${visibility_handler}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F "search-query\": \"\"" "$APPLET_JS"; then
     echo "ERROR: settings reset default for search-query is missing"
     STATUS=1
@@ -221,6 +233,14 @@ if ! rg -q -F "only-new-filter\": false" "$APPLET_JS"; then
 fi
 if ! rg -q -F "podcast-filter\": \"all\"" "$APPLET_JS"; then
     echo "ERROR: settings reset default for podcast-filter is missing"
+    STATUS=1
+fi
+if ! rg -q -F "show-filter-section\": true" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for show-filter-section is missing"
+    STATUS=1
+fi
+if ! rg -q -F "show-info-section\": true" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for show-info-section is missing"
     STATUS=1
 fi
 if ! rg -q -F '"max-hits": 20' "$APPLET_JS"; then
@@ -543,7 +563,7 @@ if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
     echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
         STATUS=1

@@ -65,6 +65,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._filterSummaryItem = null;
         this._clearFiltersItem = null;
         this._bookmarkFilterToggleItem = null;
+        this._filterVisibilityItem = null;
+        this._infoVisibilityItem = null;
         this._bookmarkFilterSnapshot = null;
         this._dbusImpl = null;
         this._dbusOwnerId = 0;
@@ -93,6 +95,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("podcast-filter", "podcastFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("blacklist-mode", "blacklistMode", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("max-hits", "maxHits", this._onMaxHitsChanged.bind(this));
+        this.settings.bind("show-filter-section", "showFilterSection", this._onSectionVisibilityChanged.bind(this));
+        this.settings.bind("show-info-section", "showInfoSection", this._onSectionVisibilityChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
         this.settings.bind("refresh-mirror", "refreshMirror", null);
         this._activeSearchQuery = this.searchQuery || "";
@@ -179,6 +183,18 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
         this.menu.addMenuItem(this._openSettingsItem);
 
+        this._filterVisibilityItem = new PopupMenu.PopupMenuItem("Filter ein-/ausblenden");
+        this._filterVisibilityItem.connect("activate", () => {
+            this._toggleFilterSectionVisibility();
+        });
+        this.menu.addMenuItem(this._filterVisibilityItem);
+
+        this._infoVisibilityItem = new PopupMenu.PopupMenuItem("Infos ein-/ausblenden");
+        this._infoVisibilityItem.connect("activate", () => {
+            this._toggleInfoSectionVisibility();
+        });
+        this.menu.addMenuItem(this._infoVisibilityItem);
+
         this._helpMenu = new PopupMenu.PopupSubMenuMenuItem("Hilfe");
 
         this._helpDialogItem = new PopupMenu.PopupMenuItem("Hilfedialog");
@@ -235,6 +251,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.menu.addMenuItem(this._queueSection);
         this.menu.addMenuItem(this._queueListSection);
 
+        this._applySectionVisibility();
         this._setupQueueActions();
 
         this._refreshFilterSummary();
@@ -944,6 +961,53 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._setStatus("Einstellungen nicht verfügbar");
     }
 
+    _toggleFilterSectionVisibility() {
+        const nextValue = !this._boolSetting(this.showFilterSection, true);
+        this.showFilterSection = nextValue;
+        if (this.settings) {
+            this.settings.setValue("show-filter-section", nextValue);
+        }
+        this._applySectionVisibility();
+        this._setStatus(nextValue ? "Filter eingeblendet" : "Filter ausgeblendet");
+    }
+
+    _toggleInfoSectionVisibility() {
+        const nextValue = !this._boolSetting(this.showInfoSection, true);
+        this.showInfoSection = nextValue;
+        if (this.settings) {
+            this.settings.setValue("show-info-section", nextValue);
+        }
+        this._applySectionVisibility();
+        this._setStatus(nextValue ? "Infos eingeblendet" : "Infos ausgeblendet");
+    }
+
+    _onSectionVisibilityChanged() {
+        this._applySectionVisibility();
+    }
+
+    _applySectionVisibility() {
+        this._setSectionVisible(this._filterSection, this._boolSetting(this.showFilterSection, true));
+        this._setSectionVisible(this._infoSection, this._boolSetting(this.showInfoSection, true));
+    }
+
+    _setSectionVisible(section, visible) {
+        if (!section || !section.actor) {
+            return;
+        }
+        if (visible) {
+            section.actor.show();
+        } else {
+            section.actor.hide();
+        }
+    }
+
+    _boolSetting(value, fallback) {
+        if (typeof value === "boolean") {
+            return value;
+        }
+        return fallback;
+    }
+
     _showHelpDialog() {
         this._setStatus("Hilfedialog geöffnet");
         const version = this.metadata && this.metadata.version ? this.metadata.version : "unbekannt";
@@ -980,7 +1044,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "only-new-filter": false,
             "only-bookmarks-filter": false,
             "hide-history-filter": false,
-            "podcast-filter": "all"
+            "podcast-filter": "all",
+            "show-filter-section": true,
+            "show-info-section": true
         };
         const nextSearchQuery = defaults["search-query"];
 
@@ -1003,6 +1069,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.onlyBookmarksFilter = defaults["only-bookmarks-filter"];
             this.hideHistoryFilter = defaults["hide-history-filter"];
             this.podcastFilter = defaults["podcast-filter"];
+            this.showFilterSection = defaults["show-filter-section"];
+            this.showInfoSection = defaults["show-info-section"];
 
             this.settings.setValue("search-query", defaults["search-query"]);
             this.settings.setValue("sender-filter", defaults["sender-filter"]);
@@ -1020,6 +1088,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("only-bookmarks-filter", defaults["only-bookmarks-filter"]);
             this.settings.setValue("hide-history-filter", defaults["hide-history-filter"]);
             this.settings.setValue("podcast-filter", defaults["podcast-filter"]);
+            this.settings.setValue("show-filter-section", defaults["show-filter-section"]);
+            this.settings.setValue("show-info-section", defaults["show-info-section"]);
 
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
@@ -1031,6 +1101,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
 
         this._refreshFilterSummary();
+        this._applySectionVisibility();
         this._setStatus("Alle Programmeinstellungen auf Standard zurückgesetzt");
         this._renderInfoSection([
             ["Status", "Programmweite Sucheinstellungen wurden auf Standard zurückgesetzt."],
