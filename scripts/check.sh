@@ -71,6 +71,8 @@ if ! python3 -m py_compile "$HELPER"; then
     exit 1
 fi
 
+export XDG_DATA_HOME="$TMP_DIR/data"
+
 cat > "$TMP_DIR/audios.jsonl" <<'JSONL'
 "Audios":["WDR","Genre","Thema","Kurzmeldung","2026-06-04","","","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
 "Audios":["","","","Zweite Kurzmeldung","2026-06-04","","","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
@@ -98,6 +100,178 @@ INHERITED_JSON="$(python3 "$HELPER" search --query "Zweite" --max 1)"
 if ! echo "$INHERITED_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].sender == "WDR" and .results[0].genre == "Genre" and .results[0].topic == "Thema" and .results[0].url == "https://example.com/second"' >/dev/null; then
     echo "ERROR: inherited catalog fields are not preserved"
     echo "$INHERITED_JSON"
+    exit 1
+fi
+
+HISTORY_ADD_1="$(python3 "$HELPER" history-add --title "Alpha" --sender "S1" --genre "G1" --topic "T1" --url "https://example.com/item/1" --website "https://www.example.com")"
+if ! echo "$HISTORY_ADD_1" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: history-add failed"
+    echo "$HISTORY_ADD_1"
+    exit 1
+fi
+HISTORY_ADD_2="$(python3 "$HELPER" history-add --title "Alpha updated" --sender "S1" --genre "G1" --topic "T1" --url "https://example.com/item/1" --website "https://www.example.com")"
+if ! echo "$HISTORY_ADD_2" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: history-add dedupe update failed"
+    echo "$HISTORY_ADD_2"
+    exit 1
+fi
+HISTORY_LIST="$(python3 "$HELPER" history-list)"
+if ! echo "$HISTORY_LIST" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Alpha updated"' >/dev/null; then
+    echo "ERROR: history-list unexpected result/dedupe"
+    echo "$HISTORY_LIST"
+    exit 1
+fi
+
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+data_dir.mkdir(parents=True, exist_ok=True)
+items = [
+    {
+        "title": f"Item {i}",
+        "sender": "",
+        "genre": "",
+        "topic": "",
+        "url": f"https://example.com/history/{i}",
+        "website": "",
+        "timestamp": i,
+    }
+    for i in range(1, 101)
+]
+(data_dir / "history.json").write_text(json.dumps(items), encoding="utf-8")
+PY
+python3 "$HELPER" history-add --title "Newest" --url "https://example.com/history/newest" >/dev/null
+HISTORY_LIST="$(python3 "$HELPER" history-list)"
+if ! echo "$HISTORY_LIST" | jq -e '.count == 100' >/dev/null; then
+    echo "ERROR: history limit not enforced at 100"
+    echo "$HISTORY_LIST"
+    exit 1
+fi
+if ! echo "$HISTORY_LIST" | jq -e '.results[0].url == "https://example.com/history/newest"' >/dev/null; then
+    echo "ERROR: history newest-first ordering not enforced"
+    echo "$HISTORY_LIST"
+    exit 1
+fi
+if ! echo "$HISTORY_LIST" | jq -e '[.results[] | select(.url=="https://example.com/history/100")] | length == 0' >/dev/null; then
+    echo "ERROR: history limit did not drop the oldest entry"
+    echo "$HISTORY_LIST"
+    exit 1
+fi
+
+BOOKMARK_ADD_1="$(python3 "$HELPER" bookmark-add --title "B1" --url "https://example.com/bookmark/1" --website "https://www.example.com")"
+if ! echo "$BOOKMARK_ADD_1" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: bookmark-add failed"
+    echo "$BOOKMARK_ADD_1"
+    exit 1
+fi
+BOOKMARK_ADD_2="$(python3 "$HELPER" bookmark-add --title "B2" --url "https://example.com/bookmark/2")"
+if ! echo "$BOOKMARK_ADD_2" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: bookmark-add failed"
+    echo "$BOOKMARK_ADD_2"
+    exit 1
+fi
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+data_dir.mkdir(parents=True, exist_ok=True)
+items = [
+    {
+        "title": f"B {i}",
+        "sender": "",
+        "genre": "",
+        "topic": "",
+        "url": f"https://example.com/bookmark/{i}",
+        "website": "",
+        "timestamp": i,
+    }
+    for i in range(1, 501)
+]
+(data_dir / "bookmarks.json").write_text(json.dumps(items), encoding="utf-8")
+PY
+python3 "$HELPER" bookmark-add --title "Newest Bookmark" --url "https://example.com/bookmark/newest" >/dev/null
+BOOKMARK_LIST="$(python3 "$HELPER" bookmark-list)"
+if ! echo "$BOOKMARK_LIST" | jq -e '.count == 500' >/dev/null; then
+    echo "ERROR: bookmark limit not enforced at 500"
+    echo "$BOOKMARK_LIST"
+    exit 1
+fi
+if ! echo "$BOOKMARK_LIST" | jq -e '.results[0].url == "https://example.com/bookmark/newest"' >/dev/null; then
+    echo "ERROR: bookmark newest-first ordering not enforced"
+    echo "$BOOKMARK_LIST"
+    exit 1
+fi
+if ! echo "$BOOKMARK_LIST" | jq -e '[.results[] | select(.url=="https://example.com/bookmark/500")] | length == 0' >/dev/null; then
+    echo "ERROR: bookmark limit did not drop the oldest entry"
+    echo "$BOOKMARK_LIST"
+    exit 1
+fi
+
+BOOKMARK_DEDUPE="$(python3 "$HELPER" bookmark-add --title "B2 fresh" --url "https://example.com/bookmark/2")"
+if ! echo "$BOOKMARK_DEDUPE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: bookmark add dedupe update failed"
+    echo "$BOOKMARK_DEDUPE"
+    exit 1
+fi
+BOOKMARK_LIST="$(python3 "$HELPER" bookmark-list)"
+if ! echo "$BOOKMARK_LIST" | jq -e '.results | map(select(.url=="https://example.com/bookmark/2")) | length == 1 and .[0].title == "B2 fresh"' >/dev/null; then
+    echo "ERROR: bookmark remove/dedupe behavior not as expected"
+    echo "$BOOKMARK_LIST"
+    exit 1
+fi
+
+BOOKMARK_REMOVE_TRUE="$(python3 "$HELPER" bookmark-remove --url "https://example.com/bookmark/2")"
+if ! echo "$BOOKMARK_REMOVE_TRUE" | jq -e '.status == "ok" and .removed == true' >/dev/null; then
+    echo "ERROR: bookmark-remove should remove existing entry"
+    echo "$BOOKMARK_REMOVE_TRUE"
+    exit 1
+fi
+if ! jq -e '.results | map(select(.url=="https://example.com/bookmark/2")) | length == 0' <<<"$(python3 "$HELPER" bookmark-list)" >/dev/null; then
+    echo "ERROR: bookmark still present after remove"
+    exit 1
+fi
+
+BOOKMARK_REMOVE_FALSE="$(python3 "$HELPER" bookmark-remove --url "https://example.com/bookmark/missing")"
+if ! echo "$BOOKMARK_REMOVE_FALSE" | jq -e '.status == "ok" and .removed == false' >/dev/null; then
+    echo "ERROR: bookmark-remove should not report removed for missing URL"
+    echo "$BOOKMARK_REMOVE_FALSE"
+    exit 1
+fi
+
+if ! python3 "$HELPER" bookmark-add --title "Bad" --url "notaurl" >"$TMP_DIR/atcinna_invalid_helper.out" 2>&1; then
+    if ! jq -e '.status=="error" and .message=="invalid URL scheme"' "$TMP_DIR/atcinna_invalid_helper.out" >/dev/null 2>&1; then
+        echo "ERROR: invalid URL in bookmark-add did not fail as expected"
+        cat "$TMP_DIR/atcinna_invalid_helper.out"
+        exit 1
+    fi
+else
+    echo "ERROR: bookmark-add invalid URL unexpectedly succeeded"
+    exit 1
+fi
+
+if [ -f "$XDG_DATA_HOME/atcinna@H234598/history.json" ]; then
+    printf '{bad json' > "$XDG_DATA_HOME/atcinna@H234598/history.json"
+fi
+CORRUPT_HISTORY="$(python3 "$HELPER" history-list)"
+if ! echo "$CORRUPT_HISTORY" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: corrupted history.json should fail-closed to empty list"
+    echo "$CORRUPT_HISTORY"
+    exit 1
+fi
+
+for i in $(seq 1 20); do
+    python3 "$HELPER" history-add --title "Parallel $i" --url "https://example.com/parallel/$i" >/dev/null &
+done
+wait
+PARALLEL_HISTORY="$(python3 "$HELPER" history-list)"
+if ! echo "$PARALLEL_HISTORY" | jq -e '[.results[] | select(.url | startswith("https://example.com/parallel/"))] | length == 20' >/dev/null; then
+    echo "ERROR: parallel history writes lost entries"
+    echo "$PARALLEL_HISTORY"
     exit 1
 fi
 
