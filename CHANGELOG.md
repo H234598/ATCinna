@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.25
+
+- Warteschlangen-Menü um ATPlayer-nahe Auswahlaktionen ergänzt: **Alles auswählen**, **Auswahl umkehren**, **Tabelle zurücksetzen**, **Ausgewählte Downloads stoppen** und **Ausgewählte aus Liste entfernen**.
+- Queue-Zeilen erhalten **Auswahl umschalten** und zeigen den Auswahlzustand mit `[x]`/`[ ]` im Menüeintrag.
+- Batch-Aktionen verwenden weiter die bestehenden URL-basierten Helper-Aktionen (`download-cancel`, `download-remove`) und bauen keinen neuen Backend-Pfad.
+- `scripts/check.sh` schützt die neuen Queue-Selection-Labels, Handler und Auswahlmarker statisch ab.
+- Versionssprung auf `0.3.25`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.24
 
 - ATPlayer-kompatible Blacklist-Exklusion ergänzt: `!:` wirkt jetzt als Negationspräfix auf den Regelwerten (`sender`, `genre`, `topic`, `title`, `theme_title`) und wird pro Feld mit AND-Logik mit bestehenden gesetzten Feldern kombiniert.

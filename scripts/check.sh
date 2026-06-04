@@ -299,6 +299,22 @@ for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen"
         STATUS=1
     fi
 done
+for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Ausgewählte Downloads stoppen" "Ausgewählte aus Liste entfernen" "Auswahl umschalten"; do
+    if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
+        echo "ERROR: applet queue selection label is missing: ${queue_label}"
+        STATUS=1
+    fi
+done
+for queue_selection_handler in "_queueSelectionItems" "_queueItemsCache" "_runQueueSelectAll" "_runQueueInvertSelection" "_runQueueResetSelection" "_runQueueToggleSelection" "_runQueueCancelSelected" "_runQueueRemoveSelected" "_runQueueBatchAction" "_getSelectedQueueItems" "_queueItemKey" "_updateQueueSelectionActionState"; do
+    if ! rg -q -F "${queue_selection_handler}" "$APPLET_JS"; then
+        echo "ERROR: applet queue selection handler is missing: ${queue_selection_handler}"
+        STATUS=1
+    fi
+done
+if ! rg -q -F '"[x]"' "$APPLET_JS" || ! rg -q -F '"[ ]"' "$APPLET_JS"; then
+    echo "ERROR: applet queue selection markers are missing"
+    STATUS=1
+fi
 for info_label in "Audioinformation anzeigen" "Titel in die Zwischenablage kopieren" "Genre in die Zwischenablage kopieren" "Thema in die Zwischenablage kopieren"; do
     if ! rg -q -F "${info_label}" "$APPLET_JS"; then
         echo "ERROR: applet metadata action label is missing: ${info_label}"
@@ -361,6 +377,30 @@ if ! rg -q -F '_runQueueCancelItem(item)' "$APPLET_JS"; then
 fi
 if ! rg -q -F '_runQueueCancelQueued()' "$APPLET_JS"; then
     echo "ERROR: applet queue cancel-queued action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueSelectAll()' "$APPLET_JS"; then
+    echo "ERROR: applet queue selection helper select-all is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueInvertSelection()' "$APPLET_JS"; then
+    echo "ERROR: applet queue selection invert helper is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueResetSelection()' "$APPLET_JS"; then
+    echo "ERROR: applet queue selection reset helper is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueCancelSelected()' "$APPLET_JS"; then
+    echo "ERROR: applet queue batch-cancel helper is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueRemoveSelected()' "$APPLET_JS"; then
+    echo "ERROR: applet queue batch-remove helper is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueBatchAction' "$APPLET_JS"; then
+    echo "ERROR: applet queue batch action helper is missing"
     STATUS=1
 fi
 if ! rg -q -F '_runQueueEditDialog' "$APPLET_JS"; then

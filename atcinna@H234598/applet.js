@@ -52,6 +52,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._filterProfilesListSection = null;
         this._queueSection = null;
         this._queueListSection = null;
+        this._queueSelectionItems = new Set();
+        this._queueItemsCache = [];
         this._infoSection = null;
         this._filterSummaryItem = null;
         this._clearFiltersItem = null;
@@ -1137,6 +1139,26 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         stopQueued.connect("activate", () => this._runQueueCancelQueued());
         this._queueSection.addMenuItem(stopQueued);
 
+        const selectAll = new PopupMenu.PopupMenuItem("Alles auswählen");
+        selectAll.connect("activate", () => this._runQueueSelectAll());
+        this._queueSection.addMenuItem(selectAll);
+
+        const invertSelection = new PopupMenu.PopupMenuItem("Auswahl umkehren");
+        invertSelection.connect("activate", () => this._runQueueInvertSelection());
+        this._queueSection.addMenuItem(invertSelection);
+
+        const resetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");
+        resetSelection.connect("activate", () => this._runQueueResetSelection());
+        this._queueSection.addMenuItem(resetSelection);
+
+        const cancelSelected = new PopupMenu.PopupMenuItem("Ausgewählte Downloads stoppen");
+        cancelSelected.connect("activate", () => this._runQueueCancelSelected());
+        this._queueSection.addMenuItem(cancelSelected);
+
+        const removeSelected = new PopupMenu.PopupMenuItem("Ausgewählte aus Liste entfernen");
+        removeSelected.connect("activate", () => this._runQueueRemoveSelected());
+        this._queueSection.addMenuItem(removeSelected);
+
         const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");
         clearDone.connect("activate", () => this._runQueueClear());
         this._queueSection.addMenuItem(clearDone);
@@ -1144,6 +1166,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const restore = new PopupMenu.PopupMenuItem("Gelöschte wieder anlegen");
         restore.connect("activate", () => this._runQueueUndo());
         this._queueSection.addMenuItem(restore);
+
+        this._queueActionSelectAll = selectAll;
+        this._queueActionInvertSelection = invertSelection;
+        this._queueActionResetSelection = resetSelection;
+        this._queueActionCancelSelected = cancelSelected;
+        this._queueActionRemoveSelected = removeSelected;
+        this._updateQueueSelectionActionState();
     }
 
     _runDownloadEnqueue(item) {
@@ -1279,9 +1308,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     }
 
     _runQueueCancelItem(item) {
-        const url = item && item.url ? `${item.url}`.trim() : "";
-        if (!this._normalizeQueueItemUrl(item)) {
+        const url = this._normalizeQueueItemUrl(item);
+        const callback = arguments.length > 1 ? arguments[1] : null;
+        if (!url) {
             this._setStatus("Download stoppen fehlgeschlagen: keine URL");
+            if (callback) {
+                callback(false, 0);
+            }
             return;
         }
         this._setStatus(`storniere Download: ${item.title || "Eintrag"}`);
@@ -1291,13 +1324,22 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download-cancel fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse(stdout || "{}");
                 if (payload.status !== "ok") {
                     this._setStatus("download-cancel: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
+                }
+                if (callback) {
+                    callback(true, payload.changed || 0);
                 }
                 if (payload.changed === 0 && payload.running_blocks > 0) {
                     this._setStatus("läuft: Eintrag ist bereits inaktiv");
@@ -1308,9 +1350,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 } else {
                     this._setStatus("Download wurde abgeschlossen oder nicht aktiv");
                 }
-                this._runQueueList();
+                if (!callback) {
+                    this._runQueueList();
+                }
             } catch (error) {
                 this._setStatus(`download-cancel ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
@@ -1373,19 +1420,27 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._queueListSection.removeAll();
         const entries = Array.isArray(items) ? items : [];
+        const visibleEntries = entries.slice(0, 20);
+        this._queueItemsCache = visibleEntries;
 
         if (!entries.length) {
             const empty = new PopupMenu.PopupMenuItem("keine Einträge in Warteschlange");
             empty.actor.reactive = false;
             this._queueListSection.addMenuItem(empty);
+            this._updateQueueSelectionActionState();
             return;
         }
 
-        for (const item of entries.slice(0, 20)) {
+        for (const item of visibleEntries) {
             const status = item.status || "queued";
             const title = item.title || "Eintrag";
             const subtitle = item.status === "finished" && item.path ? ` — ${item.path}` : "";
-            const row = new PopupMenu.PopupSubMenuMenuItem(`${title} (${status})${subtitle}`);
+            const queueKey = this._queueItemKey(item);
+            const selectionMark = queueKey && this._queueSelectionItems.has(queueKey) ? "[x]" : "[ ]";
+            const row = new PopupMenu.PopupSubMenuMenuItem(`${selectionMark} ${title} (${status})${subtitle}`);
+            const toggleSelection = new PopupMenu.PopupMenuItem("Auswahl umschalten");
+            toggleSelection.connect("activate", () => this._runQueueToggleSelection(item));
+            row.menu.addMenuItem(toggleSelection);
 
             const edit = new PopupMenu.PopupMenuItem("Download ändern");
             if (status === "running") {
@@ -1438,6 +1493,151 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             row.menu.addMenuItem(putBack);
 
             this._queueListSection.addMenuItem(row);
+        }
+
+        this._updateQueueSelectionActionState();
+    }
+
+    _runQueueSelectAll() {
+        const nextSelection = new Set();
+        for (const item of this._queueItemsCache) {
+            const key = this._queueItemKey(item);
+            if (key) {
+                nextSelection.add(key);
+            }
+        }
+        this._queueSelectionItems = nextSelection;
+        this._setStatus(`Warteschlange ausgewählt: ${this._queueSelectionItems.size}`);
+        this._runQueueList();
+    }
+
+    _runQueueInvertSelection() {
+        const nextSelection = new Set();
+        for (const item of this._queueItemsCache) {
+            const key = this._queueItemKey(item);
+            if (!key) {
+                continue;
+            }
+            if (!this._queueSelectionItems.has(key)) {
+                nextSelection.add(key);
+            }
+        }
+        this._queueSelectionItems = nextSelection;
+        this._setStatus(`Auswahl umgekehrt: ${this._queueSelectionItems.size}`);
+        this._runQueueList();
+    }
+
+    _runQueueResetSelection() {
+        this._queueSelectionItems = new Set();
+        this._setStatus("Tabelle zurückgesetzt");
+        this._runQueueList();
+    }
+
+    _runQueueCancelSelected() {
+        this._runQueueBatchAction(
+            "Ausgewählte Downloads stoppen",
+            this._getSelectedQueueItems(),
+            (item, callback) => this._runQueueCancelItem(item, callback)
+        );
+    }
+
+    _runQueueRemoveSelected() {
+        this._runQueueBatchAction(
+            "Ausgewählte aus Liste entfernen",
+            this._getSelectedQueueItems(),
+            (item, callback) => this._runQueueRemove(item, callback)
+        );
+    }
+
+    _runQueueToggleSelection(item) {
+        const key = this._queueItemKey(item);
+        if (!key) {
+            this._setStatus("Auswahl umschalten fehlgeschlagen: keine URL");
+            return;
+        }
+        if (this._queueSelectionItems.has(key)) {
+            this._queueSelectionItems.delete(key);
+        } else {
+            this._queueSelectionItems.add(key);
+        }
+        this._runQueueList();
+    }
+
+    _runQueueBatchAction(label, items, action) {
+        if (!Array.isArray(items) || !items.length) {
+            this._setStatus(`${label}: keine Auswahl`);
+            return;
+        }
+
+        let changed = 0;
+        let failed = 0;
+        const runNext = () => {
+            if (!items.length) {
+                this._runQueueList();
+                if (changed > 0) {
+                    this._setStatus(`${label}: ${changed}`);
+                } else if (failed > 0) {
+                    this._setStatus(`${label}: ${failed} fehlgeschlagen`);
+                } else {
+                    this._setStatus(`${label}: keine Änderung`);
+                }
+                return;
+            }
+
+            const item = items.shift();
+            action(item, (result, value) => {
+                if (result) {
+                    const numericValue = Number(value);
+                    changed += (Number.isFinite(numericValue) ? numericValue : 0);
+                } else {
+                    failed += 1;
+                }
+                runNext();
+            });
+        };
+
+        this._setStatus(`${label}: ${items.length}`);
+        runNext();
+    }
+
+    _getSelectedQueueItems() {
+        if (!this._queueItemsCache.length) {
+            return [];
+        }
+        return this._queueItemsCache
+            .filter((item) => {
+                const key = this._queueItemKey(item);
+                return key && this._queueSelectionItems.has(key);
+            })
+            .slice(0, 20);
+    }
+
+    _queueItemKey(item) {
+        const url = this._normalizeQueueItemUrl(item);
+        if (url) {
+            return `url:${url}`;
+        }
+        return "";
+    }
+
+    _updateQueueSelectionActionState() {
+        const selectableCount = this._queueItemsCache.filter((item) => this._queueItemKey(item)).length;
+        const visibleSelectionCount = this._queueItemsCache.filter((item) => this._queueSelectionItems.has(this._queueItemKey(item))).length;
+        const hasSelection = visibleSelectionCount > 0;
+        if (this._queueActionSelectAll) {
+            this._queueActionSelectAll.setSensitive(selectableCount > 0);
+        }
+        if (this._queueActionInvertSelection) {
+            this._queueActionInvertSelection.setSensitive(selectableCount > 0);
+        }
+        if (this._queueActionResetSelection) {
+            this._queueActionResetSelection.setSensitive(hasSelection);
+        }
+        if (this._queueActionCancelSelected) {
+            this._queueActionCancelSelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionRemoveSelected) {
+            this._queueActionRemoveSelected.setSensitive(hasSelection);
         }
     }
 
@@ -1550,9 +1750,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     }
 
     _runQueueRemove(item) {
-        const url = item.url || "";
+        const url = this._normalizeQueueItemUrl(item);
+        const callback = arguments.length > 1 ? arguments[1] : null;
         if (!url) {
             this._setStatus("queue-remove fehlgeschlagen: keine URL");
+            if (callback) {
+                callback(false, 0);
+            }
             return;
         }
         this._setStatus(`entferne aus Warteschlange: ${item.title || "Eintrag"}`);
@@ -1562,12 +1766,18 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download-remove fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse(stdout || "{}");
                 if (payload.status !== "ok") {
                     this._setStatus("download-remove: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
                 }
                 if (payload.removed === 0 && payload.running_blocks > 0) {
@@ -1577,9 +1787,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 } else {
                     this._setStatus(`entfernt: ${payload.removed}`);
                 }
-                this._runQueueList();
+                if (callback) {
+                    callback(true, payload.removed || 0);
+                } else {
+                    this._runQueueList();
+                }
             } catch (error) {
                 this._setStatus(`download-remove ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
