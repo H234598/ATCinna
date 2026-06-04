@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.30
+
+- ATPlayer-nahe Filteraktion **Bookmarks anzeigen** ergänzt.
+- Der Toggle setzt den bestehenden `only-bookmarks`-Suchpfad, leert die übrigen Filter temporär und stellt beim zweiten Klick den vorherigen Filterzustand wieder her.
+- Source- und Installationschecks schützen Label und Handler für den neuen Bookmark-Filterpfad.
+- Versionssprung auf `0.3.30`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.29
 
 - ATPlayer-nahe Verlauf-Aktionen ergänzt: Kontextmenüs bieten jetzt **Als gesehen markieren** und **Als ungesehen markieren**.

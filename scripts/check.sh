@@ -179,6 +179,10 @@ if ! rg -q -F 'new PopupMenu.PopupSubMenuMenuItem("Filterprofile")' "$APPLET_JS"
     echo "ERROR: applet filter profiles submenu label is missing"
     STATUS=1
 fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Bookmarks anzeigen")' "$APPLET_JS"; then
+    echo "ERROR: applet bookmark filter toggle label is missing"
+    STATUS=1
+fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Filterprofile verwalten")' "$APPLET_JS"; then
     echo "ERROR: applet filter profiles manage menu label is missing"
     STATUS=1
@@ -451,6 +455,12 @@ if ! rg -q -F '_runBookmarkClear' "$APPLET_JS"; then
     echo "ERROR: applet bookmark clear handler is missing"
     STATUS=1
 fi
+for bookmark_filter_handler in "_toggleBookmarksFilter" "_filterSnapshot" "_applyFilterSnapshot" "_isBookmarkFilterOnly"; do
+    if ! rg -q -F "${bookmark_filter_handler}" "$APPLET_JS"; then
+        echo "ERROR: applet bookmark filter handler is missing: ${bookmark_filter_handler}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F '_addHistoryActions' "$APPLET_JS" || ! rg -q -F '_runHistoryRemove' "$APPLET_JS"; then
     echo "ERROR: applet history mark/unmark handlers are missing"
     STATUS=1

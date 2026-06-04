@@ -57,6 +57,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._infoSection = null;
         this._filterSummaryItem = null;
         this._clearFiltersItem = null;
+        this._bookmarkFilterToggleItem = null;
+        this._bookmarkFilterSnapshot = null;
         this._dbusImpl = null;
         this._dbusOwnerId = 0;
         this._dbusPath = DBUS_OBJECT_PATH;
@@ -130,6 +132,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._clearFilters();
         });
         this._filterSection.addMenuItem(this._clearFiltersItem);
+
+        this._bookmarkFilterToggleItem = new PopupMenu.PopupMenuItem("Bookmarks anzeigen");
+        this._bookmarkFilterToggleItem.connect("activate", () => {
+            this._toggleBookmarksFilter();
+        });
+        this._filterSection.addMenuItem(this._bookmarkFilterToggleItem);
 
         this._filterProfilesMenu = new PopupMenu.PopupSubMenuMenuItem("Filterprofile");
         this._saveFilterProfileItem = new PopupMenu.PopupMenuItem("Aktuelle Filter als Profil speichern");
@@ -391,6 +399,23 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         };
     }
 
+    _isBookmarkFilterOnly(filters = this._getActiveFilters()) {
+        return filters.onlyBookmarks &&
+            !filters.sender &&
+            !filters.genre &&
+            !filters.topic &&
+            !filters.title &&
+            !filters.themeTitle &&
+            !filters.somewhere &&
+            filters.maxDays === 0 &&
+            filters.minDuration === 0 &&
+            filters.maxDuration === 150 &&
+            !filters.onlyNew &&
+            !filters.hideHistory &&
+            filters.podcastMode === "all" &&
+            this._getActiveSearchQuery() === "";
+    }
+
     _getPodcastMode(value = this.podcastFilter) {
         const mode = this._toTrimmed(value).toLowerCase();
         return mode === "only" || mode === "none" ? mode : "all";
@@ -467,6 +492,106 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (this._clearFiltersItem) {
             this._clearFiltersItem.setSensitive(active.length > 0);
         }
+        if (this._bookmarkFilterToggleItem) {
+            this._bookmarkFilterToggleItem.label.text = this._isBookmarkFilterOnly(filters)
+                ? "Bookmark-Filter ausschalten"
+                : "Bookmarks anzeigen";
+        }
+    }
+
+    _filterSnapshot() {
+        const filters = this._getActiveFilters();
+        return {
+            searchQuery: this._getActiveSearchQuery(),
+            sender: filters.sender,
+            genre: filters.genre,
+            topic: filters.topic,
+            title: filters.title,
+            themeTitle: filters.themeTitle,
+            somewhere: filters.somewhere,
+            maxDays: filters.maxDays,
+            minDuration: filters.minDuration,
+            maxDuration: filters.maxDuration,
+            onlyNew: filters.onlyNew,
+            onlyBookmarks: filters.onlyBookmarks,
+            hideHistory: filters.hideHistory,
+            podcastMode: filters.podcastMode
+        };
+    }
+
+    _applyFilterSnapshot(snapshot, statusText) {
+        this._isSyncingSearchQueryFromSettings = true;
+        this._isSyncingFilterSettingsFromSettings = true;
+        try {
+            this.searchQuery = snapshot.searchQuery;
+            this._activeSearchQuery = snapshot.searchQuery;
+            this.senderFilter = snapshot.sender;
+            this.genreFilter = snapshot.genre;
+            this.topicFilter = snapshot.topic;
+            this.titleFilter = snapshot.title;
+            this.themeTitleFilter = snapshot.themeTitle;
+            this.somewhereFilter = snapshot.somewhere;
+            this.maxDaysFilter = snapshot.maxDays;
+            this.minDurationFilter = snapshot.minDuration;
+            this.maxDurationFilter = snapshot.maxDuration;
+            this.onlyNewFilter = snapshot.onlyNew;
+            this.onlyBookmarksFilter = snapshot.onlyBookmarks;
+            this.hideHistoryFilter = snapshot.hideHistory;
+            this.podcastFilter = snapshot.podcastMode;
+            this.settings.setValue("search-query", snapshot.searchQuery);
+            this.settings.setValue("sender-filter", snapshot.sender);
+            this.settings.setValue("genre-filter", snapshot.genre);
+            this.settings.setValue("topic-filter", snapshot.topic);
+            this.settings.setValue("title-filter", snapshot.title);
+            this.settings.setValue("theme-title-filter", snapshot.themeTitle);
+            this.settings.setValue("somewhere-filter", snapshot.somewhere);
+            this.settings.setValue("max-days-filter", snapshot.maxDays);
+            this.settings.setValue("min-duration-filter", snapshot.minDuration);
+            this.settings.setValue("max-duration-filter", snapshot.maxDuration);
+            this.settings.setValue("only-new-filter", snapshot.onlyNew);
+            this.settings.setValue("only-bookmarks-filter", snapshot.onlyBookmarks);
+            this.settings.setValue("hide-history-filter", snapshot.hideHistory);
+            this.settings.setValue("podcast-filter", snapshot.podcastMode);
+            if (this._searchEntry && this._searchEntry.get_text() !== snapshot.searchQuery) {
+                this._searchEntry.set_text(snapshot.searchQuery);
+            }
+        } finally {
+            this._isSyncingSearchQueryFromSettings = false;
+            this._isSyncingFilterSettingsFromSettings = false;
+        }
+
+        this._refreshFilterSummary();
+        this._setStatus(statusText);
+        this._runSearch(snapshot.searchQuery);
+    }
+
+    _toggleBookmarksFilter() {
+        const filters = this._getActiveFilters();
+        if (this._isBookmarkFilterOnly(filters)) {
+            const restore = this._bookmarkFilterSnapshot || this._filterSnapshot();
+            restore.onlyBookmarks = this._bookmarkFilterSnapshot ? restore.onlyBookmarks : false;
+            this._bookmarkFilterSnapshot = null;
+            this._applyFilterSnapshot(restore, "Bookmark-Filter ausgeschaltet");
+            return;
+        }
+
+        this._bookmarkFilterSnapshot = this._filterSnapshot();
+        this._applyFilterSnapshot({
+            searchQuery: "",
+            sender: "",
+            genre: "",
+            topic: "",
+            title: "",
+            themeTitle: "",
+            somewhere: "",
+            maxDays: 0,
+            minDuration: 0,
+            maxDuration: 150,
+            onlyNew: false,
+            onlyBookmarks: true,
+            hideHistory: false,
+            podcastMode: "all"
+        }, "Bookmarks anzeigen");
     }
 
     _profileBlacklistMode(value) {
@@ -543,6 +668,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const nextOnlyBookmarks = this._profileBool(profile.only_bookmarks);
         const nextHideHistory = this._profileBool(profile.hide_history);
         const nextPodcastMode = this._getPodcastMode(profile.podcast_mode);
+        this._bookmarkFilterSnapshot = null;
 
         this._isSyncingSearchQueryFromSettings = true;
         this._isSyncingFilterSettingsFromSettings = true;
@@ -673,6 +799,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
 
         this._isSyncingFilterSettingsFromSettings = true;
+        this._bookmarkFilterSnapshot = null;
         try {
             this.senderFilter = "";
             this.genreFilter = "";
@@ -712,6 +839,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (this._isSyncingFilterSettingsFromSettings) {
             return;
         }
+        this._bookmarkFilterSnapshot = null;
         this._refreshFilterSummary();
         this._runSearch();
     }
@@ -2244,6 +2372,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             name: settingName,
             value
         }];
+        this._bookmarkFilterSnapshot = null;
 
         if (secondaryName) {
             const secondaryValue = this._toTrimmed(secondaryRawValue);

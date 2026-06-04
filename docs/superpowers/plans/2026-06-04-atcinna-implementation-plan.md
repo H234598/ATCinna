@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.29`.
+- `VERSION` is `0.3.30`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -135,9 +135,21 @@
   - Extend source and installed validation for labels, handlers, and functional `history-remove`.
   - Bump version to `0.3.29` and document that full ATPlayer parity is still open.
 
+### Task 30: Add ATPlayer-Style Bookmarks Filter Toggle (0.3.30)
+
+- [x] **Direct bookmarks filter**
+  - Add **Bookmarks anzeigen** to the applet filter section as a direct ATPlayer-style action.
+  - Use the existing `only-bookmarks` helper search path instead of adding Java or a new backend.
+- [x] **Second-click restore**
+  - Store the previous filter/search snapshot before entering bookmark-only view.
+  - Restore the snapshot when the user clicks the bookmark-only view again.
+- [x] **Checks/docs/version**
+  - Extend source and installed validation for the label and handlers.
+  - Bump version to `0.3.30` and document that full ATPlayer parity is still open.
+
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including `Download ändern` plus first visible-list selection/reset workflows, history, optional GTK dialogs with first Blacklist table-interaction parity, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including `Download ändern` plus first visible-list selection/reset workflows, history, optional GTK dialogs with first Blacklist table-interaction parity, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 

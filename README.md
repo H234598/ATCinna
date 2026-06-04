@@ -19,7 +19,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - Über dieses Programm
 - Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
-- Erweiterte Teiltreffer-Filter (`sender-filter`, `genre-filter`, `topic-filter`) im Popup mit kompaktem Status (`Filter: ...`) und Schnellaktion „Filter löschen“.
+- Erweiterte Teiltreffer-Filter (`sender-filter`, `genre-filter`, `topic-filter`) im Popup mit kompaktem Status (`Filter: ...`), Schnellaktion „Filter löschen“ und ATPlayer-nahem **Bookmarks anzeigen**-Toggle.
 - ATPlayer-nahe Filtererweiterung: zusätzliche Felder `title`, `theme_title`, `somewhere`, `max_days`, `min_duration`, `max_duration`, `only_new`, `only_bookmarks`, `hide_history` und dreistufiges `podcast_mode` (`all`, `only`, `none`).
 - ATPlayer-nahe Filterprofile: Applet-Menü **Filterprofile** mit Speichern/Laden sowie GTK-Verwaltung fuer Neu, Überschreiben, Umbenennen, Löschen, Sortieren und Standardprofile.
 - ATPlayer-Parität ist noch nicht vollständig; diese Filter- und Profil-Erweiterungen decken nur einen Teil der kompletten ATPlayer-Funktionalität ab.
@@ -51,7 +51,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.29`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.30`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

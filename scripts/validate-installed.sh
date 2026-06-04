@@ -206,6 +206,10 @@ if ! rg -q -F "Audio-URL kopieren" "$APPLET_JS"; then
     echo "ERROR: installed applet label is missing: Audio-URL kopieren"
     exit 1
 fi
+if ! rg -q -F "Bookmarks anzeigen" "$APPLET_JS"; then
+    echo "ERROR: installed applet label is missing: Bookmarks anzeigen"
+    exit 1
+fi
 for applet_label in "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
