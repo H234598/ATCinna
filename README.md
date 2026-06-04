@@ -20,6 +20,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Unterhalb der Treffer werden zusätzlich die letzten Einträge aus dem Verlauf sowie Favoriten (je max. 5) als kompakte Untermenüs gezeigt.
 - Download per sicherem Helper mit `curl` in konfigurierbaren Zielordner.
 - Download-Warteschlange: Treffer können in eine FIFO-Warteschlange gelegt werden; das Menü kann die Queue anzeigen, den nächsten Download starten, wartende Einträge stoppen und erledigte Einträge entfernen.
+- Warteschlange im Applet kann per Untermenü pro Eintrag geordnet werden (URL kopieren, Ordner öffnen, aus Liste entfernen, vorziehen, zurückstellen) sowie gelöschte Einträge wiederherstellen.
 - Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
 - Headless-Selbsttest für den Dialog: `python3 atcinna@H234598/scripts/atcinna-search-dialog --self-test` meldet `gtk3: true/false`; das Applet bleibt auch ohne GTK3 über die interne Popup-Suche nutzbar.
 
@@ -30,7 +31,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.8`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.9`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

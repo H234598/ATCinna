@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.9
+
+- Queue-Management erweitert auf ATPlayer-Parität für Warteschlangen-Bearbeitung: `download-remove`, `download-undo`, `download-prefer`, `download-put-back`.
+- Queue-Einträge im Applet-UI jetzt mit Untermenüs (`URL kopieren`, `Ordner öffnen`, `Aus Liste entfernen`, `Vorziehen`, `Zurückstellen`) und globaler Aktion `Gelöschte wieder anlegen`.
+- `download-remove` entfernt nur nicht laufende Einträge, `download-undo` stellt die letzte entfernte Auswahl wieder her.
+- Queue-Reihenfolge-Operationen respektieren `running`-Einträge und greifen nur auf `queued`-Einträge ein.
+- Lokale Checks um neue Queue-Aktionen sowie Helper-Funktionstests für Remove/Undo/Prefer/Put-back erweitert.
+
 
 ## 0.3.8
 

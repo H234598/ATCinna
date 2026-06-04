@@ -481,6 +481,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");
         clearDone.connect("activate", () => this._runQueueClear());
         this._queueSection.addMenuItem(clearDone);
+
+        const restore = new PopupMenu.PopupMenuItem("Gelöschte wieder anlegen");
+        restore.connect("activate", () => this._runQueueUndo());
+        this._queueSection.addMenuItem(restore);
     }
 
     _runDownloadEnqueue(item) {
@@ -605,10 +609,267 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const status = item.status || "queued";
             const title = item.title || "Eintrag";
             const subtitle = item.status === "finished" && item.path ? ` — ${item.path}` : "";
-            const line = new PopupMenu.PopupMenuItem(`${title} (${status})${subtitle}`);
-            line.actor.reactive = false;
-            this._queueListSection.addMenuItem(line);
+            const row = new PopupMenu.PopupSubMenuMenuItem(`${title} (${status})${subtitle}`);
+
+            const copy = new PopupMenu.PopupMenuItem("URL kopieren");
+            copy.connect("activate", () => this._copyQueueUrl(item));
+            row.menu.addMenuItem(copy);
+
+            const openFolder = new PopupMenu.PopupMenuItem("Ordner öffnen");
+            openFolder.connect("activate", () => this._openQueuePathFolder(item));
+            row.menu.addMenuItem(openFolder);
+
+            const remove = new PopupMenu.PopupMenuItem("Aus Liste entfernen");
+            remove.connect("activate", () => this._runQueueRemove(item));
+            row.menu.addMenuItem(remove);
+
+            const prefer = new PopupMenu.PopupMenuItem("Vorziehen");
+            prefer.connect("activate", () => this._runQueuePrefer(item));
+            row.menu.addMenuItem(prefer);
+
+            const putBack = new PopupMenu.PopupMenuItem("Zurückstellen");
+            putBack.connect("activate", () => this._runQueuePutBack(item));
+            row.menu.addMenuItem(putBack);
+
+            this._queueListSection.addMenuItem(row);
         }
+    }
+
+    _runQueueUndo() {
+        this._setStatus("stelle gelöschte Einträge wieder her");
+        this._runHelper([
+            "download-undo"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-undo fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-undo: unerwartete Antwort");
+                    return;
+                }
+                if (payload.restored === 0) {
+                    this._setStatus("nichts zum Wiederherstellen");
+                } else {
+                    this._setStatus(`wiederhergestellt: ${payload.restored}`);
+                }
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-undo ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runQueueRemove(item) {
+        const url = item.url || "";
+        if (!url) {
+            this._setStatus("queue-remove fehlgeschlagen: keine URL");
+            return;
+        }
+        this._setStatus(`entferne aus Warteschlange: ${item.title || "Eintrag"}`);
+        this._runHelper([
+            "download-remove",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-remove fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-remove: unerwartete Antwort");
+                    return;
+                }
+                if (payload.removed === 0 && payload.running_blocks > 0) {
+                    this._setStatus("laufender Download wird nicht entfernt");
+                } else if (payload.removed === 0) {
+                    this._setStatus("nichts entfernt");
+                } else {
+                    this._setStatus(`entfernt: ${payload.removed}`);
+                }
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-remove ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runQueuePrefer(item) {
+        const url = item.url || "";
+        if (!url) {
+            this._setStatus("queue-prefer fehlgeschlagen: keine URL");
+            return;
+        }
+        this._setStatus(`ziehe vor: ${item.title || "Eintrag"}`);
+        this._runHelper([
+            "download-prefer",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-prefer fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-prefer: unerwartete Antwort");
+                    return;
+                }
+                if (!payload.moved) {
+                    this._setStatus("Eintrag konnte nicht vorgezogen werden");
+                }
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-prefer ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runQueuePutBack(item) {
+        const url = item.url || "";
+        if (!url) {
+            this._setStatus("queue-put-back fehlgeschlagen: keine URL");
+            return;
+        }
+        this._setStatus(`stelle zurück: ${item.title || "Eintrag"}`);
+        this._runHelper([
+            "download-put-back",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-put-back fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-put-back: unerwartete Antwort");
+                    return;
+                }
+                if (!payload.moved) {
+                    this._setStatus("Eintrag konnte nicht zurückgestellt werden");
+                }
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-put-back ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _copyQueueUrl(item) {
+        const url = this._normalizeQueueItemUrl(item);
+        if (!url) {
+            this._setStatus("URL kopieren fehlgeschlagen: keine URL");
+            return;
+        }
+
+        try {
+            if (!St.Clipboard || !St.ClipboardType || typeof St.Clipboard.get_default !== "function") {
+                throw new Error("Clipboard-API nicht verfügbar");
+            }
+            const clipboard = St.Clipboard.get_default();
+            if (!clipboard || typeof clipboard.set_text !== "function") {
+                throw new Error("Clipboard-Objekt nicht verfügbar");
+            }
+            clipboard.set_text(St.ClipboardType.CLIPBOARD, url);
+            this._setStatus("URL in Zwischenablage kopiert");
+            return;
+        } catch (error) {
+            this._setStatus(`URL kopieren nicht verfügbar: ${error.message}`);
+        }
+    }
+
+    _normalizeQueueItemUrl(item) {
+        const raw = item && item.url ? item.url : "";
+        const trimmed = `${raw}`.trim();
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            return "";
+        }
+        return trimmed;
+    }
+
+    _openQueuePathFolder(item) {
+        const folderCandidate = this._queueFolderCandidate(item);
+        if (!folderCandidate) {
+            this._setStatus("Ordner öffnen fehlgeschlagen: kein Pfad gespeichert");
+            return;
+        }
+        if (folderCandidate.includes("\u0000")) {
+            this._setStatus("Ordner öffnen fehlgeschlagen: ungültiger Pfad");
+            return;
+        }
+        if (!GLib.path_is_absolute(folderCandidate)) {
+            this._setStatus("Ordner öffnen fehlgeschlagen: kein absoluter Pfad");
+            return;
+        }
+
+        let folderToOpen = folderCandidate;
+        try {
+            const target = Gio.File.new_for_path(folderCandidate);
+            if (!target.query_exists(null)) {
+                this._setStatus("Ordner öffnen fehlgeschlagen: Pfad existiert nicht");
+                return;
+            }
+            const fileInfo = target.query_info("standard::type", Gio.FileQueryInfoFlags.NONE, null);
+            if (!fileInfo) {
+                this._setStatus("Ordner öffnen fehlgeschlagen: Ziel nicht prüfbar");
+                return;
+            }
+            const type = fileInfo.get_file_type();
+            if (type === Gio.FileType.DIRECTORY) {
+                folderToOpen = folderCandidate;
+            } else {
+                const parent = target.get_parent();
+                if (!parent) {
+                    this._setStatus("Ordner öffnen fehlgeschlagen: Datei ohne Elterndatei");
+                    return;
+                }
+                if (!parent.query_exists(null)) {
+                    this._setStatus("Ordner öffnen fehlgeschlagen: Elternordner fehlt");
+                    return;
+                }
+                folderToOpen = parent.get_path() || folderCandidate;
+            }
+
+            const fileTarget = Gio.File.new_for_path(folderToOpen);
+            if (!GLib.file_test(fileTarget.get_path(), GLib.FileTest.IS_DIR)) {
+                this._setStatus("Ordner öffnen fehlgeschlagen: kein gültiges Verzeichnis");
+                return;
+            }
+        } catch (error) {
+            this._setStatus(`Ordner öffnen fehlgeschlagen: ${error.message}`);
+            return;
+        }
+
+        this._setStatus(`öffne Ordner: ${folderToOpen}`);
+        Util.spawn(["xdg-open", folderToOpen]);
+    }
+
+    _queueFolderCandidate(item) {
+        const pathValue = item && item.path ? `${item.path}`.trim() : "";
+        if (pathValue) {
+            return pathValue;
+        }
+        const folderValue = item && item.folder ? `${item.folder}`.trim() : "";
+        if (folderValue) {
+            return folderValue;
+        }
+        return this._defaultDownloadFolder();
+    }
+
+    _defaultDownloadFolder() {
+        try {
+            const specialDownloads = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOAD);
+            if (specialDownloads) {
+                return specialDownloads;
+            }
+        } catch (error) {
+            // Fall back below when the desktop does not expose the XDG user dir.
+        }
+        return GLib.build_filenamev([GLib.get_home_dir(), "Downloads"]);
     }
 
     _clearHistoryAndFavorites() {

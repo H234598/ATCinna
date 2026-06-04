@@ -22,6 +22,7 @@ MIRRORS = [
 
 QUEUE_MAX_ENTRIES = 500
 QUEUE_STATUSES = {"queued", "running", "finished", "error", "cancelled"}
+UNDO_MAX_ENTRIES = 100
 
 
 def die(message, exit_code=1):
@@ -188,6 +189,10 @@ def _queue_path():
     return data_dir() / "download-queue.json"
 
 
+def _undo_path():
+    return data_dir() / "download-queue-undo.json"
+
+
 def _normalize_queue_entry(entry):
     if not isinstance(entry, dict):
         return None
@@ -227,6 +232,19 @@ def _load_queue():
 
 def _store_queue(entries):
     _store_list(_queue_path(), entries)
+
+
+def _load_undo():
+    normalized = []
+    for entry in _load_list(_undo_path()):
+        normalized_entry = _normalize_queue_entry(entry)
+        if normalized_entry:
+            normalized.append(normalized_entry)
+    return normalized
+
+
+def _store_undo(entries):
+    _store_list(_undo_path(), entries)
 
 
 def _entry_from_args_with_folder(args):
@@ -297,6 +315,115 @@ def action_download_enqueue(args):
 def action_download_list(args):
     entries = _load_queue()
     print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
+
+
+def _remove_entry_by_url(queue_entries, target_url):
+    removed = []
+    remaining = []
+    for entry in queue_entries:
+        if entry.get("url") == target_url and entry.get("status") != "running":
+            removed.append(entry)
+            continue
+        remaining.append(entry)
+    return remaining, removed
+
+
+def action_download_remove(args):
+    _validate_and_normalize_url("url", args.url)
+    target = _normalize_entry_value(args.url)
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        queue_entries, removed = _remove_entry_by_url(entries, target)
+        if removed:
+            _store_queue(queue_entries)
+            _store_undo(removed[-UNDO_MAX_ENTRIES:])
+        print(json.dumps({
+            "status": "ok",
+            "removed": len(removed),
+            "running_blocks": sum(1 for entry in entries if entry.get("url") == target and entry.get("status") == "running")
+        }))
+
+
+def action_download_undo(args):
+    with _store_lock(_queue_path()):
+        queue_entries = _load_queue()
+        removed_entries = _load_undo()
+        if not removed_entries:
+            print(json.dumps({"status": "ok", "restored": 0}))
+            return
+
+        existing_urls = {entry.get("url") for entry in queue_entries if entry.get("url")}
+        to_restore = []
+        for entry in removed_entries:
+            url = _normalize_entry_value(entry.get("url"))
+            if not url or url in existing_urls:
+                continue
+            existing_urls.add(url)
+            to_restore.append(entry)
+
+        if to_restore:
+            queue_entries.extend(to_restore)
+            queue_entries = queue_entries[-QUEUE_MAX_ENTRIES:]
+            _store_queue(queue_entries)
+
+        _store_undo([])
+        print(json.dumps({
+            "status": "ok",
+            "restored": len(to_restore)
+        }))
+
+
+def action_download_prefer(args):
+    _validate_and_normalize_url("url", args.url)
+    target = _normalize_entry_value(args.url)
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        target_index = None
+        for index, entry in enumerate(entries):
+            if entry.get("url") == target and entry.get("status") == "queued":
+                target_index = index
+                break
+        if target_index is None:
+            print(json.dumps({"status": "ok", "moved": False}))
+            return
+
+        entry = entries.pop(target_index)
+        for insert_index, existing in enumerate(entries):
+            if existing.get("status") == "queued":
+                entries.insert(insert_index, entry)
+                _store_queue(entries)
+                print(json.dumps({"status": "ok", "moved": True, "url": target}))
+                return
+        entries.append(entry)
+        _store_queue(entries)
+        print(json.dumps({"status": "ok", "moved": True, "url": target}))
+
+
+def action_download_put_back(args):
+    _validate_and_normalize_url("url", args.url)
+    target = _normalize_entry_value(args.url)
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        target_index = None
+        for index, entry in enumerate(entries):
+            if entry.get("url") == target and entry.get("status") == "queued":
+                target_index = index
+                break
+        if target_index is None:
+            print(json.dumps({"status": "ok", "moved": False}))
+            return
+
+        entry = entries.pop(target_index)
+        insert_index = None
+        for scan_index in range(len(entries) - 1, -1, -1):
+            if entries[scan_index].get("status") == "queued":
+                insert_index = scan_index + 1
+                break
+        if insert_index is None:
+            insert_index = len(entries)
+        entries.insert(insert_index, entry)
+        _store_queue(entries)
+        print(json.dumps({"status": "ok", "moved": True, "url": target}))
 
 
 def action_download_run_next(args):
@@ -623,6 +750,13 @@ def parse_args():
     download_cancel.add_argument("--all", action="store_true", default=False, help="Cancel all queued/running entries")
 
     sub.add_parser("download-clear", help="Remove finished/error/cancelled queue entries")
+    download_remove = sub.add_parser("download-remove", help="Remove non-running queue entry by URL")
+    download_remove.add_argument("--url", required=True, help="Media URL")
+    sub.add_parser("download-undo", help="Restore last removed queue entries")
+    download_prefer = sub.add_parser("download-prefer", help="Move queued entry before other queued entries")
+    download_prefer.add_argument("--url", required=True, help="Media URL")
+    download_put_back = sub.add_parser("download-put-back", help="Move queued entry behind other queued entries")
+    download_put_back.add_argument("--url", required=True, help="Media URL")
 
     return parser.parse_args()
 
@@ -645,6 +779,14 @@ def main():
         action_download_cancel(args)
     elif args.action == "download-clear":
         action_download_clear(args)
+    elif args.action == "download-remove":
+        action_download_remove(args)
+    elif args.action == "download-undo":
+        action_download_undo(args)
+    elif args.action == "download-prefer":
+        action_download_prefer(args)
+    elif args.action == "download-put-back":
+        action_download_put_back(args)
     elif args.action == "history-add":
         action_history_add(args)
     elif args.action == "history-list":

@@ -138,6 +138,26 @@ for helper_action in download-enqueue download-list download-run-next download-c
         STATUS=1
     fi
 done
+for helper_action in download-remove download-undo download-prefer download-put-back; do
+    if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
+        echo "ERROR: helper action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
+for queue_label in "URL kopieren" "Ordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
+    if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
+        echo "ERROR: applet queue menu label is missing: ${queue_label}"
+        STATUS=1
+    fi
+done
+if ! rg -q -F '_queueFolderCandidate(item)' "$APPLET_JS"; then
+    echo "ERROR: queue folder opener does not use a path/folder candidate helper"
+    STATUS=1
+fi
+if ! rg -q -F '_defaultDownloadFolder()' "$APPLET_JS"; then
+    echo "ERROR: queue folder opener does not expose the helper download-folder fallback"
+    STATUS=1
+fi
 
 node --check "$APPLET_JS" >/dev/null
 
@@ -499,6 +519,30 @@ if ! echo "$QUEUE_LIST" | jq -e --arg one "$QUEUE_URL_ONE" --arg two "$QUEUE_URL
     echo "$QUEUE_LIST"
     exit 1
 fi
+QUEUE_PREFER="$(python3 "$HELPER" download-prefer --url "$QUEUE_URL_TWO")"
+if ! echo "$QUEUE_PREFER" | jq -e '.status == "ok" and .moved == true' >/dev/null; then
+    echo "ERROR: download-prefer failed"
+    echo "$QUEUE_PREFER"
+    exit 1
+fi
+QUEUE_LIST_AFTER_PREFER="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_PREFER" | jq -e --arg two "$QUEUE_URL_TWO" --arg one "$QUEUE_URL_ONE" '.results[0].url == $two and .results[1].url == $one' >/dev/null; then
+    echo "ERROR: download-prefer did not move entry before queued peers"
+    echo "$QUEUE_LIST_AFTER_PREFER"
+    exit 1
+fi
+QUEUE_PUT_BACK="$(python3 "$HELPER" download-put-back --url "$QUEUE_URL_TWO")"
+if ! echo "$QUEUE_PUT_BACK" | jq -e '.status == "ok" and .moved == true' >/dev/null; then
+    echo "ERROR: download-put-back failed"
+    echo "$QUEUE_PUT_BACK"
+    exit 1
+fi
+QUEUE_LIST_AFTER_PUT_BACK="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_PUT_BACK" | jq -e --arg two "$QUEUE_URL_TWO" '.results[1].url == $two' >/dev/null; then
+    echo "ERROR: download-put-back did not move entry behind queued peers"
+    echo "$QUEUE_LIST_AFTER_PUT_BACK"
+    exit 1
+fi
 QUEUE_RUN_NEXT="$(python3 "$HELPER" download-run-next)"
 if ! echo "$QUEUE_RUN_NEXT" | jq -e '.status == "ok" and .result.status == "finished" and (.result.path | endswith(".mp3"))' >/dev/null; then
     echo "ERROR: download-run-next did not finish local queued item"
@@ -511,12 +555,12 @@ if [[ ! -f "$QUEUE_PATH" ]]; then
     exit 1
 fi
 QUEUE_LIST_AFTER_RUN="$(python3 "$HELPER" download-list)"
-if ! echo "$QUEUE_LIST_AFTER_RUN" | jq -e --arg two "$QUEUE_URL_TWO" '.results[0].url == $two and .results[0].status == "finished" and .results[1].status == "queued"' >/dev/null; then
+if ! echo "$QUEUE_LIST_AFTER_RUN" | jq -e '.results[0].status == "finished" and .results[1].status == "queued"' >/dev/null; then
     echo "ERROR: queue state after run-next unexpected"
     echo "$QUEUE_LIST_AFTER_RUN"
     exit 1
 fi
-QUEUE_CANCEL_ONE="$(python3 "$HELPER" download-cancel --url "$QUEUE_URL_ONE")"
+QUEUE_CANCEL_ONE="$(python3 "$HELPER" download-cancel --url "$QUEUE_URL_TWO")"
 if ! echo "$QUEUE_CANCEL_ONE" | jq -e '.status == "ok" and .changed == 1' >/dev/null; then
     echo "ERROR: download-cancel did not cancel queued entry"
     echo "$QUEUE_CANCEL_ONE"
@@ -551,6 +595,99 @@ fi
 if ! jq -e '.status == "error" and .message == "invalid URL scheme"' "$TMP_DIR/queue-invalid.out" >/dev/null 2>&1; then
     echo "ERROR: download-enqueue invalid URL did not return expected error JSON"
     cat "$TMP_DIR/queue-invalid.out"
+    exit 1
+fi
+
+cat > "$XDG_DATA_HOME/atcinna@H234598/download-queue.json" <<'JSON'
+[
+  {
+    "title": "Running item",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "https://example.com/running",
+    "website": "",
+    "folder": "",
+    "timestamp": 10,
+    "status": "running",
+    "path": "",
+    "error": ""
+  },
+  {
+    "title": "Queued item",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "https://example.com/queued",
+    "website": "",
+    "folder": "",
+    "timestamp": 11,
+    "status": "queued",
+    "path": "",
+    "error": ""
+  },
+  {
+    "title": "Finished item",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "https://example.com/finished",
+    "website": "",
+    "folder": "",
+    "timestamp": 12,
+    "status": "finished",
+    "path": "/tmp",
+    "error": ""
+  }
+]
+JSON
+
+QUEUE_REMOVE_RUNNING="$(python3 "$HELPER" download-remove --url "https://example.com/running")"
+if ! echo "$QUEUE_REMOVE_RUNNING" | jq -e '.status == "ok" and .removed == 0 and .running_blocks == 1' >/dev/null; then
+    echo "ERROR: download-remove must not remove running entries"
+    echo "$QUEUE_REMOVE_RUNNING"
+    exit 1
+fi
+
+QUEUE_REMOVE_QUEUED="$(python3 "$HELPER" download-remove --url "https://example.com/queued")"
+if ! echo "$QUEUE_REMOVE_QUEUED" | jq -e '.status == "ok" and .removed == 1' >/dev/null; then
+    echo "ERROR: download-remove should remove queued entry"
+    echo "$QUEUE_REMOVE_QUEUED"
+    exit 1
+fi
+QUEUE_REMOVE_RUNNING_AFTER_REMOVE="$(python3 "$HELPER" download-remove --url "https://example.com/running")"
+if ! echo "$QUEUE_REMOVE_RUNNING_AFTER_REMOVE" | jq -e '.status == "ok" and .removed == 0 and .running_blocks == 1' >/dev/null; then
+    echo "ERROR: download-remove running no-op changed unexpectedly after queued removal"
+    echo "$QUEUE_REMOVE_RUNNING_AFTER_REMOVE"
+    exit 1
+fi
+QUEUE_LIST_AFTER_RUNNING_TEST="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_RUNNING_TEST" | jq -e '.results | map(select(.url=="https://example.com/queued")) | length == 0' >/dev/null; then
+    echo "ERROR: queued entry was not removed by download-remove"
+    echo "$QUEUE_LIST_AFTER_RUNNING_TEST"
+    exit 1
+fi
+if ! echo "$QUEUE_LIST_AFTER_RUNNING_TEST" | jq -e '.results | map(select(.url=="https://example.com/running")) | length == 1' >/dev/null; then
+    echo "ERROR: running entry was removed by download-remove"
+    echo "$QUEUE_LIST_AFTER_RUNNING_TEST"
+    exit 1
+fi
+
+QUEUE_UNDO="$(python3 "$HELPER" download-undo)"
+if ! echo "$QUEUE_UNDO" | jq -e '.status == "ok" and .restored == 1' >/dev/null; then
+    echo "ERROR: download-undo did not restore removed entries"
+    echo "$QUEUE_UNDO"
+    exit 1
+fi
+QUEUE_LIST_AFTER_UNDO="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_UNDO" | jq -e '.results | map(select(.url=="https://example.com/queued")) | length == 1' >/dev/null; then
+    echo "ERROR: download-undo did not restore queued entry"
+    echo "$QUEUE_LIST_AFTER_UNDO"
+    exit 1
+fi
+if ! echo "$QUEUE_LIST_AFTER_UNDO" | jq -e '.results | map(select(.url=="https://example.com/queued" or .url=="https://example.com/running")) | length == 2' >/dev/null; then
+    echo "ERROR: download-undo changed unexpected queue state"
+    echo "$QUEUE_LIST_AFTER_UNDO"
     exit 1
 fi
 

@@ -54,6 +54,11 @@ Next parity implementation priority: expand the download queue with edit/delete/
   - Check `download-run-next` against a local HTTP fixture.
   - Check cancel/clear and HTTP-only URL enforcement.
 
+- [x] **Step 4: Add ATPlayer queue parity actions**
+  - Add `download-remove`, `download-undo`, `download-prefer`, `download-put-back`.
+  - Add queue-entry context actions (`URL kopieren`, `Ordner öffnen`, `Aus Liste entfernen`, `Vorziehen`, `Zurückstellen`) and global restore.
+  - Run helper checks that validate remove/undo/reorder and running-entry safety.
+
 ### URL-Trust-Boundary-Härtung
 
 - [x] **Suchergebnisse filtern Audio-URLs auf http/https, nicht-http(s)-Audiozeilen auslassen**
