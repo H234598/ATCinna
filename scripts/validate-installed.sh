@@ -228,10 +228,20 @@ for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffe
         exit 1
     fi
 done
+for applet_label in "Download starten" "Downloads aktualisieren" "Liste der Downloads aufräumen"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
 
 if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
     echo "ERROR: helper --help failed"
     cat "$TMP_DIR/help.out"
+    exit 1
+fi
+if ! rg -q -F '"download-run"' "$HELPER"; then
+    echo "ERROR: installed helper action is missing: download-run"
     exit 1
 fi
 if ! python3 -m py_compile "$SEARCH_DIALOG"; then

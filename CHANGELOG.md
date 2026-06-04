@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.32
+
+- ATPlayer-nahe Queue-Aktion **Download starten** pro Warteschlangen-Eintrag ergänzt; der Helper kann mit `download-run --url URL` gezielt einen wartenden Eintrag starten.
+- Queue-Menü um **Downloads aktualisieren** und **Liste der Downloads aufräumen** als direkte ATPlayer-nahe Bedienpfade erweitert, ohne die vorhandenen Labels zu entfernen.
+- Source- und Installationschecks schützen die neuen Labels; `scripts/check.sh` testet `download-run` funktional gegen die lokale HTTP-Fixture inkl. `not-found` und `not-queued`.
+- Versionssprung auf `0.3.32`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.31
 
 - Trefferliste um ATPlayer-nahe Auswahl erweitert: **Alle Treffer auswählen**, **Treffer-Auswahl umkehren**, **Treffer-Auswahl zurücksetzen** und pro Treffer **Auswahl umschalten**.

@@ -247,7 +247,13 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Downloads starten")' "$APPLET_J
     echo "ERROR: applet menu does not contain queue run-all item"
     STATUS=1
 fi
-for helper_action in download-enqueue download-list download-run-next download-cancel download-clear; do
+for applet_label in "Download starten" "Downloads aktualisieren" "Liste der Downloads aufräumen"; do
+    if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${applet_label}\")" "$APPLET_JS"; then
+        echo "ERROR: applet queue label is missing: ${applet_label}"
+        STATUS=1
+    fi
+done
+for helper_action in download-enqueue download-list download-run-next download-run download-cancel download-clear; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
         STATUS=1
@@ -1544,6 +1550,7 @@ if [[ -z "$QUEUE_HTTP_PORT" ]]; then
 fi
 QUEUE_URL_ONE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-one.mp3"
 QUEUE_URL_TWO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3"
+QUEUE_URL_THREE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-three.mp3"
 
 QUEUE_ADD_ONE="$(python3 "$HELPER" download-enqueue --title "Queue One" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR")"
 if ! echo "$QUEUE_ADD_ONE" | jq -e '.status == "ok"' >/dev/null; then
@@ -1706,7 +1713,42 @@ if ! echo "$QUEUE_LIST_AFTER_RUN" | jq -e '.results[0].status == "finished" and 
     echo "$QUEUE_LIST_AFTER_RUN"
     exit 1
 fi
-QUEUE_CANCEL_ONE="$(python3 "$HELPER" download-cancel --url "$QUEUE_URL_TWO")"
+QUEUE_RUN_TARGET="$(python3 "$HELPER" download-run --url "$QUEUE_URL_TWO")"
+if ! echo "$QUEUE_RUN_TARGET" | jq -e --arg two "$QUEUE_URL_TWO" '.status == "ok" and .result.url == $two and .result.status == "finished" and (.result.path | endswith(".mp3"))' >/dev/null; then
+    echo "ERROR: download-run did not finish targeted local queued item"
+    echo "$QUEUE_RUN_TARGET"
+    exit 1
+fi
+QUEUE_TARGET_PATH="$(echo "$QUEUE_RUN_TARGET" | jq -r '.result.path')"
+if [[ ! -f "$QUEUE_TARGET_PATH" ]]; then
+    echo "ERROR: targeted queued download output missing: $QUEUE_TARGET_PATH"
+    exit 1
+fi
+QUEUE_LIST_AFTER_TARGET_RUN="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_TARGET_RUN" | jq -e '.results[0].status == "finished" and .results[1].status == "finished"' >/dev/null; then
+    echo "ERROR: queue state after targeted run unexpected"
+    echo "$QUEUE_LIST_AFTER_TARGET_RUN"
+    exit 1
+fi
+QUEUE_RUN_TARGET_NOT_QUEUED="$(python3 "$HELPER" download-run --url "$QUEUE_URL_TWO")"
+if ! echo "$QUEUE_RUN_TARGET_NOT_QUEUED" | jq -e --arg two "$QUEUE_URL_TWO" '.status == "ok" and .url == $two and .state == "not-queued"' >/dev/null; then
+    echo "ERROR: download-run should report not-queued for finished entry"
+    echo "$QUEUE_RUN_TARGET_NOT_QUEUED"
+    exit 1
+fi
+QUEUE_RUN_TARGET_NOT_FOUND="$(python3 "$HELPER" download-run --url "$QUEUE_URL_THREE")"
+if ! echo "$QUEUE_RUN_TARGET_NOT_FOUND" | jq -e --arg three "$QUEUE_URL_THREE" '.status == "ok" and .url == $three and .state == "not-found"' >/dev/null; then
+    echo "ERROR: download-run should report not-found for missing entry"
+    echo "$QUEUE_RUN_TARGET_NOT_FOUND"
+    exit 1
+fi
+QUEUE_ADD_THREE="$(python3 "$HELPER" download-enqueue --title "Queue Three" --url "$QUEUE_URL_THREE" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_ADD_THREE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: third download-enqueue failed"
+    echo "$QUEUE_ADD_THREE"
+    exit 1
+fi
+QUEUE_CANCEL_ONE="$(python3 "$HELPER" download-cancel --url "$QUEUE_URL_THREE")"
 if ! echo "$QUEUE_CANCEL_ONE" | jq -e '.status == "ok" and .changed == 1' >/dev/null; then
     echo "ERROR: download-cancel did not cancel queued entry"
     echo "$QUEUE_CANCEL_ONE"
@@ -1722,7 +1764,7 @@ if ! jq -e '.status == "error" and .message == "url is required unless --all or 
     exit 1
 fi
 QUEUE_CLEAR="$(python3 "$HELPER" download-clear)"
-if ! echo "$QUEUE_CLEAR" | jq -e '.status == "ok" and .removed == 2' >/dev/null; then
+if ! echo "$QUEUE_CLEAR" | jq -e '.status == "ok" and .removed == 3' >/dev/null; then
     echo "ERROR: download-clear did not remove finished/cancelled entries"
     echo "$QUEUE_CLEAR"
     exit 1

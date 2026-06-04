@@ -1335,18 +1335,25 @@ def action_download_put_back(args):
         print(json.dumps({"status": "ok", "moved": True, "url": target}))
 
 
-def action_download_run_next(args):
+def _claim_queued_download(target_url=""):
+    target = _normalize_entry_value(target_url)
     with _store_lock(_queue_path()):
         entries = _load_queue()
         queue_index = None
+        matching_not_queued = False
         for index, entry in enumerate(entries):
+            if target and entry.get("url") != target:
+                continue
             if entry.get("status") == "queued":
                 queue_index = index
                 break
+            if target:
+                matching_not_queued = True
 
         if queue_index is None:
-            print(json.dumps({"status": "ok", "state": "empty"}))
-            return
+            if target:
+                return None, "not-queued" if matching_not_queued else "not-found"
+            return None, "empty"
 
         entry = dict(entries[queue_index])
         entry["status"] = "running"
@@ -1355,20 +1362,10 @@ def action_download_run_next(args):
         entry["error"] = ""
         entries[queue_index] = entry
         _store_queue(entries)
+        return entry, "running"
 
-    download_status = "finished"
-    destination = ""
-    error = ""
-    try:
-        folder = _resolve_download_folder(entry.get("folder", ""))
-        destination = _download_to_file(entry.get("url", ""), folder, entry.get("title", ""))
-    except subprocess.CalledProcessError as exc:
-        download_status = "error"
-        error = (exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc)
-    except Exception as exc:
-        download_status = "error"
-        error = str(exc)
 
+def _finish_queued_download(entry, download_status, destination, error):
     with _store_lock(_queue_path()):
         entries = _load_queue()
         for existing in entries:
@@ -1389,15 +1386,48 @@ def action_download_run_next(args):
                 break
         _store_queue(entries)
 
-    print(json.dumps({
-        "status": "ok",
-        "result": {
-            "url": entry.get("url", ""),
-            "status": download_status,
-            "path": destination,
-            "error": error,
-        }
-    }))
+
+def _run_claimed_download(entry):
+    download_status = "finished"
+    destination = ""
+    error = ""
+    try:
+        folder = _resolve_download_folder(entry.get("folder", ""))
+        destination = _download_to_file(entry.get("url", ""), folder, entry.get("title", ""))
+    except subprocess.CalledProcessError as exc:
+        download_status = "error"
+        error = (exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc)
+    except Exception as exc:
+        download_status = "error"
+        error = str(exc)
+
+    _finish_queued_download(entry, download_status, destination, error)
+    return {
+        "url": entry.get("url", ""),
+        "status": download_status,
+        "path": destination,
+        "error": error,
+    }
+
+
+def action_download_run_next(args):
+    entry, state = _claim_queued_download()
+    if entry is None:
+        print(json.dumps({"status": "ok", "state": state}))
+        return
+
+    print(json.dumps({"status": "ok", "result": _run_claimed_download(entry)}))
+
+
+def action_download_run(args):
+    _validate_and_normalize_url("url", args.url)
+    target = _normalize_entry_value(args.url)
+    entry, state = _claim_queued_download(target)
+    if entry is None:
+        print(json.dumps({"status": "ok", "state": state, "url": target}))
+        return
+
+    print(json.dumps({"status": "ok", "result": _run_claimed_download(entry)}))
 
 
 def action_download_cancel(args):
@@ -1865,9 +1895,11 @@ def parse_args():
     download_enqueue.add_argument("--website", default="", help="Optional website URL")
     download_enqueue.add_argument("--folder", default="", help="Download folder")
 
-    download_list = sub.add_parser("download-list", help="List queue entries")
+    sub.add_parser("download-list", help="List queue entries")
 
-    download_run_next = sub.add_parser("download-run-next", help="Run next queued download")
+    sub.add_parser("download-run-next", help="Run next queued download")
+    download_run = sub.add_parser("download-run", help="Run queued download by URL")
+    download_run.add_argument("--url", required=True, help="Media URL")
 
     download_cancel = sub.add_parser("download-cancel", help="Cancel queued/running queue entry")
     download_cancel.add_argument("--url", default="", help="Media URL")
@@ -1947,6 +1979,8 @@ def main():
         action_download_list(args)
     elif args.action == "download-run-next":
         action_download_run_next(args)
+    elif args.action == "download-run":
+        action_download_run(args)
     elif args.action == "download-cancel":
         action_download_cancel(args)
     elif args.action == "download-clear":

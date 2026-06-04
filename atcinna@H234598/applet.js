@@ -1468,6 +1468,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         show.connect("activate", () => this._runQueueList());
         this._queueSection.addMenuItem(show);
 
+        const refresh = new PopupMenu.PopupMenuItem("Downloads aktualisieren");
+        refresh.connect("activate", () => this._runQueueList());
+        this._queueSection.addMenuItem(refresh);
+
         const runNext = new PopupMenu.PopupMenuItem("Nächsten Download starten");
         runNext.connect("activate", () => this._runQueueRunNext());
         this._queueSection.addMenuItem(runNext);
@@ -1507,6 +1511,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");
         clearDone.connect("activate", () => this._runQueueClear());
         this._queueSection.addMenuItem(clearDone);
+
+        const tidyDownloads = new PopupMenu.PopupMenuItem("Liste der Downloads aufräumen");
+        tidyDownloads.connect("activate", () => this._runQueueClear());
+        this._queueSection.addMenuItem(tidyDownloads);
 
         const restore = new PopupMenu.PopupMenuItem("Gelöschte wieder anlegen");
         restore.connect("activate", () => this._runQueueUndo());
@@ -1605,6 +1613,78 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 this._runQueueList();
             } catch (error) {
                 this._setStatus(`download-run-next ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runQueueRunItem(item) {
+        const callback = arguments.length > 1 ? arguments[1] : null;
+        const url = this._normalizeQueueItemUrl(item);
+        if (!url) {
+            this._setStatus("Download starten fehlgeschlagen: keine URL");
+            if (callback) {
+                callback(false, 0);
+            }
+            return;
+        }
+
+        const title = item && item.title ? item.title : "Eintrag";
+        this._setStatus(`starte Download: ${title}`);
+        this._runHelper([
+            "download-run",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-run fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-run: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
+                    return;
+                }
+                if (payload.state === "not-found") {
+                    this._setStatus("Download nicht in der Warteschlange");
+                    if (callback) {
+                        callback(true, 0);
+                    } else {
+                        this._runQueueList();
+                    }
+                    return;
+                }
+                if (payload.state === "not-queued") {
+                    this._setStatus("Download ist nicht wartend");
+                    if (callback) {
+                        callback(true, 0);
+                    } else {
+                        this._runQueueList();
+                    }
+                    return;
+                }
+                if (payload.result && payload.result.path) {
+                    this._setStatus(`gespeichert: ${payload.result.path}`);
+                } else if (payload.result && payload.result.status === "error") {
+                    this._setStatus(`download fehlgeschlagen: ${payload.result.error || "unbekannter Fehler"}`);
+                } else {
+                    this._setStatus("download abgeschlossen");
+                }
+                if (callback) {
+                    callback(true, payload.result ? 1 : 0);
+                } else {
+                    this._runQueueList();
+                }
+            } catch (error) {
+                this._setStatus(`download-run ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
@@ -1799,6 +1879,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const toggleSelection = new PopupMenu.PopupMenuItem("Auswahl umschalten");
             toggleSelection.connect("activate", () => this._runQueueToggleSelection(item));
             row.menu.addMenuItem(toggleSelection);
+
+            const run = new PopupMenu.PopupMenuItem("Download starten");
+            if (status !== "queued") {
+                run.setSensitive(false);
+            } else {
+                run.connect("activate", () => this._runQueueRunItem(item));
+            }
+            row.menu.addMenuItem(run);
 
             const edit = new PopupMenu.PopupMenuItem("Download ändern");
             if (status === "running") {
