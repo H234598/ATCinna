@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.8
+
+- Erste ATPlayer-Paritätsstufe für Downloads ergänzt: persistente FIFO-Download-Warteschlange mit `download-enqueue`, `download-list`, `download-run-next`, `download-cancel` und `download-clear`.
+- Applet-Menü erweitert um „In Warteschlange legen“, „Warteschlange anzeigen“, „Nächsten Download starten“, „Wartende stoppen“ und „Erledigte entfernen“.
+- Lokaler Check prüft Queue-Deduplizierung, FIFO-Abarbeitung, lokalen HTTP-Download, Cancel/Clear und URL-Schema-Abwehr.
+
 ## 0.3.7
 
 - Linksklick bleibt unverändert und toggelt weiterhin das Applet-Menü.

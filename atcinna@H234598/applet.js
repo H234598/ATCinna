@@ -41,6 +41,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._historySection = null;
         this._favoritesSection = null;
         this._filterSection = null;
+        this._queueSection = null;
+        this._queueListSection = null;
         this._filterSummaryItem = null;
         this._clearFiltersItem = null;
         this._dbusImpl = null;
@@ -132,6 +134,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._favoritesSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._favoritesSection);
 
+        this._queueSection = new PopupMenu.PopupMenuSection();
+        this._queueListSection = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(this._queueSection);
+        this.menu.addMenuItem(this._queueListSection);
+
+        this._setupQueueActions();
+
         this._refreshFilterSummary();
 
         this._refreshTimer = Mainloop.timeout_add_seconds(1, () => {
@@ -139,6 +148,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._runSearch();
             return GLib.SOURCE_REMOVE;
         });
+
+        this._runQueueList();
     }
 
     _registerDbusInterface() {
@@ -427,6 +438,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             download.connect("activate", () => this._runDownload(item));
             entry.menu.addMenuItem(download);
 
+            const enqueue = new PopupMenu.PopupMenuItem("In Warteschlange legen");
+            enqueue.connect("activate", () => this._runDownloadEnqueue(item));
+            entry.menu.addMenuItem(enqueue);
+
             const addBookmark = new PopupMenu.PopupMenuItem("Zu Favoriten hinzufügen");
             addBookmark.connect("activate", () => this._runBookmarkAdd(item));
             entry.menu.addMenuItem(addBookmark);
@@ -439,6 +454,161 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._clearHistoryAndFavorites();
         this._loadHistory();
         this._loadBookmarks();
+    }
+
+    _setupQueueActions() {
+        if (!this._queueSection) {
+            return;
+        }
+
+        const heading = new PopupMenu.PopupMenuItem("Download-Warteschlange");
+        heading.actor.reactive = false;
+        heading.actor.add_style_class_name("atcinna-section-title");
+        this._queueSection.addMenuItem(heading);
+
+        const show = new PopupMenu.PopupMenuItem("Warteschlange anzeigen");
+        show.connect("activate", () => this._runQueueList());
+        this._queueSection.addMenuItem(show);
+
+        const runNext = new PopupMenu.PopupMenuItem("Nächsten Download starten");
+        runNext.connect("activate", () => this._runQueueRunNext());
+        this._queueSection.addMenuItem(runNext);
+
+        const stopQueued = new PopupMenu.PopupMenuItem("Wartende stoppen");
+        stopQueued.connect("activate", () => this._runQueueCancelAll());
+        this._queueSection.addMenuItem(stopQueued);
+
+        const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");
+        clearDone.connect("activate", () => this._runQueueClear());
+        this._queueSection.addMenuItem(clearDone);
+    }
+
+    _runDownloadEnqueue(item) {
+        const folder = this.downloadFolder || "";
+        this._setStatus(`in Warteschlange: ${item.title || "Eintrag"}`);
+        this._runHelper([
+            "download-enqueue",
+            ...this._entryArgs(item),
+            `--folder=${folder}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`queue-enqueue fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("queue-enqueue: unerwartete Antwort");
+                    return;
+                }
+                this._setStatus("in Warteschlange gespeichert");
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`queue-enqueue ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runQueueList() {
+        this._runHelper([
+            "download-list"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-list fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                this._renderQueue(payload.results || []);
+            } catch (error) {
+                this._setStatus(`download-list ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runQueueRunNext() {
+        this._setStatus("starte nächsten Download");
+        this._runHelper([
+            "download-run-next"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-run-next fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-run-next: unerwartete Antwort");
+                    return;
+                }
+                if (payload.state === "empty") {
+                    this._setStatus("warteschlange leer");
+                    return;
+                }
+                if (payload.result && payload.result.path) {
+                    this._setStatus(`gespeichert: ${payload.result.path}`);
+                } else if (payload.result && payload.result.status === "error") {
+                    this._setStatus(`download fehlgeschlagen: ${payload.result.error}`);
+                } else {
+                    this._setStatus("download abgeschlossen");
+                }
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`download-run-next ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runQueueCancelAll() {
+        this._setStatus("stoppe Warteschlange");
+        this._runHelper([
+            "download-cancel",
+            "--all"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-cancel fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            this._runQueueList();
+        });
+    }
+
+    _runQueueClear() {
+        this._setStatus("entferne erledigte Downloads");
+        this._runHelper([
+            "download-clear"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-clear fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            this._runQueueList();
+        });
+    }
+
+    _renderQueue(items) {
+        if (!this._queueListSection) {
+            return;
+        }
+
+        this._queueListSection.removeAll();
+        const entries = Array.isArray(items) ? items : [];
+
+        if (!entries.length) {
+            const empty = new PopupMenu.PopupMenuItem("keine Einträge in Warteschlange");
+            empty.actor.reactive = false;
+            this._queueListSection.addMenuItem(empty);
+            return;
+        }
+
+        for (const item of entries.slice(0, 20)) {
+            const status = item.status || "queued";
+            const title = item.title || "Eintrag";
+            const subtitle = item.status === "finished" && item.path ? ` — ${item.path}` : "";
+            const line = new PopupMenu.PopupMenuItem(`${title} (${status})${subtitle}`);
+            line.actor.reactive = false;
+            this._queueListSection.addMenuItem(line);
+        }
     }
 
     _clearHistoryAndFavorites() {

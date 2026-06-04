@@ -124,6 +124,20 @@ if ! rg -q -F 'configureApplet()' "$APPLET_JS"; then
     echo "ERROR: Einstellungen action does not call configureApplet()"
     STATUS=1
 fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("In Warteschlange legen")' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain queue enqueue item"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Nächsten Download starten")' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain queue run-next item"
+    STATUS=1
+fi
+for helper_action in download-enqueue download-list download-run-next download-cancel download-clear; do
+    if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
+        echo "ERROR: helper action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
 
 node --check "$APPLET_JS" >/dev/null
 
@@ -412,6 +426,131 @@ fi
 if ! jq -e '.status == "error" and .message == "invalid URL scheme"' "$TMP_DIR/download-invalid.out" >/dev/null 2>&1; then
     echo "ERROR: invalid URL download did not return expected error JSON"
     cat "$TMP_DIR/download-invalid.out"
+    exit 1
+fi
+
+QUEUE_DOWNLOAD_DIR="$TMP_DIR/queue-downloads"
+QUEUE_HTTP_DIR="$TMP_DIR/queue-http"
+mkdir -p "$QUEUE_DOWNLOAD_DIR" "$QUEUE_HTTP_DIR"
+printf 'queued audio fixture\n' > "$QUEUE_HTTP_DIR/audio-one.mp3"
+printf 'queued audio fixture two\n' > "$QUEUE_HTTP_DIR/audio-two.mp3"
+python3 - "$QUEUE_HTTP_DIR" "$TMP_DIR/http-server.port" >"$TMP_DIR/http-server.log" 2>&1 <<'PY' &
+import functools
+import http.server
+import socketserver
+import sys
+
+directory = sys.argv[1]
+port_file = sys.argv[2]
+handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=directory)
+
+with socketserver.TCPServer(("127.0.0.1", 0), handler) as httpd:
+    with open(port_file, "w", encoding="utf-8") as handle:
+        handle.write(str(httpd.server_address[1]))
+    httpd.serve_forever()
+PY
+HTTP_SERVER_PID=$!
+cleanup_http_server() {
+    if kill -0 "$HTTP_SERVER_PID" >/dev/null 2>&1; then
+        kill "$HTTP_SERVER_PID" >/dev/null 2>&1 || true
+        wait "$HTTP_SERVER_PID" >/dev/null 2>&1 || true
+    fi
+}
+trap 'cleanup_http_server; cleanup' EXIT
+QUEUE_HTTP_PORT=""
+for _ in $(seq 1 50); do
+    if [[ -f "$TMP_DIR/http-server.port" ]]; then
+        QUEUE_HTTP_PORT="$(cat "$TMP_DIR/http-server.port")"
+    fi
+    if [[ -n "$QUEUE_HTTP_PORT" ]]; then
+        break
+    fi
+    sleep 0.1
+done
+if [[ -z "$QUEUE_HTTP_PORT" ]]; then
+    echo "ERROR: local queue HTTP server did not start"
+    cat "$TMP_DIR/http-server.log"
+    exit 1
+fi
+QUEUE_URL_ONE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-one.mp3"
+QUEUE_URL_TWO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3"
+
+QUEUE_ADD_ONE="$(python3 "$HELPER" download-enqueue --title "Queue One" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_ADD_ONE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: download-enqueue failed"
+    echo "$QUEUE_ADD_ONE"
+    exit 1
+fi
+QUEUE_ADD_TWO="$(python3 "$HELPER" download-enqueue --title "Queue Two" --url "$QUEUE_URL_TWO" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_ADD_TWO" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: second download-enqueue failed"
+    echo "$QUEUE_ADD_TWO"
+    exit 1
+fi
+QUEUE_ADD_ONE_AGAIN="$(python3 "$HELPER" download-enqueue --title "Queue One Updated" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_ADD_ONE_AGAIN" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: download-enqueue dedupe update failed"
+    echo "$QUEUE_ADD_ONE_AGAIN"
+    exit 1
+fi
+QUEUE_LIST="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST" | jq -e --arg one "$QUEUE_URL_ONE" --arg two "$QUEUE_URL_TWO" '.status == "ok" and .count == 2 and .results[0].url == $two and .results[1].url == $one and .results[1].title == "Queue One Updated"' >/dev/null; then
+    echo "ERROR: download-list/dedupe/FIFO order unexpected"
+    echo "$QUEUE_LIST"
+    exit 1
+fi
+QUEUE_RUN_NEXT="$(python3 "$HELPER" download-run-next)"
+if ! echo "$QUEUE_RUN_NEXT" | jq -e '.status == "ok" and .result.status == "finished" and (.result.path | endswith(".mp3"))' >/dev/null; then
+    echo "ERROR: download-run-next did not finish local queued item"
+    echo "$QUEUE_RUN_NEXT"
+    exit 1
+fi
+QUEUE_PATH="$(echo "$QUEUE_RUN_NEXT" | jq -r '.result.path')"
+if [[ ! -f "$QUEUE_PATH" ]]; then
+    echo "ERROR: queued download output missing: $QUEUE_PATH"
+    exit 1
+fi
+QUEUE_LIST_AFTER_RUN="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_RUN" | jq -e --arg two "$QUEUE_URL_TWO" '.results[0].url == $two and .results[0].status == "finished" and .results[1].status == "queued"' >/dev/null; then
+    echo "ERROR: queue state after run-next unexpected"
+    echo "$QUEUE_LIST_AFTER_RUN"
+    exit 1
+fi
+QUEUE_CANCEL_ONE="$(python3 "$HELPER" download-cancel --url "$QUEUE_URL_ONE")"
+if ! echo "$QUEUE_CANCEL_ONE" | jq -e '.status == "ok" and .changed == 1' >/dev/null; then
+    echo "ERROR: download-cancel did not cancel queued entry"
+    echo "$QUEUE_CANCEL_ONE"
+    exit 1
+fi
+if python3 "$HELPER" download-cancel >"$TMP_DIR/queue-cancel-missing-url.out" 2>&1; then
+    echo "ERROR: download-cancel without --url/--all unexpectedly succeeded"
+    exit 1
+fi
+if ! jq -e '.status == "error" and .message == "url is required unless --all is used"' "$TMP_DIR/queue-cancel-missing-url.out" >/dev/null 2>&1; then
+    echo "ERROR: download-cancel missing URL did not return expected error JSON"
+    cat "$TMP_DIR/queue-cancel-missing-url.out"
+    exit 1
+fi
+QUEUE_CLEAR="$(python3 "$HELPER" download-clear)"
+if ! echo "$QUEUE_CLEAR" | jq -e '.status == "ok" and .removed == 2' >/dev/null; then
+    echo "ERROR: download-clear did not remove finished/cancelled entries"
+    echo "$QUEUE_CLEAR"
+    exit 1
+fi
+QUEUE_LIST_EMPTY="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_EMPTY" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: download queue should be empty after clear"
+    echo "$QUEUE_LIST_EMPTY"
+    exit 1
+fi
+
+if python3 "$HELPER" download-enqueue --title "Bad Queue" --url "file:///tmp/bad.mp3" --folder "$QUEUE_DOWNLOAD_DIR" >"$TMP_DIR/queue-invalid.out" 2>&1; then
+    echo "ERROR: download-enqueue invalid URL unexpectedly succeeded"
+    exit 1
+fi
+if ! jq -e '.status == "error" and .message == "invalid URL scheme"' "$TMP_DIR/queue-invalid.out" >/dev/null 2>&1; then
+    echo "ERROR: download-enqueue invalid URL did not return expected error JSON"
+    cat "$TMP_DIR/queue-invalid.out"
     exit 1
 fi
 

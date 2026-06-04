@@ -20,6 +20,9 @@ MIRRORS = [
     "https://atlist.eu/audios.xz",
 ]
 
+QUEUE_MAX_ENTRIES = 500
+QUEUE_STATUSES = {"queued", "running", "finished", "error", "cancelled"}
+
 
 def die(message, exit_code=1):
     print(json.dumps({"status": "error", "message": message}), file=sys.stderr)
@@ -181,6 +184,218 @@ def action_bookmark_list(args):
     _list_store(data_dir() / "bookmarks.json")
 
 
+def _queue_path():
+    return data_dir() / "download-queue.json"
+
+
+def _normalize_queue_entry(entry):
+    if not isinstance(entry, dict):
+        return None
+
+    status = _normalize_entry_value(entry.get("status"))
+    if status not in QUEUE_STATUSES:
+        return None
+
+    try:
+        timestamp = int(entry.get("timestamp", int(time.time())))
+    except (TypeError, ValueError):
+        timestamp = int(time.time())
+
+    return {
+        "title": _normalize_entry_value(entry.get("title")),
+        "sender": _normalize_entry_value(entry.get("sender")),
+        "genre": _normalize_entry_value(entry.get("genre")),
+        "topic": _normalize_entry_value(entry.get("topic")),
+        "url": _normalize_entry_value(entry.get("url")),
+        "website": _normalize_entry_value(entry.get("website")),
+        "folder": _normalize_entry_value(entry.get("folder")),
+        "timestamp": timestamp,
+        "status": status,
+        "path": _normalize_entry_value(entry.get("path")),
+        "error": _normalize_entry_value(entry.get("error")),
+    }
+
+
+def _load_queue():
+    normalized = []
+    for entry in _load_list(_queue_path()):
+        normalized_entry = _normalize_queue_entry(entry)
+        if normalized_entry:
+            normalized.append(normalized_entry)
+    return normalized
+
+
+def _store_queue(entries):
+    _store_list(_queue_path(), entries)
+
+
+def _entry_from_args_with_folder(args):
+    item = _entry_from_args(args)
+    item["folder"] = _normalize_entry_value(args.folder)
+    item["status"] = "queued"
+    item["path"] = ""
+    item["error"] = ""
+    return item
+
+
+def _download_file_path(url, folder, title):
+    parsed = urlparse(url)
+    stem = _safe_filename(_normalize_entry_value(title) or Path(parsed.path).name or "stream")
+    suffix = Path(parsed.path).suffix or ".mp3"
+    file_name = f"{stem}{suffix}"
+    destination = folder / file_name
+    candidate = 1
+    while destination.exists():
+        destination = folder / f"{stem}_{candidate}{suffix}"
+        candidate += 1
+
+    return str(destination)
+
+
+def _download_to_file(url, folder, title):
+    if not _is_http_url(url):
+        die("invalid URL scheme")
+
+    curl = shutil.which("curl")
+    if not curl:
+        die("curl not found")
+
+    destination = Path(_download_file_path(url, folder, title))
+    subprocess.run(
+        [curl, "--fail", "--location", "--silent", "--show-error", "-L", "-o", str(destination), url],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+        timeout=120,
+    )
+    return str(destination)
+
+
+def _resolve_download_folder(folder):
+    folder_path = Path(_normalize_entry_value(folder) or "~/Downloads").expanduser()
+    if not folder_path.is_absolute():
+        folder_path = folder_path.resolve()
+    ensure_dir(folder_path)
+    return folder_path
+
+
+def action_download_enqueue(args):
+    _validate_and_normalize_url("url", args.url)
+    _validate_and_normalize_url("website", args.website)
+    item = _entry_from_args_with_folder(args)
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        entries = [entry for entry in entries if entry.get("url") != item["url"]]
+        item["timestamp"] = int(time.time())
+        entries.append(item)
+        if QUEUE_MAX_ENTRIES > 0:
+            entries = entries[-QUEUE_MAX_ENTRIES:]
+        _store_queue(entries)
+    print(json.dumps({"status": "ok"}))
+
+
+def action_download_list(args):
+    entries = _load_queue()
+    print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
+
+
+def action_download_run_next(args):
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        queue_index = None
+        for index, entry in enumerate(entries):
+            if entry.get("status") == "queued":
+                queue_index = index
+                break
+
+        if queue_index is None:
+            print(json.dumps({"status": "ok", "state": "empty"}))
+            return
+
+        entry = dict(entries[queue_index])
+        entry["status"] = "running"
+        entry["timestamp"] = int(time.time())
+        entry["path"] = ""
+        entry["error"] = ""
+        entries[queue_index] = entry
+        _store_queue(entries)
+
+    download_status = "finished"
+    destination = ""
+    error = ""
+    try:
+        folder = _resolve_download_folder(entry.get("folder", ""))
+        destination = _download_to_file(entry.get("url", ""), folder, entry.get("title", ""))
+    except subprocess.CalledProcessError as exc:
+        download_status = "error"
+        error = (exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc)
+    except Exception as exc:
+        download_status = "error"
+        error = str(exc)
+
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        for existing in entries:
+            if existing.get("url") != entry.get("url"):
+                continue
+            if existing.get("status") == "running":
+                existing["status"] = download_status
+                existing["path"] = destination
+                existing["error"] = error
+                existing["timestamp"] = int(time.time())
+                break
+            if existing.get("status") == "queued":
+                # In case cancellation/normalisation shifted while running, only the first match.
+                existing["status"] = download_status
+                existing["path"] = destination
+                existing["error"] = error
+                existing["timestamp"] = int(time.time())
+                break
+        _store_queue(entries)
+
+    print(json.dumps({
+        "status": "ok",
+        "result": {
+            "url": entry.get("url", ""),
+            "status": download_status,
+            "path": destination,
+            "error": error,
+        }
+    }))
+
+
+def action_download_cancel(args):
+    if not args.all:
+        if not _normalize_entry_value(args.url):
+            die("url is required unless --all is used")
+        _validate_and_normalize_url("url", args.url)
+
+    target = _normalize_entry_value(args.url)
+    changed = 0
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        for entry in entries:
+            if entry.get("status") not in ("queued", "running"):
+                continue
+            if args.all or entry.get("url") == target:
+                entry["status"] = "cancelled"
+                entry["path"] = ""
+                entry["error"] = ""
+                entry["timestamp"] = int(time.time())
+                changed += 1
+        _store_queue(entries)
+    print(json.dumps({"status": "ok", "changed": changed}))
+
+
+def action_download_clear(args):
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        filtered = [entry for entry in entries if entry.get("status") not in ("finished", "error", "cancelled")]
+        removed = len(entries) - len(filtered)
+        _store_queue(filtered)
+    print(json.dumps({"status": "ok", "removed": removed}))
+
+
 def _iter_audio_rows(path):
     if not path.exists():
         return
@@ -337,36 +552,9 @@ def _safe_filename(value):
 
 
 def action_download(args):
-    parsed = urlparse(args.url)
-    if not _is_http_url(args.url):
-        die("invalid URL scheme")
-
-    curl = shutil.which("curl")
-    if not curl:
-        die("curl not found")
-
-    folder = Path(args.folder or "~/Downloads").expanduser()
-    if not folder.is_absolute():
-        folder = folder.resolve()
-    ensure_dir(folder)
-
-    stem = _safe_filename(args.title or Path(parsed.path).name or "stream")
-    suffix = Path(parsed.path).suffix or ".mp3"
-    file_name = f"{stem}{suffix}"
-    destination = folder / file_name
-    candidate = 1
-    while destination.exists():
-        destination = folder / f"{stem}_{candidate}{suffix}"
-        candidate += 1
-
+    folder = _resolve_download_folder(args.folder)
     try:
-        subprocess.run(
-            [curl, "--fail", "--location", "--silent", "--show-error", "-L", "-o", str(destination), args.url],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True,
-            timeout=120,
-        )
+        destination = _download_to_file(args.url, folder, args.title)
     except subprocess.CalledProcessError as exc:
         die((exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc))
     except Exception as exc:
@@ -417,6 +605,25 @@ def parse_args():
     download.add_argument("--folder", default="", help="Download folder")
     download.add_argument("--title", default="", help="Optional file base title")
 
+    download_enqueue = sub.add_parser("download-enqueue", help="Add media URL to download queue")
+    download_enqueue.add_argument("--title", default="", help="Optional title")
+    download_enqueue.add_argument("--sender", default="", help="Optional sender")
+    download_enqueue.add_argument("--genre", default="", help="Optional genre")
+    download_enqueue.add_argument("--topic", default="", help="Optional topic")
+    download_enqueue.add_argument("--url", required=True, help="Media URL")
+    download_enqueue.add_argument("--website", default="", help="Optional website URL")
+    download_enqueue.add_argument("--folder", default="", help="Download folder")
+
+    download_list = sub.add_parser("download-list", help="List queue entries")
+
+    download_run_next = sub.add_parser("download-run-next", help="Run next queued download")
+
+    download_cancel = sub.add_parser("download-cancel", help="Cancel queued/running queue entry")
+    download_cancel.add_argument("--url", default="", help="Media URL")
+    download_cancel.add_argument("--all", action="store_true", default=False, help="Cancel all queued/running entries")
+
+    sub.add_parser("download-clear", help="Remove finished/error/cancelled queue entries")
+
     return parser.parse_args()
 
 
@@ -428,6 +635,16 @@ def main():
         action_search(args)
     elif args.action == "download":
         action_download(args)
+    elif args.action == "download-enqueue":
+        action_download_enqueue(args)
+    elif args.action == "download-list":
+        action_download_list(args)
+    elif args.action == "download-run-next":
+        action_download_run_next(args)
+    elif args.action == "download-cancel":
+        action_download_cancel(args)
+    elif args.action == "download-clear":
+        action_download_clear(args)
     elif args.action == "history-add":
         action_history_add(args)
     elif args.action == "history-list":
