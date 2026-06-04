@@ -1,0 +1,409 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+HELPER_PATH = SCRIPT_DIR / "atcinna-catalog"
+DBUS_SERVICE_NAME = "org.Cinnamon.Applets.ATCinna"
+DBUS_OBJECT_PATH = "/org/Cinnamon/Applets/ATCinna"
+DBUS_INTERFACE_NAME = "org.Cinnamon.Applets.ATCinna"
+
+
+def _run_helper(args):
+    process = subprocess.run(
+        [str(HELPER_PATH), *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        raise RuntimeError(process.stderr.strip() or process.stdout.strip() or "helper failed")
+    try:
+        payload = json.loads(process.stdout or "{}")
+    except Exception as exc:
+        raise RuntimeError(f"invalid helper response: {exc}") from exc
+    if payload.get("status") != "ok":
+        raise RuntimeError(payload.get("message") or "helper returned error")
+    return payload
+
+
+def _current_save_args(args, name):
+    save_args = [
+        "filter-profile-save",
+        f"--search-query={args.search_query or ''}",
+        f"--sender={args.sender or ''}",
+        f"--genre={args.genre or ''}",
+        f"--topic={args.topic or ''}",
+        f"--blacklist-mode={args.blacklist_mode or 'hide'}",
+        f"--max-hits={args.max_hits}",
+    ]
+    if name:
+        save_args.append(f"--name={name}")
+    return save_args
+
+
+def _self_test():
+    gtk_available = True
+    gtk_error = ""
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        gtk_available = False
+        gtk_error = str(exc)
+
+    payload = {
+        "status": "ok",
+        "helper": str(HELPER_PATH),
+        "gtk3": gtk_available,
+        "python": sys.executable,
+    }
+    if gtk_error:
+        payload["gtk_error"] = gtk_error
+
+    if not HELPER_PATH.is_file() or not os.access(HELPER_PATH, os.X_OK):
+        payload["status"] = "error"
+        payload["message"] = "helper not executable"
+        print(json.dumps(payload, ensure_ascii=False))
+        return 1
+
+    try:
+        _run_helper(["filter-profile-list"])
+    except Exception as exc:
+        payload["status"] = "error"
+        payload["message"] = str(exc)
+        print(json.dumps(payload, ensure_ascii=False))
+        return 1
+
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
+def _profile_to_text(profile):
+    parts = []
+    search_query = str(profile.get("search_query") or "").strip()
+    sender = str(profile.get("sender") or "").strip()
+    genre = str(profile.get("genre") or "").strip()
+    topic = str(profile.get("topic") or "").strip()
+    blacklist_mode = str(profile.get("blacklist_mode") or "hide").strip()
+    max_hits = int(profile.get("max_hits") or 20)
+    if search_query:
+        parts.append(f"Suche: {search_query}")
+    if sender:
+        parts.append(f"Sender: {sender}")
+    if genre:
+        parts.append(f"Genre: {genre}")
+    if topic:
+        parts.append(f"Thema: {topic}")
+    parts.append(f"BL: {blacklist_mode}")
+    parts.append(f"Max: {max_hits}")
+    return " · ".join(parts)
+
+
+def _build_row(profile, gtk_module):
+    Gtk = gtk_module
+    row = Gtk.ListBoxRow()
+    row.set_data("profile", profile)
+
+    container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    row.add(container)
+
+    title = Gtk.Label(label=str(profile.get("name") or "Filterprofil"), xalign=0)
+    title.set_xalign(0)
+    container.pack_start(title, False, False, 0)
+
+    details = Gtk.Label(label=_profile_to_text(profile), xalign=0)
+    details.set_xalign(0)
+    details.get_style_context().add_class("dim-label")
+    container.pack_start(details, False, False, 0)
+    return row
+
+
+def _set_status(label, message):
+    if label:
+        label.set_text(message)
+
+
+def _prompt_text(parent, Gtk, title, label, default_text=""):
+    dialog = Gtk.Dialog(title=title, transient_for=parent, flags=Gtk.DialogFlags.MODAL)
+    dialog.add_buttons("Abbrechen", Gtk.ResponseType.CANCEL, "OK", Gtk.ResponseType.OK)
+    dialog.set_default_response(Gtk.ResponseType.OK)
+    box = dialog.get_content_area()
+    box.set_spacing(8)
+    box.set_border_width(8)
+    box.pack_start(Gtk.Label(label=label, xalign=0), False, False, 0)
+    entry = Gtk.Entry()
+    entry.set_text(default_text or "")
+    entry.set_activates_default(True)
+    box.pack_start(entry, False, False, 0)
+    dialog.show_all()
+    response = dialog.run()
+    text = entry.get_text().strip()
+    dialog.destroy()
+    if response == Gtk.ResponseType.OK and text:
+        return text
+    return ""
+
+
+def _confirm(parent, Gtk, title, message):
+    dialog = Gtk.MessageDialog(
+        transient_for=parent,
+        flags=Gtk.DialogFlags.MODAL,
+        type=Gtk.MessageType.WARNING,
+        buttons=Gtk.ButtonsType.NONE,
+        text=title,
+    )
+    dialog.format_secondary_text(message)
+    dialog.add_buttons("Abbrechen", Gtk.ResponseType.CANCEL, "OK", Gtk.ResponseType.OK)
+    response = dialog.run()
+    dialog.destroy()
+    return response == Gtk.ResponseType.OK
+
+
+def _apply_profile_via_dbus(profile):
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio, GLib
+
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    profile_json = json.dumps(profile, ensure_ascii=False)
+    result = bus.call_sync(
+        DBUS_SERVICE_NAME,
+        DBUS_OBJECT_PATH,
+        DBUS_INTERFACE_NAME,
+        "ApplyFilterProfile",
+        GLib.Variant("(s)", (profile_json,)),
+        GLib.VariantType.new("(s)"),
+        Gio.DBusCallFlags.NONE,
+        5000,
+        None,
+    )
+    response = result.unpack()[0]
+    payload = json.loads(response or "{}")
+    if payload.get("status") != "ok":
+        raise RuntimeError(payload.get("message") or "D-Bus call failed")
+
+
+def run_dialog(args):
+    if not HELPER_PATH.is_file() or not os.access(HELPER_PATH, os.X_OK):
+        raise RuntimeError("helper executable is missing")
+
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        raise RuntimeError(f"GTK 3 not available: {exc}") from exc
+
+    from gi.repository import Gtk
+
+    window = Gtk.Window(title="ATCinna Filterprofile")
+    window.set_default_size(900, 560)
+    window.set_border_width(8)
+    window.connect("destroy", Gtk.main_quit)
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    window.add(root)
+
+    list_box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE)
+    list_scroller = Gtk.ScrolledWindow()
+    list_scroller.set_vexpand(True)
+    list_scroller.add(list_box)
+    root.pack_start(list_scroller, True, True, 0)
+
+    status_label = Gtk.Label(label="", xalign=0)
+    status_label.get_style_context().add_class("dim-label")
+    root.pack_start(status_label, False, False, 0)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    load_button = Gtk.Button(label="Laden")
+    new_button = Gtk.Button(label="Neu")
+    save_button = Gtk.Button(label="Überschreiben")
+    rename_button = Gtk.Button(label="Umbenennen")
+    delete_button = Gtk.Button(label="Löschen")
+    clear_button = Gtk.Button(label="Alle löschen")
+    sort_button = Gtk.Button(label="Sortieren")
+    reset_button = Gtk.Button(label="Standardprofile")
+    close_button = Gtk.Button(label="Schließen")
+    for button in [load_button, new_button, save_button, rename_button, delete_button, clear_button, sort_button, reset_button]:
+        actions.pack_start(button, False, False, 0)
+    actions.pack_end(close_button, False, False, 0)
+    root.pack_start(actions, False, False, 0)
+
+    rows = []
+
+    def refresh_profiles():
+        for row in list(rows):
+            list_box.remove(row)
+        rows.clear()
+        payload = _run_helper(["filter-profile-list"])
+        profiles = payload.get("results", [])
+        if not isinstance(profiles, list):
+            raise RuntimeError("helper returned invalid filter profile format")
+        for profile in profiles:
+            if not isinstance(profile, dict):
+                continue
+            row = _build_row(profile, Gtk)
+            list_box.add(row)
+            rows.append(row)
+        list_box.show_all()
+        if rows:
+            list_box.select_row(rows[0])
+
+    def selected_profile():
+        row = list_box.get_selected_row()
+        if row is None:
+            _set_status(status_label, "Bitte ein Profil auswählen")
+            return None
+        profile = row.get_data("profile")
+        if not isinstance(profile, dict):
+            _set_status(status_label, "Ungültiges Profil")
+            return None
+        return profile
+
+    def load_profile(_btn):
+        profile = selected_profile()
+        if not profile:
+            return
+        try:
+            _apply_profile_via_dbus(profile)
+            _set_status(status_label, f"Profil geladen: {profile.get('name') or 'Filterprofil'}")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def new_profile(_btn):
+        try:
+            suggested = _run_helper(["filter-profile-next-name"]).get("name", "Filter")
+            name = _prompt_text(window, Gtk, "Filterprofil", "Name:", suggested)
+            if not name:
+                return
+            _run_helper(_current_save_args(args, name))
+            refresh_profiles()
+            _set_status(status_label, f"Profil gespeichert: {name}")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def save_profile(_btn):
+        profile = selected_profile()
+        if not profile:
+            return
+        name = str(profile.get("name") or "").strip()
+        if not name:
+            return
+        if not _confirm(window, Gtk, "Filterprofil überschreiben?", name):
+            return
+        try:
+            _run_helper(_current_save_args(args, name))
+            refresh_profiles()
+            _set_status(status_label, f"Profil überschrieben: {name}")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def rename_profile(_btn):
+        profile = selected_profile()
+        if not profile:
+            return
+        old_name = str(profile.get("name") or "").strip()
+        new_name = _prompt_text(window, Gtk, "Filterprofil umbenennen", "Name:", old_name)
+        if not new_name or new_name == old_name:
+            return
+        try:
+            _run_helper(["filter-profile-rename", f"--name={old_name}", f"--new-name={new_name}"])
+            refresh_profiles()
+            _set_status(status_label, f"Profil umbenannt: {new_name}")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def delete_profile(_btn):
+        profile = selected_profile()
+        if not profile:
+            return
+        name = str(profile.get("name") or "").strip()
+        if not name or not _confirm(window, Gtk, "Filterprofil löschen?", name):
+            return
+        try:
+            payload = _run_helper(["filter-profile-remove", f"--name={name}"])
+            refresh_profiles()
+            _set_status(status_label, f"{int(payload.get('removed', 0) or 0)} Profil(e) gelöscht")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def clear_profiles(_btn):
+        if not _confirm(window, Gtk, "Alle Filterprofile löschen?", "Die Liste wird geleert."):
+            return
+        try:
+            payload = _run_helper(["filter-profile-clear"])
+            refresh_profiles()
+            _set_status(status_label, f"{int(payload.get('removed', 0) or 0)} Profil(e) gelöscht")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def sort_profiles(_btn):
+        try:
+            _run_helper(["filter-profile-sort"])
+            refresh_profiles()
+            _set_status(status_label, "Profile sortiert")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def reset_profiles(_btn):
+        if not _confirm(window, Gtk, "Standardprofile wiederherstellen?", "Die vorhandene Profilliste wird ersetzt."):
+            return
+        try:
+            payload = _run_helper(["filter-profile-reset"])
+            refresh_profiles()
+            _set_status(status_label, f"{int(payload.get('count', 0) or 0)} Standardprofil(e) angelegt")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    load_button.connect("clicked", load_profile)
+    new_button.connect("clicked", new_profile)
+    save_button.connect("clicked", save_profile)
+    rename_button.connect("clicked", rename_profile)
+    delete_button.connect("clicked", delete_profile)
+    clear_button.connect("clicked", clear_profiles)
+    sort_button.connect("clicked", sort_profiles)
+    reset_button.connect("clicked", reset_profiles)
+    close_button.connect("clicked", lambda _btn: window.close())
+
+    refresh_profiles()
+    window.show_all()
+    Gtk.main()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="ATCinna filter profiles dialog")
+    parser.add_argument("--self-test", action="store_true", help="Run a headless self-test")
+    parser.add_argument("--search-query", default="", help="Current search query")
+    parser.add_argument("--sender", default="", help="Current sender filter")
+    parser.add_argument("--genre", default="", help="Current genre filter")
+    parser.add_argument("--topic", default="", help="Current topic filter")
+    parser.add_argument("--blacklist-mode", default="hide", choices=("off", "hide", "only"), help="Current blacklist mode")
+    parser.add_argument("--max-hits", type=int, default=20, help="Current maximum hit count")
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    if args.self_test:
+        return _self_test()
+    try:
+        run_dialog(args)
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

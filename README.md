@@ -19,6 +19,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
 - Erweiterte Teiltreffer-Filter (`sender-filter`, `genre-filter`, `topic-filter`) im Popup mit kompaktem Status (`Filter: ...`) und Schnellaktion „Filter löschen“.
+- ATPlayer-nahe Filterprofile: Applet-Menü **Filterprofile** mit Speichern/Laden sowie GTK-Verwaltung fuer Neu, Überschreiben, Umbenennen, Löschen, Sortieren und Standardprofile.
 - Blacklist-Modus (`blacklist-mode`) fuer Suche: aus, passende Treffer ausblenden oder nur Blacklist-Treffer anzeigen.
 - Play-Aktion über `xdg-open`.
 - Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert.
@@ -36,7 +37,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
 - Das Script `atcinna@H234598/scripts/atcinna-blacklist-dialog` nutzt `atcinna-catalog` als Backend. Es listet Regeln inkl. `active`/`topic_exact`, erlaubt neue Regeln anzulegen und bietet sichere Aktionen für markierte Regel-Entfernung, Undo, Putzen leerer/doppelter Regeln und Komplett-Löschung mit GTK-Bestätigung.
 - Das Script `atcinna@H234598/scripts/atcinna-queue-edit-dialog` bietet einen optionalen GTK-Dialog fuer **Download ändern** und nutzt `download-update` im Helper.
-- Headless-Selbsttest für die Dialoge: `python3 atcinna@H234598/scripts/atcinna-search-dialog --self-test`, `python3 atcinna@H234598/scripts/atcinna-queue-edit-dialog --self-test` und `python3 atcinna@H234598/scripts/atcinna-blacklist-dialog --self-test` melden `gtk3: true/false`; das Applet bleibt auch ohne GTK3 über die interne Popup-Suche nutzbar.
+- Headless-Selbsttest für die Dialoge: `python3 atcinna@H234598/scripts/atcinna-search-dialog --self-test`, `python3 atcinna@H234598/scripts/atcinna-queue-edit-dialog --self-test`, `python3 atcinna@H234598/scripts/atcinna-blacklist-dialog --self-test` und `python3 atcinna@H234598/scripts/atcinna-filter-profiles-dialog --self-test` melden `gtk3: true/false`; das Applet bleibt auch ohne GTK3 über die interne Popup-Suche nutzbar.
 
 ## Installation (lokal)
 
@@ -45,14 +46,14 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.19`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.20`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`
   - Timeout steuerbar: `./scripts/runtime-smoke.sh --timeout 25 --activate-temporarily`
   - In beiden Modi wird bei aktiver ATCinna-Instanz zusätzlich die interne
     D-Bus-Schnittstelle geprüft: `org.Cinnamon.Applets.ATCinna` mit den
-    Methoden `Ping` und `GetStatus`.
+    Methoden `Ping`, `GetStatus` und `ApplyFilterProfile`.
 
 - Für manuelle Entwicklung kann das Applet auch direkt nach `~/.local/share/cinnamon/applets/atcinna@H234598` kopiert werden.
 - Cinnamon Applets-Neuladen oder Neu-Anmeldung.

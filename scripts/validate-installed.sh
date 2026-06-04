@@ -68,6 +68,7 @@ HELPER="$APPLET_DIR/scripts/atcinna-catalog"
 SEARCH_DIALOG="$APPLET_DIR/scripts/atcinna-search-dialog"
 QUEUE_EDIT_DIALOG="$APPLET_DIR/scripts/atcinna-queue-edit-dialog"
 BLACKLIST_DIALOG="$APPLET_DIR/scripts/atcinna-blacklist-dialog"
+FILTER_PROFILES_DIALOG="$APPLET_DIR/scripts/atcinna-filter-profiles-dialog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
@@ -104,7 +105,8 @@ for required_file in \
     "$METADATA_JSON" \
     "$HELPER" \
     "$SEARCH_DIALOG" \
-    "$BLACKLIST_DIALOG"; do
+    "$BLACKLIST_DIALOG" \
+    "$FILTER_PROFILES_DIALOG"; do
     if [[ ! -f "$required_file" ]]; then
         echo "ERROR: expected installed file missing: $required_file"
         exit 1
@@ -125,6 +127,10 @@ if [[ ! -x "$QUEUE_EDIT_DIALOG" ]]; then
 fi
 if [[ ! -x "$BLACKLIST_DIALOG" ]]; then
     echo "ERROR: blacklist dialog not executable: $BLACKLIST_DIALOG"
+    exit 1
+fi
+if [[ ! -x "$FILTER_PROFILES_DIALOG" ]]; then
+    echo "ERROR: filter profiles dialog not executable: $FILTER_PROFILES_DIALOG"
     exit 1
 fi
 
@@ -206,6 +212,10 @@ if ! python3 -m py_compile "$BLACKLIST_DIALOG"; then
     echo "ERROR: py_compile failed for blacklist dialog"
     exit 1
 fi
+if ! python3 -m py_compile "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: py_compile failed for filter profiles dialog"
+    exit 1
+fi
 
 QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
 if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
@@ -218,6 +228,13 @@ BLACKLIST_DIALOG_SELF_TEST="$(python3 "$BLACKLIST_DIALOG" --self-test)"
 if ! echo "$BLACKLIST_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
     echo "ERROR: installed blacklist dialog self-test failed"
     echo "$BLACKLIST_DIALOG_SELF_TEST"
+    exit 1
+fi
+
+FILTER_PROFILES_DIALOG_SELF_TEST="$(python3 "$FILTER_PROFILES_DIALOG" --self-test)"
+if ! echo "$FILTER_PROFILES_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
+    echo "ERROR: installed filter profiles dialog self-test failed"
+    echo "$FILTER_PROFILES_DIALOG_SELF_TEST"
     exit 1
 fi
 
@@ -245,6 +262,13 @@ SEARCH_JSON_TWO="$(python3 "$HELPER" search --query "Zweite" --max 1)"
 if ! echo "$SEARCH_JSON_TWO" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].sender == "WDR" and .results[0].url == "https://example.com/second"' >/dev/null; then
     echo "ERROR: installed helper search for second fixture entry failed"
     echo "$SEARCH_JSON_TWO"
+    exit 1
+fi
+
+FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "Installtest" --search-query "Kurz" --sender "WDR" --blacklist-mode hide --max-hits 5)"
+if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "Installtest" and .profile.max_hits == 5' >/dev/null; then
+    echo "ERROR: installed helper filter-profile-save validation failed"
+    echo "$FILTER_PROFILE_SAVE"
     exit 1
 fi
 

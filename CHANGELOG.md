@@ -1,4 +1,13 @@
 # Changelog
+## 0.3.20
+
+- Erste ATPlayer-nahe Filterprofil-Verwaltung ergänzt: Profile speichern `search_query`, Sender-, Genre-, Thema-Filter, Blacklist-Modus und maximale Trefferzahl.
+- Neue Helper-Aktionen `filter-profile-list/get/next-name/save/rename/remove/clear/reset/sort` mit Normalisierung, Deduplizierung und atomarem JSON-Store `filter-profiles.json`.
+- Neues Applet-Untermenü **Filterprofile** zum Speichern aktueller Filter, Neuladen der Profilliste, Öffnen der Verwaltung und direktem Laden gespeicherter Profile.
+- Neuer GTK-Dialog `atcinna-filter-profiles-dialog` für Laden, Neu, Überschreiben, Umbenennen, Löschen, Alle löschen, Sortieren und Standardprofile.
+- D-Bus-Schnittstelle `ApplyFilterProfile` ergänzt, damit der externe Dialog Profile ins laufende Applet laden kann.
+- Lokale Checks und Installvalidierung prüfen Helper-Aktionen, Dialog-Selbsttest, installierte Dialogdatei und funktionale Filterprofil-CRUD-Pfade.
+
 ## 0.3.19
 
 - Blacklist-Ressourcen werden jetzt um ATPlayer-nahe Kern-Felder `active` (Standard: `true`) und `topic_exact` (Standard: `true`) normalisiert. Inaktive Regeln werden beim Suchen automatisch ignoriert.

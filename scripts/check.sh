@@ -8,6 +8,7 @@ HELPER="$APPLET_DIR/scripts/atcinna-catalog"
 SEARCH_DIALOG="$APPLET_DIR/scripts/atcinna-search-dialog"
 QUEUE_EDIT_DIALOG="$APPLET_DIR/scripts/atcinna-queue-edit-dialog"
 BLACKLIST_DIALOG="$APPLET_DIR/scripts/atcinna-blacklist-dialog"
+FILTER_PROFILES_DIALOG="$APPLET_DIR/scripts/atcinna-filter-profiles-dialog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
@@ -66,6 +67,10 @@ if [ ! -x "$QUEUE_EDIT_DIALOG" ]; then
 fi
 if [ ! -x "$BLACKLIST_DIALOG" ]; then
     echo "ERROR: blacklist dialog is not executable: $BLACKLIST_DIALOG"
+    exit 1
+fi
+if [ ! -x "$FILTER_PROFILES_DIALOG" ]; then
+    echo "ERROR: filter profiles dialog is not executable: $FILTER_PROFILES_DIALOG"
     exit 1
 fi
 
@@ -154,12 +159,28 @@ if ! rg -q -F '_blacklistDialogPath' "$APPLET_JS"; then
     echo "ERROR: applet blacklist dialog path wiring is missing"
     STATUS=1
 fi
+if ! rg -q -F '_filterProfilesDialogPath' "$APPLET_JS"; then
+    echo "ERROR: applet filter profiles dialog path wiring is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'ApplyFilterProfile' "$APPLET_JS"; then
+    echo "ERROR: applet D-Bus profile apply method is missing"
+    STATUS=1
+fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Hilfedialog")' "$APPLET_JS"; then
     echo "ERROR: applet help dialog menu label is missing"
     STATUS=1
 fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Blacklist verwalten")' "$APPLET_JS"; then
     echo "ERROR: applet blacklist manage menu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupSubMenuMenuItem("Filterprofile")' "$APPLET_JS"; then
+    echo "ERROR: applet filter profiles submenu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Filterprofile verwalten")' "$APPLET_JS"; then
+    echo "ERROR: applet filter profiles manage menu label is missing"
     STATUS=1
 fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Programmeinstellungen zurücksetzen")' "$APPLET_JS"; then
@@ -223,6 +244,12 @@ if ! rg -q -F "\"download-update\"" "$HELPER"; then
     STATUS=1
 fi
 for helper_action in blacklist-add blacklist-list blacklist-remove blacklist-undo blacklist-clean blacklist-clear; do
+    if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
+        echo "ERROR: helper action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
+for helper_action in filter-profile-list filter-profile-get filter-profile-next-name filter-profile-save filter-profile-rename filter-profile-remove filter-profile-clear filter-profile-reset filter-profile-sort; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
         STATUS=1
@@ -396,6 +423,14 @@ if ! rg -q -F -- '--blacklist-mode' "$SEARCH_DIALOG"; then
     echo "ERROR: search dialog does not accept/pass blacklist-mode"
     STATUS=1
 fi
+if ! rg -q -F 'filter-profile-save' "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: filter profiles dialog does not save profiles through helper"
+    STATUS=1
+fi
+if ! rg -q -F 'ApplyFilterProfile' "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: filter profiles dialog does not load profiles through D-Bus"
+    STATUS=1
+fi
 
 node --check "$APPLET_JS" >/dev/null
 
@@ -413,6 +448,10 @@ if ! python3 -m py_compile "$QUEUE_EDIT_DIALOG"; then
 fi
 if ! python3 -m py_compile "$BLACKLIST_DIALOG"; then
     echo "ERROR: py_compile failed for blacklist dialog"
+    exit 1
+fi
+if ! python3 -m py_compile "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: py_compile failed for filter profiles dialog"
     exit 1
 fi
 
@@ -453,6 +492,12 @@ BLACKLIST_DIALOG_SELF_TEST="$(python3 "$BLACKLIST_DIALOG" --self-test)"
 if ! echo "$BLACKLIST_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
     echo "ERROR: blacklist dialog self-test failed"
     echo "$BLACKLIST_DIALOG_SELF_TEST"
+    exit 1
+fi
+FILTER_PROFILES_DIALOG_SELF_TEST="$(python3 "$FILTER_PROFILES_DIALOG" --self-test)"
+if ! echo "$FILTER_PROFILES_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
+    echo "ERROR: filter profiles dialog self-test failed"
+    echo "$FILTER_PROFILES_DIALOG_SELF_TEST"
     exit 1
 fi
 
@@ -526,6 +571,74 @@ SEARCH_COMBINED="$(python3 "$HELPER" search --query "Zweite" --sender "WD" --gen
 if ! echo "$SEARCH_COMBINED" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
     echo "ERROR: query+filter combination is not working"
     echo "$SEARCH_COMBINED"
+    exit 1
+fi
+
+FILTER_PROFILE_DEFAULTS="$(python3 "$HELPER" filter-profile-list)"
+if ! echo "$FILTER_PROFILE_DEFAULTS" | jq -e '.status == "ok" and .count >= 3 and ([.results[] | select(.name=="alles anzeigen")] | length) == 1' >/dev/null; then
+    echo "ERROR: filter-profile-list should expose default profiles when no store exists"
+    echo "$FILTER_PROFILE_DEFAULTS"
+    exit 1
+fi
+FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "WDR Kurz" --search-query "Kurz" --sender "WDR" --genre "Genre" --topic "Thema" --blacklist-mode only --max-hits 7)"
+if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.search_query == "Kurz" and .profile.sender == "WDR" and .profile.blacklist_mode == "only" and .profile.max_hits == 7' >/dev/null; then
+    echo "ERROR: filter-profile-save did not persist normalized profile fields"
+    echo "$FILTER_PROFILE_SAVE"
+    exit 1
+fi
+FILTER_PROFILE_GET="$(python3 "$HELPER" filter-profile-get --name "wdr kurz")"
+if ! echo "$FILTER_PROFILE_GET" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.topic == "Thema"' >/dev/null; then
+    echo "ERROR: filter-profile-get should find profiles case-insensitively"
+    echo "$FILTER_PROFILE_GET"
+    exit 1
+fi
+FILTER_PROFILE_UPDATE="$(python3 "$HELPER" filter-profile-save --name "WDR Kurz" --search-query "Zweite" --sender "WDR" --blacklist-mode invalid --max-hits 999)"
+if ! echo "$FILTER_PROFILE_UPDATE" | jq -e '.status == "ok" and .profile.search_query == "Zweite" and .profile.blacklist_mode == "hide" and .profile.max_hits == 100' >/dev/null; then
+    echo "ERROR: filter-profile-save should update and clamp invalid fields safely"
+    echo "$FILTER_PROFILE_UPDATE"
+    exit 1
+fi
+FILTER_PROFILE_NEXT="$(python3 "$HELPER" filter-profile-next-name)"
+if ! echo "$FILTER_PROFILE_NEXT" | jq -e '.status == "ok" and (.name | test("^Filter [0-9]+$"))' >/dev/null; then
+    echo "ERROR: filter-profile-next-name should return a generated name"
+    echo "$FILTER_PROFILE_NEXT"
+    exit 1
+fi
+FILTER_PROFILE_RENAME="$(python3 "$HELPER" filter-profile-rename --name "WDR Kurz" --new-name "WDR Zweite")"
+if ! echo "$FILTER_PROFILE_RENAME" | jq -e '.status == "ok" and .name == "WDR Zweite"' >/dev/null; then
+    echo "ERROR: filter-profile-rename failed"
+    echo "$FILTER_PROFILE_RENAME"
+    exit 1
+fi
+python3 "$HELPER" filter-profile-save --name "AAA Test" --sender "ARD" >/dev/null
+FILTER_PROFILE_SORT="$(python3 "$HELPER" filter-profile-sort)"
+if ! echo "$FILTER_PROFILE_SORT" | jq -e '.status == "ok" and .results[0].name == "AAA Test"' >/dev/null; then
+    echo "ERROR: filter-profile-sort should sort profiles by name"
+    echo "$FILTER_PROFILE_SORT"
+    exit 1
+fi
+FILTER_PROFILE_REMOVE="$(python3 "$HELPER" filter-profile-remove --name "AAA Test")"
+if ! echo "$FILTER_PROFILE_REMOVE" | jq -e '.status == "ok" and .removed == 1' >/dev/null; then
+    echo "ERROR: filter-profile-remove failed"
+    echo "$FILTER_PROFILE_REMOVE"
+    exit 1
+fi
+FILTER_PROFILE_CLEAR="$(python3 "$HELPER" filter-profile-clear)"
+if ! echo "$FILTER_PROFILE_CLEAR" | jq -e '.status == "ok" and .removed >= 1' >/dev/null; then
+    echo "ERROR: filter-profile-clear failed"
+    echo "$FILTER_PROFILE_CLEAR"
+    exit 1
+fi
+FILTER_PROFILE_EMPTY="$(python3 "$HELPER" filter-profile-list)"
+if ! echo "$FILTER_PROFILE_EMPTY" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: filter-profile-clear should persist an empty profile list"
+    echo "$FILTER_PROFILE_EMPTY"
+    exit 1
+fi
+FILTER_PROFILE_RESET="$(python3 "$HELPER" filter-profile-reset)"
+if ! echo "$FILTER_PROFILE_RESET" | jq -e '.status == "ok" and .count >= 3 and ([.results[] | select(.name=="alles anzeigen")] | length) == 1' >/dev/null; then
+    echo "ERROR: filter-profile-reset should restore default profiles"
+    echo "$FILTER_PROFILE_RESET"
     exit 1
 fi
 

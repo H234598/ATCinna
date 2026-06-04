@@ -20,6 +20,10 @@ const DBUS_INTERFACE_XML = `<node>
     <method name="GetStatus">
       <arg type="s" direction="out" name="json"/>
     </method>
+    <method name="ApplyFilterProfile">
+      <arg type="s" direction="in" name="profile_json"/>
+      <arg type="s" direction="out" name="json"/>
+    </method>
   </interface>
 </node>`;
 
@@ -40,9 +44,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._searchDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-search-dialog"]);
         this._queueEditDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-queue-edit-dialog"]);
         this._blacklistDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-blacklist-dialog"]);
+        this._filterProfilesDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-filter-profiles-dialog"]);
         this._historySection = null;
         this._favoritesSection = null;
         this._filterSection = null;
+        this._filterProfilesMenu = null;
+        this._filterProfilesListSection = null;
         this._queueSection = null;
         this._queueListSection = null;
         this._infoSection = null;
@@ -111,6 +118,26 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._clearFilters();
         });
         this._filterSection.addMenuItem(this._clearFiltersItem);
+
+        this._filterProfilesMenu = new PopupMenu.PopupSubMenuMenuItem("Filterprofile");
+        this._saveFilterProfileItem = new PopupMenu.PopupMenuItem("Aktuelle Filter als Profil speichern");
+        this._saveFilterProfileItem.connect("activate", () => {
+            this._saveCurrentFilterProfile();
+        });
+        this._filterProfilesMenu.menu.addMenuItem(this._saveFilterProfileItem);
+        this._refreshFilterProfilesItem = new PopupMenu.PopupMenuItem("Profile neu laden");
+        this._refreshFilterProfilesItem.connect("activate", () => {
+            this._refreshFilterProfilesMenu();
+        });
+        this._filterProfilesMenu.menu.addMenuItem(this._refreshFilterProfilesItem);
+        this._manageFilterProfilesItem = new PopupMenu.PopupMenuItem("Filterprofile verwalten");
+        this._manageFilterProfilesItem.connect("activate", () => {
+            this._launchFilterProfilesDialog();
+        });
+        this._filterProfilesMenu.menu.addMenuItem(this._manageFilterProfilesItem);
+        this._filterProfilesListSection = new PopupMenu.PopupMenuSection();
+        this._filterProfilesMenu.menu.addMenuItem(this._filterProfilesListSection);
+        this._filterSection.addMenuItem(this._filterProfilesMenu);
         this.menu.addMenuItem(this._filterSection);
 
         this._openSearchDialogItem = new PopupMenu.PopupMenuItem("Suche öffnen");
@@ -184,6 +211,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._setupQueueActions();
 
         this._refreshFilterSummary();
+        this._refreshFilterProfilesMenu();
 
         this._refreshTimer = Mainloop.timeout_add_seconds(1, () => {
             this._refreshTimer = 0;
@@ -227,6 +255,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         return JSON.stringify(this._buildDbusStatus());
     }
 
+    ApplyFilterProfile(profileJson) {
+        try {
+            const profile = JSON.parse(profileJson || "{}");
+            this._applyFilterProfile(profile);
+            return JSON.stringify({ status: "ok" });
+        } catch (error) {
+            return JSON.stringify({ status: "error", message: `${error.message || error}` });
+        }
+    }
+
     _buildDbusStatus() {
         const hasHelper = GLib.file_test(this._helperPath, GLib.FileTest.EXISTS | GLib.FileTest.IS_EXECUTABLE);
         const maxHits = Number(this.maxHits) || 0;
@@ -236,6 +274,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             instanceId: `${this.instanceId || ""}`,
             version: this.metadata && this.metadata.version ? this.metadata.version : "",
             activeSearchQuery: this._activeSearchQuery || "",
+            senderFilter: this._toTrimmed(this.senderFilter),
+            genreFilter: this._toTrimmed(this.genreFilter),
+            topicFilter: this._toTrimmed(this.topicFilter),
+            blacklistMode: this._getBlacklistMode(),
             maxHits: maxHits,
             hasHelper: hasHelper,
             dbusPath: this._dbusPath
@@ -350,6 +392,141 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (this._clearFiltersItem) {
             this._clearFiltersItem.setSensitive(active.length > 0);
         }
+    }
+
+    _profileBlacklistMode(value) {
+        const mode = this._toTrimmed(value).toLowerCase();
+        return mode === "off" || mode === "hide" || mode === "only" ? mode : "hide";
+    }
+
+    _profileMaxHits(value) {
+        return Math.max(1, Math.min(Number(value) || 20, 100));
+    }
+
+    _currentFilterProfileArgs(name = "") {
+        const filters = this._getActiveFilters();
+        const args = [
+            "filter-profile-save",
+            `--search-query=${this._getActiveSearchQuery()}`,
+            `--sender=${filters.sender}`,
+            `--genre=${filters.genre}`,
+            `--topic=${filters.topic}`,
+            `--blacklist-mode=${this._getBlacklistMode()}`,
+            `--max-hits=${this._profileMaxHits(this.maxHits)}`
+        ];
+        if (name) {
+            args.push(`--name=${name}`);
+        }
+        return args;
+    }
+
+    _applyFilterProfile(profile) {
+        if (!profile || typeof profile !== "object") {
+            throw new Error("ungültiges Filterprofil");
+        }
+        const name = this._toTrimmed(profile.name) || "Filterprofil";
+        const nextSearchQuery = this._toTrimmed(profile.search_query);
+        const nextSender = this._toTrimmed(profile.sender);
+        const nextGenre = this._toTrimmed(profile.genre);
+        const nextTopic = this._toTrimmed(profile.topic);
+        const nextBlacklistMode = this._profileBlacklistMode(profile.blacklist_mode);
+        const nextMaxHits = this._profileMaxHits(profile.max_hits);
+
+        this._isSyncingSearchQueryFromSettings = true;
+        this._isSyncingFilterSettingsFromSettings = true;
+        try {
+            this.searchQuery = nextSearchQuery;
+            this._activeSearchQuery = nextSearchQuery;
+            this.senderFilter = nextSender;
+            this.genreFilter = nextGenre;
+            this.topicFilter = nextTopic;
+            this.blacklistMode = nextBlacklistMode;
+            this.maxHits = nextMaxHits;
+            this.settings.setValue("search-query", nextSearchQuery);
+            this.settings.setValue("sender-filter", nextSender);
+            this.settings.setValue("genre-filter", nextGenre);
+            this.settings.setValue("topic-filter", nextTopic);
+            this.settings.setValue("blacklist-mode", nextBlacklistMode);
+            this.settings.setValue("max-hits", nextMaxHits);
+            if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
+                this._searchEntry.set_text(nextSearchQuery);
+            }
+        } finally {
+            this._isSyncingSearchQueryFromSettings = false;
+            this._isSyncingFilterSettingsFromSettings = false;
+        }
+
+        this._refreshFilterSummary();
+        this._setStatus(`Filterprofil geladen: ${name}`);
+        this._runSearch();
+    }
+
+    _saveCurrentFilterProfile(name = "") {
+        this._setStatus("Filterprofil wird gespeichert ...");
+        this._runHelper(this._currentFilterProfileArgs(name), (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`Filterprofil konnte nicht gespeichert werden: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            let payload = {};
+            try {
+                payload = JSON.parse(stdout || "{}");
+            } catch (error) {
+                this._setStatus(`Filterprofil ungültige Antwort: ${error.message}`);
+                return;
+            }
+            if (payload.status !== "ok" || !payload.profile) {
+                this._setStatus("Filterprofil: unerwartete Antwort");
+                return;
+            }
+            this._setStatus(`Filterprofil gespeichert: ${payload.profile.name || "Filter"}`);
+            this._refreshFilterProfilesMenu();
+        });
+    }
+
+    _refreshFilterProfilesMenu() {
+        if (!this._filterProfilesListSection) {
+            return;
+        }
+        this._runHelper(["filter-profile-list"], (status, stdout, stderr) => {
+            this._filterProfilesListSection.removeAll();
+            if (status !== CMD_SUCCESS) {
+                const item = new PopupMenu.PopupMenuItem("Profile nicht verfügbar");
+                item.actor.reactive = false;
+                this._filterProfilesListSection.addMenuItem(item);
+                this._setStatus(`Filterprofile konnten nicht geladen werden: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            let payload = {};
+            try {
+                payload = JSON.parse(stdout || "{}");
+            } catch (error) {
+                const item = new PopupMenu.PopupMenuItem("Profile ungültig");
+                item.actor.reactive = false;
+                this._filterProfilesListSection.addMenuItem(item);
+                this._setStatus(`Filterprofile ungültige Antwort: ${error.message}`);
+                return;
+            }
+            const profiles = Array.isArray(payload.results) ? payload.results : [];
+            if (profiles.length === 0) {
+                const empty = new PopupMenu.PopupMenuItem("Keine Profile");
+                empty.actor.reactive = false;
+                this._filterProfilesListSection.addMenuItem(empty);
+                return;
+            }
+            for (const profile of profiles.slice(0, 20)) {
+                const label = this._toTrimmed(profile.name) || "Filterprofil";
+                const item = new PopupMenu.PopupMenuItem(label);
+                item.connect("activate", () => {
+                    try {
+                        this._applyFilterProfile(profile);
+                    } catch (error) {
+                        this._setStatus(`Filterprofil konnte nicht geladen werden: ${error.message || error}`);
+                    }
+                });
+                this._filterProfilesListSection.addMenuItem(item);
+            }
+        });
     }
 
     _clearFilters() {
@@ -574,6 +751,27 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ]);
         } catch (error) {
             this._setStatus(`Blacklist-Dialog konnte nicht gestartet werden: ${error}`);
+        }
+    }
+
+    _launchFilterProfilesDialog() {
+        if (!GLib.file_test(this._filterProfilesDialogPath, GLib.FileTest.EXISTS | GLib.FileTest.IS_EXECUTABLE)) {
+            this._setStatus("Filterprofil-Dialog nicht verfügbar: Script fehlt");
+            return;
+        }
+        const filters = this._getActiveFilters();
+        try {
+            Util.spawn([
+                this._filterProfilesDialogPath,
+                `--search-query=${this._getActiveSearchQuery()}`,
+                `--sender=${filters.sender}`,
+                `--genre=${filters.genre}`,
+                `--topic=${filters.topic}`,
+                `--blacklist-mode=${this._getBlacklistMode()}`,
+                `--max-hits=${this._profileMaxHits(this.maxHits)}`
+            ]);
+        } catch (error) {
+            this._setStatus(`Filterprofil-Dialog konnte nicht gestartet werden: ${error}`);
         }
     }
 

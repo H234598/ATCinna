@@ -12,10 +12,10 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.19`.
+- `VERSION` is `0.3.20`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
-- `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, and `atcinna@H234598/scripts/atcinna-blacklist-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
+- `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
 
 ### Quick Follow-up
@@ -27,12 +27,12 @@
 
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions including `Download ändern`, history, favorites, optional GTK dialogs, D-Bus status, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions including `Download ändern`, history, favorites, optional GTK dialogs, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 
 - Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has enqueue/list/run-next/run-all/cancel/clear/update/remove/undo/prefer/put-back/open-directory/copy-url/open-file/trash-file workflows, but not yet the table-style selection/reset workflows.
-- Blacklist management and filter profiles: ATPlayer has deeper blacklist/filter configuration surfaces; ATCinna now has direct context-menu Blacklist adds and search modes, but not the full Blacklist editor, whitelist/undo/exact toggles, filter profiles, or legacy migration.
+- Blacklist management and filter profiles: ATPlayer has deeper blacklist/filter configuration surfaces; ATCinna now has direct context-menu Blacklist adds, search modes, a first Blacklist editor, exact/active toggles, undo/clean/clear, and first Filterprofile management, but not whitelist handling, the full rich filter predicate set, or legacy migration.
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
 
@@ -68,7 +68,23 @@ Known parity gaps from `/home/teladi/ATPlayer`:
   - Wiring-Checks auf alle 4 Menükontexte (`_addFilterActions`).
   - Regex-Check auf kombinierte `Sender + Titel`-Aktion (`sender-filter` + `search-query`).
 
-Next parity implementation priority: filter-profile editing, deeper Blacklist modes such as whitelist/exact handling, table-style selection/reset workflows, and legacy settings/config migration.
+Next parity implementation priority: richer filter predicates (time/duration/new/bookmark/history/podcast where locally meaningful), deeper Blacklist modes such as whitelist handling, table-style selection/reset workflows, and legacy settings/config migration.
+
+### Task 20: First ATPlayer Filterprofile Parity (0.3.20)
+
+- [x] **Profile store**
+  - Add `filter-profiles.json` with normalized `name`, `search_query`, `sender`, `genre`, `topic`, `blacklist_mode`, `max_hits`, and `timestamp`.
+  - Provide default profiles when no profile store exists and a reset operation to restore them.
+- [x] **Helper actions**
+  - Add `filter-profile-list`, `filter-profile-get`, `filter-profile-next-name`, `filter-profile-save`, `filter-profile-rename`, `filter-profile-remove`, `filter-profile-clear`, `filter-profile-reset`, and `filter-profile-sort`.
+  - Keep writes atomic and normalize invalid blacklist modes and max-hit values before persistence.
+- [x] **Applet menu**
+  - Add **Filterprofile** submenu for saving current filters, refreshing the profile list, opening management, and loading saved profiles directly.
+  - Add `ApplyFilterProfile` D-Bus method so an external dialog can apply profile JSON to the running applet.
+- [x] **GTK management dialog**
+  - Add `atcinna-filter-profiles-dialog` with load/new/overwrite/rename/delete/clear/sort/reset actions.
+- [x] **Checks**
+  - Extend local and installed validation for the new helper actions, dialog self-test, applet wiring, and profile CRUD behavior.
 
 ### Task 18: Add Optional Blacklist Dialog (0.3.18)
 

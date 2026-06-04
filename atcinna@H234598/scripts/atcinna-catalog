@@ -26,6 +26,10 @@ UNDO_MAX_ENTRIES = 100
 BLACKLIST_MAX_ENTRIES = 500
 BLACKLIST_MODES = {"off", "hide", "only"}
 BLACKLIST_UNDO_MAX_ENTRIES = 100
+FILTER_PROFILE_MAX_ENTRIES = 100
+FILTER_PROFILE_NAME_MAX_LENGTH = 120
+FILTER_PROFILE_DEFAULT_BLACKLIST_MODE = "hide"
+FILTER_PROFILE_DEFAULT_MAX_HITS = 20
 
 
 def die(message, exit_code=1):
@@ -101,6 +105,10 @@ def _blacklist_undo_path():
     return data_dir() / "blacklist-undo.json"
 
 
+def _filter_profiles_path():
+    return data_dir() / "filter-profiles.json"
+
+
 def _load_list(path):
     if not path.exists():
         return []
@@ -163,6 +171,149 @@ def _load_blacklist_undo():
 
 def _store_blacklist_undo(entries):
     _store_list(_blacklist_undo_path(), entries)
+
+
+def _normalize_filter_profile_name(value):
+    name = _normalize_entry_value(value).replace("\x00", "")
+    name = re.sub(r"\s+", " ", name)
+    return name[:FILTER_PROFILE_NAME_MAX_LENGTH]
+
+
+def _normalize_blacklist_mode(value, default=FILTER_PROFILE_DEFAULT_BLACKLIST_MODE):
+    mode = _normalize_entry_value(value).lower()
+    return mode if mode in BLACKLIST_MODES else default
+
+
+def _normalize_max_hits(value, default=FILTER_PROFILE_DEFAULT_MAX_HITS):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(1, min(parsed, 100))
+
+
+def _normalize_filter_profile(profile):
+    if not isinstance(profile, dict):
+        return None
+    name = _normalize_filter_profile_name(profile.get("name"))
+    if not name:
+        return None
+    return {
+        "name": name,
+        "search_query": _normalize_entry_value(profile.get("search_query")),
+        "sender": _normalize_entry_value(profile.get("sender")),
+        "genre": _normalize_entry_value(profile.get("genre")),
+        "topic": _normalize_entry_value(profile.get("topic")),
+        "blacklist_mode": _normalize_blacklist_mode(profile.get("blacklist_mode")),
+        "max_hits": _normalize_max_hits(profile.get("max_hits")),
+        "timestamp": _normalize_timestamp(profile.get("timestamp"), int(time.time())),
+    }
+
+
+def _default_filter_profiles():
+    timestamp = int(time.time())
+    defaults = [
+        {
+            "name": "alles anzeigen",
+            "search_query": "",
+            "sender": "",
+            "genre": "",
+            "topic": "",
+            "blacklist_mode": FILTER_PROFILE_DEFAULT_BLACKLIST_MODE,
+            "max_hits": FILTER_PROFILE_DEFAULT_MAX_HITS,
+            "timestamp": timestamp,
+        },
+        {
+            "name": "Nachrichten",
+            "search_query": "Nachrichten",
+            "sender": "",
+            "genre": "",
+            "topic": "",
+            "blacklist_mode": FILTER_PROFILE_DEFAULT_BLACKLIST_MODE,
+            "max_hits": FILTER_PROFILE_DEFAULT_MAX_HITS,
+            "timestamp": timestamp,
+        },
+        {
+            "name": "ARD",
+            "search_query": "",
+            "sender": "ARD",
+            "genre": "",
+            "topic": "",
+            "blacklist_mode": FILTER_PROFILE_DEFAULT_BLACKLIST_MODE,
+            "max_hits": FILTER_PROFILE_DEFAULT_MAX_HITS,
+            "timestamp": timestamp,
+        },
+    ]
+    return [_normalize_filter_profile(profile) for profile in defaults]
+
+
+def _filter_profile_key(profile_or_name):
+    if isinstance(profile_or_name, dict):
+        name = profile_or_name.get("name")
+    else:
+        name = profile_or_name
+    return _normalize_filter_profile_name(name).casefold()
+
+
+def _load_filter_profiles():
+    path = _filter_profiles_path()
+    raw_entries = _load_list(path) if path.exists() else _default_filter_profiles()
+    profiles = []
+    seen = set()
+    for entry in raw_entries:
+        profile = _normalize_filter_profile(entry)
+        if not profile:
+            continue
+        key = _filter_profile_key(profile)
+        if key in seen:
+            continue
+        seen.add(key)
+        profiles.append(profile)
+    return profiles
+
+
+def _store_filter_profiles(profiles):
+    normalized = []
+    seen = set()
+    for entry in profiles:
+        profile = _normalize_filter_profile(entry)
+        if not profile:
+            continue
+        key = _filter_profile_key(profile)
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(profile)
+    if FILTER_PROFILE_MAX_ENTRIES > 0:
+        normalized = normalized[:FILTER_PROFILE_MAX_ENTRIES]
+    _store_list(_filter_profiles_path(), normalized)
+    return normalized
+
+
+def _next_filter_profile_name(profiles):
+    existing = {_filter_profile_key(profile) for profile in profiles}
+    index = 1
+    while True:
+        candidate = f"Filter {index}"
+        if candidate.casefold() not in existing:
+            return candidate
+        index += 1
+
+
+def _profile_from_args(args, profiles):
+    name = _normalize_filter_profile_name(getattr(args, "name", ""))
+    if not name:
+        name = _next_filter_profile_name(profiles)
+    return _normalize_filter_profile({
+        "name": name,
+        "search_query": getattr(args, "search_query", ""),
+        "sender": getattr(args, "sender", ""),
+        "genre": getattr(args, "genre", ""),
+        "topic": getattr(args, "topic", ""),
+        "blacklist_mode": getattr(args, "blacklist_mode", FILTER_PROFILE_DEFAULT_BLACKLIST_MODE),
+        "max_hits": getattr(args, "max_hits", FILTER_PROFILE_DEFAULT_MAX_HITS),
+        "timestamp": int(time.time()),
+    })
 
 
 def _store_list(path, items):
@@ -368,6 +519,102 @@ def action_blacklist_undo(args):
         if undo_entries:
             _store_blacklist_undo([])
     print(json.dumps({"status": "ok", "restored": len(restored)}))
+
+
+def action_filter_profile_list(args):
+    profiles = _load_filter_profiles()
+    print(json.dumps({"status": "ok", "count": len(profiles), "results": profiles}, ensure_ascii=False))
+
+
+def action_filter_profile_get(args):
+    target_key = _filter_profile_key(args.name)
+    if not target_key:
+        die("name is required")
+    for profile in _load_filter_profiles():
+        if _filter_profile_key(profile) == target_key:
+            print(json.dumps({"status": "ok", "profile": profile}, ensure_ascii=False))
+            return
+    die("filter profile not found", exit_code=2)
+
+
+def action_filter_profile_next_name(args):
+    profiles = _load_filter_profiles()
+    print(json.dumps({"status": "ok", "name": _next_filter_profile_name(profiles)}, ensure_ascii=False))
+
+
+def action_filter_profile_save(args):
+    path = _filter_profiles_path()
+    with _store_lock(path):
+        profiles = _load_filter_profiles()
+        profile = _profile_from_args(args, profiles)
+        if not profile:
+            die("invalid filter profile")
+        target_key = _filter_profile_key(profile)
+        filtered = [entry for entry in profiles if _filter_profile_key(entry) != target_key]
+        filtered.append(profile)
+        profiles = _store_filter_profiles(filtered)
+    print(json.dumps({"status": "ok", "count": len(profiles), "profile": profile}, ensure_ascii=False))
+
+
+def action_filter_profile_rename(args):
+    old_key = _filter_profile_key(args.name)
+    new_name = _normalize_filter_profile_name(args.new_name)
+    if not old_key or not new_name:
+        die("name and new-name are required")
+    path = _filter_profiles_path()
+    with _store_lock(path):
+        profiles = _load_filter_profiles()
+        new_key = _filter_profile_key(new_name)
+        if any(_filter_profile_key(profile) == new_key for profile in profiles if _filter_profile_key(profile) != old_key):
+            die("filter profile already exists")
+        changed = False
+        for profile in profiles:
+            if _filter_profile_key(profile) == old_key:
+                profile["name"] = new_name
+                profile["timestamp"] = int(time.time())
+                changed = True
+                break
+        if not changed:
+            die("filter profile not found", exit_code=2)
+        profiles = _store_filter_profiles(profiles)
+    print(json.dumps({"status": "ok", "count": len(profiles), "name": new_name}, ensure_ascii=False))
+
+
+def action_filter_profile_remove(args):
+    target_key = _filter_profile_key(args.name)
+    if not target_key:
+        die("name is required")
+    path = _filter_profiles_path()
+    with _store_lock(path):
+        profiles = _load_filter_profiles()
+        kept = [entry for entry in profiles if _filter_profile_key(entry) != target_key]
+        removed = len(profiles) - len(kept)
+        if removed:
+            profiles = _store_filter_profiles(kept)
+    print(json.dumps({"status": "ok", "removed": removed}, ensure_ascii=False))
+
+
+def action_filter_profile_clear(args):
+    path = _filter_profiles_path()
+    with _store_lock(path):
+        profiles = _load_filter_profiles()
+        _store_filter_profiles([])
+    print(json.dumps({"status": "ok", "removed": len(profiles)}, ensure_ascii=False))
+
+
+def action_filter_profile_reset(args):
+    path = _filter_profiles_path()
+    with _store_lock(path):
+        profiles = _store_filter_profiles(_default_filter_profiles())
+    print(json.dumps({"status": "ok", "count": len(profiles), "results": profiles}, ensure_ascii=False))
+
+
+def action_filter_profile_sort(args):
+    path = _filter_profiles_path()
+    with _store_lock(path):
+        profiles = sorted(_load_filter_profiles(), key=lambda profile: profile["name"].casefold())
+        profiles = _store_filter_profiles(profiles)
+    print(json.dumps({"status": "ok", "count": len(profiles), "results": profiles}, ensure_ascii=False))
 
 
 def _validate_and_normalize_url(field_name, value):
@@ -1233,6 +1480,33 @@ def parse_args():
     sub.add_parser("blacklist-clean", help="Remove empty/duplicate blacklist rules and store removed entries in undo")
     sub.add_parser("blacklist-clear", help="Remove all blacklist rules and store removed entries in undo")
 
+    sub.add_parser("filter-profile-list", help="List saved filter profiles")
+
+    filter_profile_get = sub.add_parser("filter-profile-get", help="Get one saved filter profile")
+    filter_profile_get.add_argument("--name", required=True, help="Filter profile name")
+
+    sub.add_parser("filter-profile-next-name", help="Return the next free filter profile name")
+
+    filter_profile_save = sub.add_parser("filter-profile-save", help="Save or update a filter profile")
+    filter_profile_save.add_argument("--name", default="", help="Filter profile name; defaults to next free name")
+    filter_profile_save.add_argument("--search-query", default="", help="Saved search query")
+    filter_profile_save.add_argument("--sender", default="", help="Saved sender filter")
+    filter_profile_save.add_argument("--genre", default="", help="Saved genre filter")
+    filter_profile_save.add_argument("--topic", default="", help="Saved topic filter")
+    filter_profile_save.add_argument("--blacklist-mode", default=FILTER_PROFILE_DEFAULT_BLACKLIST_MODE, help="Saved blacklist mode")
+    filter_profile_save.add_argument("--max-hits", default=FILTER_PROFILE_DEFAULT_MAX_HITS, help="Saved maximum hit count")
+
+    filter_profile_rename = sub.add_parser("filter-profile-rename", help="Rename a filter profile")
+    filter_profile_rename.add_argument("--name", required=True, help="Existing filter profile name")
+    filter_profile_rename.add_argument("--new-name", required=True, help="New filter profile name")
+
+    filter_profile_remove = sub.add_parser("filter-profile-remove", help="Remove a filter profile")
+    filter_profile_remove.add_argument("--name", required=True, help="Filter profile name")
+
+    sub.add_parser("filter-profile-clear", help="Remove all filter profiles")
+    sub.add_parser("filter-profile-reset", help="Restore default filter profiles")
+    sub.add_parser("filter-profile-sort", help="Sort filter profiles by name")
+
     history_add = sub.add_parser("history-add", help="Add history entry")
     history_add.add_argument("--title", default="", help="Optional title")
     history_add.add_argument("--sender", default="", help="Optional sender")
@@ -1338,6 +1612,24 @@ def main():
         action_blacklist_clean(args)
     elif args.action == "blacklist-clear":
         action_blacklist_clear(args)
+    elif args.action == "filter-profile-list":
+        action_filter_profile_list(args)
+    elif args.action == "filter-profile-get":
+        action_filter_profile_get(args)
+    elif args.action == "filter-profile-next-name":
+        action_filter_profile_next_name(args)
+    elif args.action == "filter-profile-save":
+        action_filter_profile_save(args)
+    elif args.action == "filter-profile-rename":
+        action_filter_profile_rename(args)
+    elif args.action == "filter-profile-remove":
+        action_filter_profile_remove(args)
+    elif args.action == "filter-profile-clear":
+        action_filter_profile_clear(args)
+    elif args.action == "filter-profile-reset":
+        action_filter_profile_reset(args)
+    elif args.action == "filter-profile-sort":
+        action_filter_profile_sort(args)
     elif args.action == "download":
         action_download(args)
     elif args.action == "download-enqueue":
