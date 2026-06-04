@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Kleine read-only D-Bus-Schnittstelle hinzugefügt: `org.Cinnamon.Applets.ATCinna` unter dem Objektpfad `/org/Cinnamon/Applets/ATCinna` mit den Methoden `Ping()` und `GetStatus()`.
+- `GetStatus` liefert Statusfelder (`status`, `uuid`, `instanceId`, `version`, `activeSearchQuery`, `maxHits`, `hasHelper`, `dbusPath`) zur Laufzeitbeobachtung.
+- Runtime-Smoke prüft die D-Bus-Statusschnittstelle (`Ping`/`GetStatus`) im temporären Aktivierungsmodus und, falls aktiv, auch im non-mutating-Modus.
+
 ## 0.3.4
 
 - Neues Runtime-Smoke-Skript hinzugefügt: `scripts/runtime-smoke.sh`

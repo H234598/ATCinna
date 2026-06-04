@@ -30,6 +30,9 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`
   - Timeout steuerbar: `./scripts/runtime-smoke.sh --timeout 25 --activate-temporarily`
+  - In beiden Modi wird bei aktiver ATCinna-Instanz zusätzlich die interne
+    D-Bus-Schnittstelle geprüft: `org.Cinnamon.Applets.ATCinna` mit den
+    Methoden `Ping` und `GetStatus`.
 
 - Für manuelle Entwicklung kann das Applet auch direkt nach `~/.local/share/cinnamon/applets/atcinna@H234598` kopiert werden.
 - Cinnamon Applets-Neuladen oder Neu-Anmeldung.

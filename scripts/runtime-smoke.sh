@@ -3,6 +3,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APPLET_ID="atcinna@H234598"
+ATCINNA_DBUS_SERVICE="org.Cinnamon.Applets.ATCinna"
+ATCINNA_DBUS_PATH="/org/Cinnamon/Applets/ATCinna"
+ATCINNA_DBUS_INTERFACE="org.Cinnamon.Applets.ATCinna"
+EXPECTED_VERSION="$(tr -d '[:space:]' < "$SCRIPT_DIR/../VERSION")"
 GSETTINGS_SCHEMA="org.cinnamon"
 ENABLED_APPLETS_KEY="enabled-applets"
 NEXT_APPLET_ID_KEY="next-applet-id"
@@ -160,6 +164,107 @@ parse_eval_result() {
     fi
 
     printf '%s\n' "$value"
+}
+
+parse_gdbus_string_output() {
+    local output="$1"
+    python3 - "$output" <<'PY'
+import ast
+import sys
+
+raw = sys.argv[1].strip()
+if not raw:
+    print("ERROR: empty dbus response", file=sys.stderr)
+    raise SystemExit(1)
+
+try:
+    value = ast.literal_eval(raw)
+except Exception as error:
+    print(f"ERROR: cannot parse dbus response: {error}", file=sys.stderr)
+    raise SystemExit(1)
+
+if isinstance(value, tuple):
+    if len(value) != 1:
+        print(f"ERROR: unexpected dbus tuple response: {value!r}", file=sys.stderr)
+        raise SystemExit(1)
+    value = value[0]
+elif isinstance(value, str):
+    pass
+else:
+    print(f"ERROR: unexpected dbus payload type: {type(value)}", file=sys.stderr)
+    raise SystemExit(1)
+
+print(value)
+PY
+}
+
+check_atcinna_dbus() {
+    local ping_output status_output ping_response status_json
+
+    if ! ping_output="$(gdbus call --session --dest "$ATCINNA_DBUS_SERVICE" --object-path "$ATCINNA_DBUS_PATH" --method "${ATCINNA_DBUS_INTERFACE}.Ping")"; then
+        echo "ERROR: DBus Ping call failed"
+        return 1
+    fi
+
+    if ! ping_response="$(parse_gdbus_string_output "$ping_output")"; then
+        echo "ERROR: failed to parse DBus Ping response: $ping_output"
+        return 1
+    fi
+    if [[ "$ping_response" != "pong" ]]; then
+        echo "ERROR: DBus Ping response unexpected: $ping_response"
+        return 1
+    fi
+
+    if ! status_output="$(gdbus call --session --dest "$ATCINNA_DBUS_SERVICE" --object-path "$ATCINNA_DBUS_PATH" --method "${ATCINNA_DBUS_INTERFACE}.GetStatus")"; then
+        echo "ERROR: DBus GetStatus call failed"
+        return 1
+    fi
+
+    if ! status_json="$(parse_gdbus_string_output "$status_output")"; then
+        echo "ERROR: failed to parse DBus GetStatus response: $status_output"
+        return 1
+    fi
+
+    if ! jq -e '.status == "ok"' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus status field is not ok"
+        return 1
+    fi
+    if ! jq -e '.status | type == "string"' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus status field is not a string"
+        return 1
+    fi
+    if ! jq -e '.uuid == "atcinna@H234598"' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus uuid field invalid"
+        return 1
+    fi
+    if ! jq -e '.uuid | type == "string"' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus uuid field is not a string"
+        return 1
+    fi
+    if ! jq -e 'has("instanceId") and (.instanceId | type == "string")' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus instanceId field missing"
+        return 1
+    fi
+    if ! jq -e --arg version "$EXPECTED_VERSION" '.version == $version' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus version field invalid"
+        return 1
+    fi
+    if ! jq -e --arg path "$ATCINNA_DBUS_PATH" '.dbusPath == $path' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus dbusPath field invalid"
+        return 1
+    fi
+    if ! jq -e '.hasHelper == true' <<<"$status_json" >/dev/null 2>&1; then
+        echo "ERROR: GetStatus hasHelper field is not true"
+        return 1
+    fi
+    return 0
+}
+
+check_atcinna_dbus_unavailable() {
+    if gdbus call --session --dest "$ATCINNA_DBUS_SERVICE" --object-path "$ATCINNA_DBUS_PATH" --method "${ATCINNA_DBUS_INTERFACE}.Ping" >/dev/null 2>&1; then
+        echo "ERROR: ATCinna DBus service still responds after restore"
+        return 1
+    fi
 }
 
 get_running_xlet_uuids() {
@@ -364,6 +469,11 @@ if [[ "$atcinna_active_count" -gt 0 ]] || [[ "$ACTIVATE_TEMP" -eq 1 ]]; then
         echo "ERROR: no appletManager instance found for uuid ${APPLET_ID}"
         exit 1
     fi
+
+    if ! check_atcinna_dbus; then
+        echo "ERROR: DBus status checks failed"
+        exit 1
+    fi
 fi
 
 if [[ "$atcinna_active_count" -gt 0 ]]; then
@@ -376,6 +486,9 @@ fi
 if [[ "$ACTIVATE_TEMP" -eq 1 ]]; then
     restore_state
     wait_for_restored_runtime_state
+    if [[ "$atcinna_active_count" -eq 0 ]]; then
+        check_atcinna_dbus_unavailable
+    fi
     restored_enabled="$(gsettings_get_json_array "$ENABLED_APPLETS_KEY")"
     restored_next="$(gsettings get "$GSETTINGS_SCHEMA" "$NEXT_APPLET_ID_KEY" || true)"
     if [[ "$restored_enabled" != "$original_enabled_json" ]]; then

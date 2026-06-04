@@ -9,6 +9,19 @@ const Util = imports.misc.util;
 
 const CMD_SUCCESS = 0;
 const UUID = "atcinna@H234598";
+const DBUS_SERVICE_NAME = "org.Cinnamon.Applets.ATCinna";
+const DBUS_OBJECT_PATH = "/org/Cinnamon/Applets/ATCinna";
+const DBUS_INTERFACE_NAME = "org.Cinnamon.Applets.ATCinna";
+const DBUS_INTERFACE_XML = `<node>
+  <interface name="${DBUS_INTERFACE_NAME}">
+    <method name="Ping">
+      <arg type="s" direction="out" name="response"/>
+    </method>
+    <method name="GetStatus">
+      <arg type="s" direction="out" name="json"/>
+    </method>
+  </interface>
+</node>`;
 
 class ATCinnaApplet extends Applet.TextIconApplet {
     constructor(metadata, orientation, panelHeight, instanceId) {
@@ -29,6 +42,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._filterSection = null;
         this._filterSummaryItem = null;
         this._clearFiltersItem = null;
+        this._dbusImpl = null;
+        this._dbusOwnerId = 0;
+        this._dbusPath = DBUS_OBJECT_PATH;
+        this._registerDbusInterface();
 
         this.setAllowedLayout(Applet.AllowedLayout.BOTH);
         this.set_applet_icon_symbolic_name("audio-x-generic-symbolic");
@@ -109,6 +126,54 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._runSearch();
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+    _registerDbusInterface() {
+        this._dbusImpl = Gio.DBusExportedObject.wrapJSObject(DBUS_INTERFACE_XML, this);
+        this._dbusImpl.export(Gio.DBus.session, this._dbusPath);
+        this._dbusOwnerId = Gio.DBus.session.own_name(DBUS_SERVICE_NAME, Gio.BusNameOwnerFlags.REPLACE, null, null);
+    }
+
+    _unregisterDbusInterface() {
+        if (this._dbusImpl) {
+            try {
+                this._dbusImpl.unexport();
+            } catch (error) {
+                // Ignore best-effort cleanup errors to avoid disrupting panel teardown.
+            }
+            this._dbusImpl = null;
+        }
+        if (this._dbusOwnerId > 0) {
+            try {
+                Gio.DBus.session.unown_name(this._dbusOwnerId);
+            } catch (error) {
+                // Ignore best-effort cleanup errors to avoid teardown noise.
+            }
+            this._dbusOwnerId = 0;
+        }
+    }
+
+    Ping() {
+        return "pong";
+    }
+
+    GetStatus() {
+        return JSON.stringify(this._buildDbusStatus());
+    }
+
+    _buildDbusStatus() {
+        const hasHelper = GLib.file_test(this._helperPath, GLib.FileTest.EXISTS | GLib.FileTest.IS_EXECUTABLE);
+        const maxHits = Number(this.maxHits) || 0;
+        return {
+            status: "ok",
+            uuid: UUID,
+            instanceId: `${this.instanceId || ""}`,
+            version: this.metadata && this.metadata.version ? this.metadata.version : "",
+            activeSearchQuery: this._activeSearchQuery || "",
+            maxHits: maxHits,
+            hasHelper: hasHelper,
+            dbusPath: this._dbusPath
+        };
     }
 
     _runHelper(args, cb) {
@@ -651,6 +716,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     }
 
     on_applet_removed_from_panel() {
+        this._unregisterDbusInterface();
         if (this._refreshTimer > 0) {
             GLib.source_remove(this._refreshTimer);
             this._refreshTimer = 0;

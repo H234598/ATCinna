@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.4`.
+- `VERSION` is `0.3.5`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, `download`, `history-*`, and `bookmark-*`.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
@@ -255,6 +255,36 @@ Wire runtime script into `scripts/check.sh` shellcheck scope only (not as an exe
 - [x] **Step 4: Version bump and docs**
 
 Update `VERSION`, `atcinna@H234598/metadata.json`, `CHANGELOG.md`, and `README.md` to reflect runtime-smoke addition and set baseline to `0.3.4`.
+
+### Task 7: Read-only DBus Status API
+
+**Files:**
+- Modify: `atcinna@H234598/applet.js`
+- Modify: `scripts/runtime-smoke.sh`
+- Modify: `README.md`
+- Modify: `CHANGELOG.md`
+- Modify: `VERSION`
+- Modify: `atcinna@H234598/metadata.json`
+- Modify: `docs/superpowers/plans/2026-06-04-atcinna-implementation-plan.md`
+
+- [x] **Step 1: Export read-only status interface in applet**
+
+Add D-Bus registration in the applet constructor and cleanup in removal/destroy:
+`org.Cinnamon.Applets.ATCinna` on `/org/Cinnamon/Applets/ATCinna`, methods `Ping` and `GetStatus`.
+
+- [x] **Step 2: Status payload**
+
+`GetStatus` must return a JSON string containing at least:
+`status`, `uuid`, `instanceId`, `version`, `activeSearchQuery`, `maxHits`, `hasHelper`, `dbusPath`.
+
+- [x] **Step 3: Smoke checks**
+
+In `runtime-smoke.sh`, when ATCinna is active (or temporary activation is enabled), call:
+`Ping` and `GetStatus`, then validate returned status and identifiers.
+
+- [x] **Step 4: Versioned docs update**
+
+Bump version and update changelog/runtime docs for the new read-only interface.
 
 ## Alternative Plan
 
