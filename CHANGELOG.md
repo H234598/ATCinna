@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.14
+
+- Erste ATPlayer-Blacklist-Paritätsstufe ergänzt: persistente `blacklist.json` mit Helper-Aktionen `blacklist-add`, `blacklist-list` und `blacklist-remove`.
+- Suche unterstützt `--blacklist-mode off|hide|only`; die Applet-Einstellung **Blacklist-Modus** blendet Treffer aus oder zeigt nur passende Blacklist-Treffer.
+- Kontextmenüs von Treffer-, Verlauf-, Favoriten- und Queue-Einträgen erhalten die fünf ATPlayer-ähnlichen Blacklist-Aktionen für Audio, Sender+Genre+Thema, Sender+Thema, Thema und Titel.
+- Suchergebnisse liefern jetzt auch `description`, damit Info- und Blacklist-Flächen aus der Katalogsuche vollständiger gefüllt werden.
+- Lokale Checks prüfen Blacklist-Store, Deduplizierung, Filtermodi, Menüverdrahtung und ATPlayer-kompatible Sender+Genre+Thema-Semantik.
+
 ## 0.3.13
 
 - Installationsvalidierung härtet jetzt auch die installierte `applet.js`-Kopie gegen die UI-Verträge ab: Linksklick-Handler vorhanden, `this.menu.toggle()` im Handler, Menüpunkt **„Einstellungen“** vorhanden und über `configureApplet()` verdrahtet.

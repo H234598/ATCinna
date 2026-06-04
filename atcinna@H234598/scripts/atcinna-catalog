@@ -23,6 +23,8 @@ MIRRORS = [
 QUEUE_MAX_ENTRIES = 500
 QUEUE_STATUSES = {"queued", "running", "finished", "error", "cancelled"}
 UNDO_MAX_ENTRIES = 100
+BLACKLIST_MAX_ENTRIES = 500
+BLACKLIST_MODES = {"off", "hide", "only"}
 
 
 def die(message, exit_code=1):
@@ -78,6 +80,33 @@ def _load_list(path):
         return []
 
     return [item for item in raw if isinstance(item, dict)]
+
+
+def _normalize_blacklist_field(value):
+    return _normalize_entry_value(value).lower()
+
+
+def _normalize_rule(rule):
+    if hasattr(rule, "get"):
+        getter = lambda key, default="": rule.get(key, default)
+    else:
+        getter = lambda key, default="": _normalize_entry_value(getattr(rule, key, default))
+    try:
+        timestamp = int(getter("timestamp", int(time.time())))
+    except (TypeError, ValueError):
+        timestamp = int(time.time())
+    return {
+        "sender": _normalize_entry_value(getter("sender")),
+        "genre": _normalize_entry_value(getter("genre")),
+        "topic": _normalize_entry_value(getter("topic")),
+        "title": _normalize_entry_value(getter("title")),
+        "timestamp": timestamp,
+    }
+
+
+def _load_blacklist():
+    entries = _load_list(data_dir() / "blacklist.json")
+    return [_normalize_rule(entry) for entry in entries]
 
 
 def _store_list(path, items):
@@ -144,11 +173,101 @@ def _list_store(path):
     print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
 
 
+def action_blacklist_add(args):
+    rule = _normalize_rule(args)
+    if not (rule["sender"] or rule["genre"] or rule["topic"] or rule["title"]):
+        die("at least one blacklist field is required")
+
+    path = data_dir() / "blacklist.json"
+    with _store_lock(path):
+        entries = _load_blacklist()
+        target = _normalize_blacklist_entry(rule)
+        filtered = [
+            entry for entry in entries
+            if _normalize_blacklist_field(entry.get("sender")) != target["sender"] or
+            _normalize_blacklist_field(entry.get("genre")) != target["genre"] or
+            _normalize_blacklist_field(entry.get("topic")) != target["topic"] or
+            _normalize_blacklist_field(entry.get("title")) != target["title"]
+        ]
+        target["timestamp"] = int(time.time())
+        filtered.insert(0, target)
+        if BLACKLIST_MAX_ENTRIES > 0:
+            filtered = filtered[:BLACKLIST_MAX_ENTRIES]
+        _store_list(path, filtered)
+    print(json.dumps({"status": "ok", "count": len(filtered)}))
+
+
+def action_blacklist_list(args):
+    _list_store(data_dir() / "blacklist.json")
+
+
+def action_blacklist_remove(args):
+    target_rule = _normalize_blacklist_entry(_normalize_rule(args))
+    target_sender = target_rule["sender"]
+    target_genre = target_rule["genre"]
+    target_topic = target_rule["topic"]
+    target_title = target_rule["title"]
+    if not (target_sender or target_genre or target_topic or target_title):
+        die("at least one blacklist field is required")
+
+    path = data_dir() / "blacklist.json"
+    with _store_lock(path):
+        entries = _load_blacklist()
+        filtered = []
+        removed = 0
+        for entry in entries:
+            normalized = _normalize_blacklist_entry(entry)
+            matches = (
+                (not target_sender or normalized["sender"] == target_sender) and
+                (not target_genre or normalized["genre"] == target_genre) and
+                (not target_topic or normalized["topic"] == target_topic) and
+                (not target_title or normalized["title"] == target_title)
+            )
+            if matches:
+                removed += 1
+            else:
+                filtered.append(entry)
+        if removed:
+            _store_list(path, filtered)
+    print(json.dumps({"status": "ok", "removed": removed}))
+
+
 def _validate_and_normalize_url(field_name, value):
     if value and not _is_http_url(value):
         if field_name == "url":
             die("invalid URL scheme")
         die(f"invalid {field_name} URL scheme")
+
+
+def _normalize_blacklist_entry(entry):
+    rule = _normalize_rule(entry)
+    rule["sender"] = rule["sender"].lower()
+    rule["genre"] = rule["genre"].lower()
+    rule["topic"] = rule["topic"].lower()
+    rule["title"] = rule["title"].lower()
+    return rule
+
+
+def _rule_matches_result(rule, item):
+    fields = {
+        "sender": _normalize_blacklist_field(item.get("sender")),
+        "genre": _normalize_blacklist_field(item.get("genre")),
+        "topic": _normalize_blacklist_field(item.get("topic")),
+        "title": _normalize_blacklist_field(item.get("title")),
+    }
+    for key, rule_value in rule.items():
+        if key == "timestamp":
+            continue
+        if not rule_value:
+            continue
+        item_value = fields.get(key, "")
+        if key == "topic":
+            matches = item_value == rule_value
+        else:
+            matches = rule_value in item_value
+        if not matches:
+            return False
+    return True
 
 
 def _matches_filter(value, needle):
@@ -717,6 +836,10 @@ def _iter_results(query, max_hits, filters):
     last_sender = ""
     last_genre = ""
     last_topic = ""
+    blacklist_mode = _normalize_entry_value(getattr(filters, "blacklist_mode", "off"))
+    if blacklist_mode not in BLACKLIST_MODES:
+        blacklist_mode = "off"
+    blacklist_rules = _load_blacklist() if blacklist_mode in {"hide", "only"} else []
 
     for raw in _iter_audio_rows(path):
         if len(raw) < 10:
@@ -749,11 +872,7 @@ def _iter_results(query, max_hits, filters):
         if not _matches_filter(topic, filter_topic):
             continue
 
-        haystack = " ".join([sender, genre, topic, title, description, url]).lower()
-        if lower and lower not in haystack:
-            continue
-
-        hits.append({
+        result_item = {
             "title": title,
             "sender": sender,
             "genre": genre,
@@ -761,9 +880,22 @@ def _iter_results(query, max_hits, filters):
             "date": date,
             "time": time,
             "duration": duration,
+            "description": description,
             "url": url,
             "website": website,
-        })
+        }
+        if blacklist_mode in {"hide", "only"}:
+            is_blacklisted = any(_rule_matches_result(rule, result_item) for rule in blacklist_rules)
+            if blacklist_mode == "hide" and is_blacklisted:
+                continue
+            if blacklist_mode == "only" and not is_blacklisted:
+                continue
+
+        haystack = " ".join([sender, genre, topic, title, description, url]).lower()
+        if lower and lower not in haystack:
+            continue
+
+        hits.append(result_item)
         if len(hits) >= max_hits:
             return len(hits), hits
 
@@ -804,7 +936,22 @@ def parse_args():
     search.add_argument("--sender", default="", help="Filter by sender")
     search.add_argument("--genre", default="", help="Filter by genre")
     search.add_argument("--topic", default="", help="Filter by topic")
+    search.add_argument("--blacklist-mode", dest="blacklist_mode", default="off", help="Blacklist filter mode", choices=tuple(sorted(BLACKLIST_MODES)))
     search.add_argument("--max", type=int, default=20, dest="max", help="Max results")
+
+    blacklist_add = sub.add_parser("blacklist-add", help="Add blacklist rule")
+    blacklist_add.add_argument("--sender", default="", help="Blacklist sender")
+    blacklist_add.add_argument("--genre", default="", help="Blacklist genre")
+    blacklist_add.add_argument("--topic", default="", help="Blacklist topic")
+    blacklist_add.add_argument("--title", default="", help="Blacklist title")
+
+    blacklist_list = sub.add_parser("blacklist-list", help="List blacklist rules")
+
+    blacklist_remove = sub.add_parser("blacklist-remove", help="Remove blacklist rules by exact match")
+    blacklist_remove.add_argument("--sender", default="", help="Blacklist sender")
+    blacklist_remove.add_argument("--genre", default="", help="Blacklist genre")
+    blacklist_remove.add_argument("--topic", default="", help="Blacklist topic")
+    blacklist_remove.add_argument("--title", default="", help="Blacklist title")
 
     history_add = sub.add_parser("history-add", help="Add history entry")
     history_add.add_argument("--title", default="", help="Optional title")
@@ -887,6 +1034,12 @@ def main():
         action_refresh(args)
     elif args.action == "search":
         action_search(args)
+    elif args.action == "blacklist-add":
+        action_blacklist_add(args)
+    elif args.action == "blacklist-list":
+        action_blacklist_list(args)
+    elif args.action == "blacklist-remove":
+        action_blacklist_remove(args)
     elif args.action == "download":
         action_download(args)
     elif args.action == "download-enqueue":

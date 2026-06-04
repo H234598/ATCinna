@@ -148,6 +148,16 @@ for helper_action in download-remove download-undo download-prefer download-put-
         STATUS=1
     fi
 done
+for helper_action in blacklist-add blacklist-list blacklist-remove; do
+    if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
+        echo "ERROR: helper action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
+if ! rg -q -F '"--blacklist-mode"' "$HELPER"; then
+    echo "ERROR: helper search action is missing --blacklist-mode argument"
+    STATUS=1
+fi
 for queue_label in "Download stoppen" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue menu label is missing: ${queue_label}"
@@ -157,6 +167,12 @@ done
 for info_label in "Audioinformation anzeigen" "Titel in die Zwischenablage kopieren" "Genre in die Zwischenablage kopieren" "Thema in die Zwischenablage kopieren"; do
     if ! rg -q -F "${info_label}" "$APPLET_JS"; then
         echo "ERROR: applet metadata action label is missing: ${info_label}"
+        STATUS=1
+    fi
+done
+for blacklist_label in "Blacklist-Eintrag für das Audio erstellen" "Sender und Genre direkt in die Blacklist einfügen" "Sender und Thema direkt in die Blacklist einfügen" "Thema direkt in die Blacklist einfügen" "Titel direkt in die Blacklist einfügen"; do
+    if ! rg -q -F "${blacklist_label}" "$APPLET_JS"; then
+        echo "ERROR: applet blacklist action label is missing: ${blacklist_label}"
         STATUS=1
     fi
 done
@@ -208,6 +224,42 @@ if ! rg -q -F '_runQueueTrashFile(item)' "$APPLET_JS"; then
     echo "ERROR: applet queue trash-file action handler is missing"
     STATUS=1
 fi
+if ! rg -q -F '_runBlacklistAdd' "$APPLET_JS"; then
+    echo "ERROR: applet blacklist action handler is missing"
+    STATUS=1
+fi
+BLACKLIST_ACTION_CALLS="$(rg -c -F '_addBlacklistActions' "$APPLET_JS" || true)"
+BLACKLIST_ACTION_CALLS="${BLACKLIST_ACTION_CALLS:-0}"
+if [ "$BLACKLIST_ACTION_CALLS" -lt 4 ]; then
+    echo "ERROR: applet blacklist actions are not wired into all expected menus"
+    STATUS=1
+fi
+python3 - "$APPLET_JS" <<'PY' || STATUS=1
+import re
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+match = re.search(
+    r'Sender und Genre direkt in die Blacklist einfügen[\s\S]*?this\._runBlacklistAdd\(item,\s*\{(?P<body>[\s\S]*?)\}\)',
+    source,
+)
+if not match or "sender:" not in match.group("body") or "genre:" not in match.group("body") or "topic:" not in match.group("body"):
+    print("ERROR: Sender-und-Genre blacklist action must include sender, genre, and topic like ATPlayer")
+    raise SystemExit(1)
+PY
+if ! rg -q -F '"blacklist-mode"' "$SETTINGS_SCHEMA"; then
+    echo "ERROR: settings schema does not define blacklist-mode"
+    STATUS=1
+fi
+if ! jq -e '.["blacklist-mode"] | has("type") and .default == "hide"' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
+    echo "ERROR: settings schema blacklist-mode block malformed"
+    STATUS=1
+fi
+if ! jq -e '.["blacklist-mode"].default == "hide"' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
+    echo "ERROR: blacklist-mode default is not set to hide"
+    STATUS=1
+fi
 if ! rg -q -F '_defaultDownloadFolder()' "$APPLET_JS"; then
     echo "ERROR: queue folder opener does not expose the helper download-folder fallback"
     STATUS=1
@@ -222,6 +274,10 @@ for helper_arg in "--date" "--time" "--duration" "--description"; do
         STATUS=1
     fi
 done
+if ! rg -q -F -- '--blacklist-mode' "$SEARCH_DIALOG"; then
+    echo "ERROR: search dialog does not accept/pass blacklist-mode"
+    STATUS=1
+fi
 
 node --check "$APPLET_JS" >/dev/null
 
@@ -264,6 +320,11 @@ fi
 
 if ! echo "$SEARCH_JSON" | jq -e '.results[0].title == "Kurzmeldung" and .results[0].sender == "WDR" and .results[0].url == "https://example.com/stream"' >/dev/null; then
     echo "ERROR: search result fields are not mapped correctly"
+    echo "$SEARCH_JSON"
+    exit 1
+fi
+if ! echo "$SEARCH_JSON" | jq -e '.results[0].description == "Kurzbeschreibung"' >/dev/null; then
+    echo "ERROR: search result description should be returned"
     echo "$SEARCH_JSON"
     exit 1
 fi
@@ -327,6 +388,74 @@ SEARCH_COMBINED="$(python3 "$HELPER" search --query "Zweite" --sender "WD" --gen
 if ! echo "$SEARCH_COMBINED" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
     echo "ERROR: query+filter combination is not working"
     echo "$SEARCH_COMBINED"
+    exit 1
+fi
+
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+data_dir.mkdir(parents=True, exist_ok=True)
+(data_dir / "blacklist.json").write_text("[]", encoding="utf-8")
+PY
+BLACKLIST_ADD_1="$(python3 "$HELPER" blacklist-add --title "kuRZMELDUNG" --sender "wdR")"
+if ! echo "$BLACKLIST_ADD_1" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add failed"
+    echo "$BLACKLIST_ADD_1"
+    exit 1
+fi
+BLACKLIST_ADD_DUP="$(python3 "$HELPER" blacklist-add --title "Kurzmeldung" --sender "WDR")"
+if ! echo "$BLACKLIST_ADD_DUP" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: duplicate blacklist-add should update existing rule"
+    echo "$BLACKLIST_ADD_DUP"
+    exit 1
+fi
+BLACKLIST_LIST="$(python3 "$HELPER" blacklist-list)"
+if ! echo "$BLACKLIST_LIST" | jq -e '.status == "ok" and .count == 1' >/dev/null; then
+    echo "ERROR: blacklist-add dedupe did not keep single rule"
+    echo "$BLACKLIST_LIST"
+    exit 1
+fi
+SEARCH_BLACKLIST_OFF="$(python3 "$HELPER" search --query "" --blacklist-mode off)"
+if ! echo "$SEARCH_BLACKLIST_OFF" | jq -e '.status == "ok" and .count == 3' >/dev/null; then
+    echo "ERROR: search off mode should not filter results"
+    echo "$SEARCH_BLACKLIST_OFF"
+    exit 1
+fi
+SEARCH_BLACKLIST_HIDE="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_HIDE" | jq -e '.status == "ok" and .count == 1 and ([.results[] | select(.title=="Kurzmeldung" or .title=="Zweite Kurzmeldung")] | length)==0' >/dev/null; then
+    echo "ERROR: blacklist hide mode should hide matching results"
+    echo "$SEARCH_BLACKLIST_HIDE"
+    exit 1
+fi
+SEARCH_BLACKLIST_ONLY="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_ONLY" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.title=="Kurzmeldung" or .title=="Zweite Kurzmeldung")] | length)==2' >/dev/null; then
+    echo "ERROR: blacklist only mode should show only matching results"
+    echo "$SEARCH_BLACKLIST_ONLY"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-remove --title "Kurzmeldung" >/dev/null; then
+    echo "ERROR: blacklist-remove failed"
+    exit 1
+fi
+BLACKLIST_REMOVE_LIST="$(python3 "$HELPER" blacklist-list)"
+if ! echo "$BLACKLIST_REMOVE_LIST" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: blacklist-remove should delete matching rule"
+    echo "$BLACKLIST_REMOVE_LIST"
+    exit 1
+fi
+python3 "$HELPER" blacklist-add --title "Kurz" >/dev/null
+SEARCH_BLACKLIST_PARTIAL_TITLE="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_PARTIAL_TITLE" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.title=="Kurzmeldung" or .title=="Zweite Kurzmeldung")] | length)==2' >/dev/null; then
+    echo "ERROR: blacklist title rules should match ATPlayer-style substrings"
+    echo "$SEARCH_BLACKLIST_PARTIAL_TITLE"
+    exit 1
+fi
+python3 "$HELPER" blacklist-remove --title "Kurz" >/dev/null
+if python3 "$HELPER" blacklist-add >/dev/null 2>&1; then
+    echo "ERROR: blacklist-add without fields should fail"
     exit 1
 fi
 

@@ -12,9 +12,9 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.13`.
+- `VERSION` is `0.3.14`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
-- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, direct `download`, `download-*` queue actions, `history-*`, and `bookmark-*`.
+- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog` provides the optional external GTK search dialog used by the "Suche öffnen" popup action; the primary in-popup search remains active when it works locally.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
 
@@ -27,16 +27,25 @@
 
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, play/open/download handoff, a durable download queue with several ATPlayer-style actions, history, favorites, optional GTK search dialog, D-Bus status, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions, history, favorites, optional GTK search dialog, D-Bus status, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 
 - Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has enqueue/list/run-next/run-all/cancel/clear/remove/undo/prefer/put-back/open-directory/copy-url/open-file/trash-file workflows, but not yet `Download ändern` and the table-style selection/reset workflows.
-- Blacklist management and filter profiles: ATPlayer has blacklist/filter configuration surfaces; ATCinna only has simple text filters.
+- Blacklist management and filter profiles: ATPlayer has deeper blacklist/filter configuration surfaces; ATCinna now has direct context-menu Blacklist adds and search modes, but not the full Blacklist editor, whitelist/undo/exact toggles, filter profiles, or legacy migration.
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
 
-Next parity implementation priority: add `Download ändern`, then blacklist/filter-profile management and legacy settings/config migration.
+Next parity implementation priority: add `Download ändern`, then full Blacklist/filter-profile editing and legacy settings/config migration.
+
+### Task 14: First Blacklist Context-Action Parity (0.3.14)
+
+- [x] Add persistent helper-managed `blacklist.json` with `blacklist-add`, `blacklist-list`, and `blacklist-remove`.
+- [x] Add `search --blacklist-mode off|hide|only` and preserve existing query/sender/genre/topic filtering.
+- [x] Add Applet setting `blacklist-mode` and pass it to popup search and optional GTK search dialog.
+- [x] Add the five ATPlayer-style direct Blacklist actions to Treffer, Verlauf, Favoriten, and Queue submenus.
+- [x] Preserve the ATPlayer direct action nuance where **Sender und Genre** stores sender, genre, and topic/theme.
+- [x] Extend local checks for Blacklist storage, dedupe, filter modes, menu labels, and applet wiring.
 
 ### Task 13: Harden Installed Click/Settings Contract (0.3.13)
 

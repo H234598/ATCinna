@@ -31,8 +31,13 @@ def _is_http_url(value):
         return False
 
 
-def _run_search(query, max_hits):
-    status, stdout, stderr = _run_helper(["search", f"--query={query}", f"--max={max_hits}"])
+def _run_search(query, max_hits, blacklist_mode="off"):
+    status, stdout, stderr = _run_helper([
+        "search",
+        f"--query={query}",
+        f"--max={max_hits}",
+        f"--blacklist-mode={blacklist_mode}"
+    ])
     if status != 0:
         raise RuntimeError(stderr or "helper failed")
 
@@ -166,7 +171,7 @@ def _build_row(item, download_folder, gtk_module, status_label):
     return row
 
 
-def run_dialog(download_folder):
+def run_dialog(download_folder, blacklist_mode):
     try:
         import gi
 
@@ -232,7 +237,7 @@ def run_dialog(download_folder):
     def do_search():
         query = entry.get_text()
         try:
-            results = _run_search(query, 20)
+            results = _run_search(query, 20, blacklist_mode)
         except Exception as exc:
             status.set_text(f"Suche fehlgeschlagen: {exc}")
             render_results([])
@@ -252,10 +257,11 @@ def main():
     parser = argparse.ArgumentParser(description="ATCinna GTK search dialog")
     parser.add_argument("--self-test", action="store_true", help="Validate runtime dependencies headless")
     parser.add_argument("--download-folder", default="", help="Default download folder")
+    parser.add_argument("--blacklist-mode", default="off", choices=["off", "hide", "only"], help="Blacklist filter mode")
     args = parser.parse_args()
     if args.self_test:
         return _self_test()
-    run_dialog(args.download_folder or "")
+    run_dialog(args.download_folder or "", args.blacklist_mode)
     return 0
 
 

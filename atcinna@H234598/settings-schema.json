@@ -27,6 +27,17 @@
     "tooltip": "Optional: nur Treffer eines Themas anzeigen. Teiltreffer sind moeglich.",
     "default": ""
   },
+  "blacklist-mode": {
+    "type": "combobox",
+    "description": "Blacklist-Modus",
+    "tooltip": "Steuert den Umgang mit gespeicherten Blacklist-Regeln bei der Suche.",
+    "default": "hide",
+    "options": {
+      "Aus": "off",
+      "Blacklist ausblenden": "hide",
+      "Nur Blacklist": "only"
+    }
+  },
   "max-hits": {
     "type": "spinbutton",
     "description": "Maximale Treffer",

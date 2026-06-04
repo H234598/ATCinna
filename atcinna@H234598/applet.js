@@ -61,6 +61,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("sender-filter", "senderFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("genre-filter", "genreFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("topic-filter", "topicFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("blacklist-mode", "blacklistMode", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("max-hits", "maxHits", this._onMaxHitsChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
         this.settings.bind("refresh-mirror", "refreshMirror", null);
@@ -274,6 +275,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         };
     }
 
+    _getBlacklistMode() {
+        const mode = this._toTrimmed(this.blacklistMode).toLowerCase();
+        if (mode === "hide" || mode === "only") {
+            return mode;
+        }
+        return "off";
+    }
+
     _shortFilterValue(value) {
         const clean = this._toTrimmed(value).replace(/\s+/g, " ");
         if (clean.length <= 32) {
@@ -297,7 +306,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (filters.topic.length > 0) {
             active.push(`T:${this._shortFilterValue(filters.topic)}`);
         }
-        this._filterSummaryItem.label.text = active.length ? `Filter: ${active.join(" · ")}` : "Filter: keine";
+        const blacklistMode = this._getBlacklistMode();
+        const modeText = blacklistMode === "hide" ? "BL: ausblenden" : blacklistMode === "only" ? "BL: nur" : "BL: aus";
+        this._filterSummaryItem.label.text = active.length
+            ? `Filter: ${active.join(" · ")} · ${modeText}`
+            : `Filter: keine · ${modeText}`;
         if (this._clearFiltersItem) {
             this._clearFiltersItem.setSensitive(active.length > 0);
         }
@@ -345,6 +358,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             `--query=${query}`,
             `--max=${maxHits}`
         ];
+        const blacklistMode = this._getBlacklistMode();
+        args.push(`--blacklist-mode=${blacklistMode}`);
 
         if (filters.sender.length > 0) {
             args.push(`--sender=${filters.sender}`);
@@ -402,7 +417,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             return;
         }
         try {
-            Util.spawn([this._searchDialogPath, `--download-folder=${this.downloadFolder || ""}`]);
+            Util.spawn([
+                this._searchDialogPath,
+                `--download-folder=${this.downloadFolder || ""}`,
+                `--blacklist-mode=${this._getBlacklistMode()}`
+            ]);
         } catch (error) {
             this._setStatus(`Suchdialog konnte nicht gestartet werden: ${error}`);
         }
@@ -448,6 +467,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._addWebsiteAction(entry.menu, item);
             this._addInfoAction(entry.menu, item);
             this._addMetadataCopyActions(entry.menu, item);
+            this._addBlacklistActions(entry.menu, item);
 
             const download = new PopupMenu.PopupMenuItem("Herunterladen");
             download.connect("activate", () => this._runDownload(item));
@@ -757,6 +777,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
             this._addInfoAction(row.menu, item);
             this._addMetadataCopyActions(row.menu, item);
+            this._addBlacklistActions(row.menu, item);
 
             const play = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");
             play.connect("activate", () => this._playItem(item));
@@ -1159,6 +1180,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._addWebsiteAction(row.menu, item);
         this._addInfoAction(row.menu, item);
         this._addMetadataCopyActions(row.menu, item);
+        this._addBlacklistActions(row.menu, item);
 
         if (withRemoveAction) {
             const remove = new PopupMenu.PopupMenuItem("Entfernen");
@@ -1194,6 +1216,44 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._addCopyFieldAction(menu, "Titel in die Zwischenablage kopieren", item.title);
         this._addCopyFieldAction(menu, "Genre in die Zwischenablage kopieren", item.genre);
         this._addCopyFieldAction(menu, "Thema in die Zwischenablage kopieren", item.topic);
+    }
+
+    _addBlacklistActions(menu, item) {
+        const addFull = new PopupMenu.PopupMenuItem("Blacklist-Eintrag für das Audio erstellen");
+        addFull.connect("activate", () => this._runBlacklistAdd(item, {
+            sender: item.sender || "",
+            genre: item.genre || "",
+            topic: item.topic || "",
+            title: item.title || ""
+        }));
+        menu.addMenuItem(addFull);
+
+        const addSenderGenre = new PopupMenu.PopupMenuItem("Sender und Genre direkt in die Blacklist einfügen");
+        addSenderGenre.connect("activate", () => this._runBlacklistAdd(item, {
+            sender: item.sender || "",
+            genre: item.genre || "",
+            topic: item.topic || ""
+        }));
+        menu.addMenuItem(addSenderGenre);
+
+        const addSenderTopic = new PopupMenu.PopupMenuItem("Sender und Thema direkt in die Blacklist einfügen");
+        addSenderTopic.connect("activate", () => this._runBlacklistAdd(item, {
+            sender: item.sender || "",
+            topic: item.topic || ""
+        }));
+        menu.addMenuItem(addSenderTopic);
+
+        const addTopic = new PopupMenu.PopupMenuItem("Thema direkt in die Blacklist einfügen");
+        addTopic.connect("activate", () => this._runBlacklistAdd(item, {
+            topic: item.topic || ""
+        }));
+        menu.addMenuItem(addTopic);
+
+        const addTitle = new PopupMenu.PopupMenuItem("Titel direkt in die Blacklist einfügen");
+        addTitle.connect("activate", () => this._runBlacklistAdd(item, {
+            title: item.title || ""
+        }));
+        menu.addMenuItem(addTitle);
     }
 
     _addCopyFieldAction(menu, label, value) {
@@ -1310,6 +1370,51 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             }
             if (onComplete) {
                 onComplete();
+            }
+        });
+    }
+
+    _runBlacklistAdd(item, fields) {
+        const args = ["blacklist-add"];
+        const sender = this._toTrimmed(fields.sender || "");
+        const genre = this._toTrimmed(fields.genre || "");
+        const topic = this._toTrimmed(fields.topic || "");
+        const title = this._toTrimmed(fields.title || "");
+        if (!sender && !genre && !topic && !title) {
+            this._setStatus("Blacklist: keine Daten für Eintrag");
+            return;
+        }
+        if (sender) {
+            args.push(`--sender=${sender}`);
+        }
+        if (genre) {
+            args.push(`--genre=${genre}`);
+        }
+        if (topic) {
+            args.push(`--topic=${topic}`);
+        }
+        if (title) {
+            args.push(`--title=${title}`);
+        }
+
+        this._setStatus(`Blacklist aktualisiere: ${item.title || item.topic || item.sender || "Eintrag"}`);
+        this._runHelper(args, (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`Blacklist konnte nicht aktualisiert werden: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                if (payload.status !== "ok") {
+                    this._setStatus("Blacklist: unerwartete Antwort");
+                    return;
+                }
+                this._setStatus("Blacklist aktualisiert");
+                this._loadSections();
+                this._runSearch();
+                this._runQueueList();
+            } catch (error) {
+                this._setStatus(`Blacklist ungültige Antwort: ${error.message}`);
             }
         });
     }
