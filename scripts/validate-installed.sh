@@ -66,6 +66,7 @@ fi
 APPLET_DIR="$TARGET_DIR/$APPLET_ID"
 HELPER="$APPLET_DIR/scripts/atcinna-catalog"
 SEARCH_DIALOG="$APPLET_DIR/scripts/atcinna-search-dialog"
+QUEUE_EDIT_DIALOG="$APPLET_DIR/scripts/atcinna-queue-edit-dialog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
@@ -114,6 +115,10 @@ if [[ ! -x "$HELPER" ]]; then
 fi
 if [[ ! -x "$SEARCH_DIALOG" ]]; then
     echo "ERROR: search dialog not executable: $SEARCH_DIALOG"
+    exit 1
+fi
+if [[ ! -x "$QUEUE_EDIT_DIALOG" ]]; then
+    echo "ERROR: queue edit dialog not executable: $QUEUE_EDIT_DIALOG"
     exit 1
 fi
 
@@ -185,6 +190,17 @@ if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
 fi
 if ! python3 -m py_compile "$SEARCH_DIALOG"; then
     echo "ERROR: py_compile failed for search dialog"
+    exit 1
+fi
+if ! python3 -m py_compile "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: py_compile failed for queue edit dialog"
+    exit 1
+fi
+
+QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
+if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
+    echo "ERROR: installed queue edit dialog self-test failed"
+    echo "$QUEUE_EDIT_DIALOG_SELF_TEST"
     exit 1
 fi
 

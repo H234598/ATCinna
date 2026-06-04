@@ -6,6 +6,7 @@ APPLET_DIR="$SCRIPT_DIR/../atcinna@H234598"
 APPLET_UUID="atcinna@H234598"
 HELPER="$APPLET_DIR/scripts/atcinna-catalog"
 SEARCH_DIALOG="$APPLET_DIR/scripts/atcinna-search-dialog"
+QUEUE_EDIT_DIALOG="$APPLET_DIR/scripts/atcinna-queue-edit-dialog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
@@ -56,6 +57,10 @@ if [ ! -x "$HELPER" ]; then
 fi
 if [ ! -x "$SEARCH_DIALOG" ]; then
     echo "ERROR: search dialog is not executable: $SEARCH_DIALOG"
+    exit 1
+fi
+if [ ! -x "$QUEUE_EDIT_DIALOG" ]; then
+    echo "ERROR: queue edit dialog is not executable: $QUEUE_EDIT_DIALOG"
     exit 1
 fi
 
@@ -148,6 +153,10 @@ for helper_action in download-remove download-undo download-prefer download-put-
         STATUS=1
     fi
 done
+if ! rg -q -F "\"download-update\"" "$HELPER"; then
+    echo "ERROR: helper action is missing: download-update"
+    STATUS=1
+fi
 for helper_action in blacklist-add blacklist-list blacklist-remove; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
@@ -158,7 +167,7 @@ if ! rg -q -F '"--blacklist-mode"' "$HELPER"; then
     echo "ERROR: helper search action is missing --blacklist-mode argument"
     STATUS=1
 fi
-for queue_label in "Download stoppen" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
+for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue menu label is missing: ${queue_label}"
         STATUS=1
@@ -214,6 +223,14 @@ if ! rg -q -F '_runQueueCancelItem(item)' "$APPLET_JS"; then
 fi
 if ! rg -q -F '_runQueueCancelQueued()' "$APPLET_JS"; then
     echo "ERROR: applet queue cancel-queued action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runQueueEditDialog' "$APPLET_JS"; then
+    echo "ERROR: applet queue edit handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_queueEditDialogPath' "$APPLET_JS"; then
+    echo "ERROR: applet queue edit dialog path is missing"
     STATUS=1
 fi
 if ! rg -q -F '_openQueueFile(item)' "$APPLET_JS"; then
@@ -289,6 +306,10 @@ if ! python3 -m py_compile "$SEARCH_DIALOG"; then
     echo "ERROR: py_compile failed for search dialog"
     exit 1
 fi
+if ! python3 -m py_compile "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: py_compile failed for queue edit dialog"
+    exit 1
+fi
 
 export XDG_DATA_HOME="$TMP_DIR/data"
 
@@ -315,6 +336,12 @@ SEARCH_DIALOG_SELF_TEST="$(python3 "$SEARCH_DIALOG" --self-test)"
 if ! echo "$SEARCH_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean")' >/dev/null; then
     echo "ERROR: search dialog self-test failed"
     echo "$SEARCH_DIALOG_SELF_TEST"
+    exit 1
+fi
+QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
+if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean")' >/dev/null; then
+    echo "ERROR: queue edit dialog self-test failed"
+    echo "$QUEUE_EDIT_DIALOG_SELF_TEST"
     exit 1
 fi
 
@@ -742,11 +769,96 @@ if ! echo "$QUEUE_LIST" | jq -e --arg one "$QUEUE_URL_ONE" --arg two "$QUEUE_URL
     echo "$QUEUE_LIST"
     exit 1
 fi
+QUEUE_INDEX_ONE_BEFORE="$(echo "$QUEUE_LIST" | jq -r --arg one "$QUEUE_URL_ONE" '.results | to_entries[] | select(.value.url == $one) | .key' | head -n 1)"
+if [[ "$QUEUE_INDEX_ONE_BEFORE" == "" ]]; then
+    echo "ERROR: queue-list ordering check failed: could not locate first URL"
+    exit 1
+fi
 if ! echo "$QUEUE_LIST" | jq -e --arg q "$QUEUE_URL_TWO" '.results | map(select(.url==$q and .date=="2026-06-04" and .time=="08:00" and .duration=="00:30" and .description=="Queue beschreibung")) | length > 0' >/dev/null; then
     echo "ERROR: queue metadata fields not persisted"
     echo "$QUEUE_LIST"
     exit 1
 fi
+QUEUE_UPDATE="$(python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --title "Queue One edited" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_UPDATE" | jq -e '.status == "ok" and .updated == 1' >/dev/null; then
+    echo "ERROR: download-update failed for queued item"
+    echo "$QUEUE_UPDATE"
+    exit 1
+fi
+QUEUE_LIST_AFTER_UPDATE="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_UPDATE" | jq -e --arg one "$QUEUE_URL_ONE" '.results | map(select(.url == $one and .title == "Queue One edited" and .folder != "" and .timestamp > 0)) | length == 1' >/dev/null; then
+    echo "ERROR: download-update did not apply edits"
+    echo "$QUEUE_LIST_AFTER_UPDATE"
+    exit 1
+fi
+if ! echo "$QUEUE_LIST_AFTER_UPDATE" | jq -e --arg one "$QUEUE_URL_ONE" --argjson before "$QUEUE_INDEX_ONE_BEFORE" '.results | map(.url) | index($one) == $before' >/dev/null; then
+    echo "ERROR: download-update changed queue order"
+    echo "$QUEUE_LIST_AFTER_UPDATE"
+    exit 1
+fi
+if ! python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" >"$TMP_DIR/update-no-fields.out" 2>&1; then
+    if ! jq -e '.status == "error" and .message == "at least one update field is required"' "$TMP_DIR/update-no-fields.out" >/dev/null 2>&1; then
+        echo "ERROR: download-update without fields should fail"
+        cat "$TMP_DIR/update-no-fields.out"
+        exit 1
+    fi
+else
+    echo "ERROR: download-update without fields unexpectedly succeeded"
+    exit 1
+fi
+if python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --folder "$TMP_DIR/nonexistent-queue-edit-folder" >"$TMP_DIR/update-folder-missing.out" 2>&1; then
+    echo "ERROR: download-update should fail for non-existing folder"
+    exit 1
+fi
+if ! jq -e '.status == "error" and (.message == "queue folder does not exist" or .message == "queue folder is not writable")' "$TMP_DIR/update-folder-missing.out" >/dev/null 2>&1; then
+    echo "ERROR: download-update with nonexistent folder did not return expected error"
+    cat "$TMP_DIR/update-folder-missing.out"
+    exit 1
+fi
+mkdir -p "$TMP_DIR/atcinna-check-queue/atcinna@H234598"
+cat > "$TMP_DIR/atcinna-check-queue/atcinna@H234598/download-queue.json" <<JSON
+[
+  {
+    "title": "Running item",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "$QUEUE_URL_ONE",
+    "website": "",
+    "folder": "$QUEUE_DOWNLOAD_DIR",
+    "timestamp": 20,
+    "status": "running",
+    "path": "",
+    "error": ""
+  },
+  {
+    "title": "Queued item",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "$QUEUE_URL_TWO",
+    "website": "",
+    "folder": "$QUEUE_DOWNLOAD_DIR",
+    "timestamp": 21,
+    "status": "queued",
+    "path": "",
+    "error": ""
+  }
+]
+JSON
+QUEUE_UPDATE_RUNNING="$(XDG_DATA_HOME="$TMP_DIR/atcinna-check-queue" python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --title "Blocked")"
+if ! echo "$QUEUE_UPDATE_RUNNING" | jq -e '.status == "ok" and .updated == 0 and .running_blocks == 1' >/dev/null; then
+    echo "ERROR: download-update should reject running item and report running_blocks"
+    echo "$QUEUE_UPDATE_RUNNING"
+    exit 1
+fi
+QUEUE_LIST_RUNNING_TEST="$(XDG_DATA_HOME="$TMP_DIR/atcinna-check-queue" python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_RUNNING_TEST" | jq -e --arg one "$QUEUE_URL_ONE" '.results | map(select(.url == $one) | .title) | any(. == "Running item")' >/dev/null; then
+    echo "ERROR: running download should not be changed by update"
+    echo "$QUEUE_LIST_RUNNING_TEST"
+    exit 1
+fi
+rm -rf "$TMP_DIR/atcinna-check-queue"
 QUEUE_PREFER="$(python3 "$HELPER" download-prefer --url "$QUEUE_URL_TWO")"
 if ! echo "$QUEUE_PREFER" | jq -e '.status == "ok" and .moved == true' >/dev/null; then
     echo "ERROR: download-prefer failed"
@@ -1080,6 +1192,10 @@ if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
         echo "ERROR: install-local did not place executable search dialog"
         exit 1
     fi
+    if [ ! -x "$TMP_DIR/$APPLET_UUID/scripts/atcinna-queue-edit-dialog" ]; then
+        echo "ERROR: install-local did not place executable queue edit dialog"
+        exit 1
+    fi
     PACKAGE_DIST="$TMP_DIR/dist"
     if ! "$SCRIPT_DIR/package.sh" --skip-check --dist-dir "$PACKAGE_DIST"; then
         echo "ERROR: package.sh failed during self-test"
@@ -1097,6 +1213,10 @@ if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
     fi
     if ! grep -qx "$APPLET_UUID/scripts/atcinna-search-dialog" <<<"$PACKAGE_LIST"; then
         echo "ERROR: package artifact missing search dialog"
+        exit 1
+    fi
+    if ! grep -qx "$APPLET_UUID/scripts/atcinna-queue-edit-dialog" <<<"$PACKAGE_LIST"; then
+        echo "ERROR: package artifact missing queue edit dialog"
         exit 1
     fi
     if grep -Eq '(^|/)(\\.git|dist|__pycache__)(/|$)|\\.pyc$|~$' <<<"$PACKAGE_LIST"; then

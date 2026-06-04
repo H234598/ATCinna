@@ -383,6 +383,19 @@ def _entry_from_args_with_folder(args):
     return item
 
 
+def _resolve_updated_folder(raw_folder):
+    folder = _normalize_entry_value(raw_folder)
+    if folder == "":
+        return ""
+
+    folder_path = Path(folder).expanduser().resolve()
+    if not folder_path.is_dir():
+        die("queue folder does not exist")
+    if not os.access(folder_path, os.W_OK | os.X_OK):
+        die("queue folder is not writable")
+    return str(folder_path)
+
+
 def _download_file_path(url, folder, title):
     parsed = urlparse(url)
     stem = _safe_filename(_normalize_entry_value(title) or Path(parsed.path).name or "stream")
@@ -487,6 +500,90 @@ def action_download_remove(args):
             "removed": len(removed),
             "running_blocks": sum(1 for entry in entries if entry.get("url") == target and entry.get("status") == "running")
         }))
+
+
+def _coerce_update_field(value):
+    if value is None:
+        return None
+    return _normalize_entry_value(value)
+
+
+def action_download_update(args):
+    _validate_and_normalize_url("url", args.url)
+    target = _normalize_entry_value(args.url)
+
+    updates = {
+        "title": _coerce_update_field(args.title),
+        "sender": _coerce_update_field(args.sender),
+        "genre": _coerce_update_field(args.genre),
+        "topic": _coerce_update_field(args.topic),
+        "date": _coerce_update_field(args.date),
+        "time": _coerce_update_field(args.time),
+        "duration": _coerce_update_field(args.duration),
+        "description": _coerce_update_field(args.description),
+        "website": _coerce_update_field(args.website),
+        "folder": _coerce_update_field(args.folder),
+    }
+
+    if all(value is None for value in updates.values()):
+        die("at least one update field is required")
+
+    if updates["website"] is not None:
+        _validate_and_normalize_url("website", updates["website"])
+
+    if updates["folder"] is not None:
+        updates["folder"] = _resolve_updated_folder(updates["folder"])
+
+    running_blocks = 0
+    updated = 0
+    with _store_lock(_queue_path()):
+        entries = _load_queue()
+        for entry in entries:
+            if entry.get("url") != target:
+                continue
+
+            if entry.get("status") == "running":
+                running_blocks += 1
+                continue
+
+            changed_path = False
+
+            if updates["title"] is not None:
+                entry["title"] = updates["title"]
+                changed_path = True
+            if updates["sender"] is not None:
+                entry["sender"] = updates["sender"]
+            if updates["genre"] is not None:
+                entry["genre"] = updates["genre"]
+            if updates["topic"] is not None:
+                entry["topic"] = updates["topic"]
+            if updates["date"] is not None:
+                entry["date"] = updates["date"]
+            if updates["time"] is not None:
+                entry["time"] = updates["time"]
+            if updates["duration"] is not None:
+                entry["duration"] = updates["duration"]
+            if updates["description"] is not None:
+                entry["description"] = updates["description"]
+            if updates["website"] is not None:
+                entry["website"] = updates["website"]
+            if updates["folder"] is not None:
+                entry["folder"] = updates["folder"]
+                changed_path = True
+
+            entry["timestamp"] = int(time.time())
+            if entry.get("status") != "finished" and changed_path:
+                entry["path"] = ""
+            updated += 1
+
+        if updated > 0:
+            _store_queue(entries)
+
+    print(json.dumps({
+        "status": "ok",
+        "updated": updated,
+        "running_blocks": running_blocks
+    }))
 
 
 def action_download_undo(args):
@@ -1014,6 +1111,18 @@ def parse_args():
     sub.add_parser("download-clear", help="Remove finished/error/cancelled queue entries")
     download_remove = sub.add_parser("download-remove", help="Remove non-running queue entry by URL")
     download_remove.add_argument("--url", required=True, help="Media URL")
+    download_update = sub.add_parser("download-update", help="Update queued entry by URL")
+    download_update.add_argument("--url", required=True, help="Media URL")
+    download_update.add_argument("--title", default=None, help="Optional title")
+    download_update.add_argument("--sender", default=None, help="Optional sender")
+    download_update.add_argument("--genre", default=None, help="Optional genre")
+    download_update.add_argument("--topic", default=None, help="Optional topic")
+    download_update.add_argument("--date", default=None, help="Optional date")
+    download_update.add_argument("--time", default=None, help="Optional time")
+    download_update.add_argument("--duration", default=None, help="Optional duration")
+    download_update.add_argument("--description", default=None, help="Optional description")
+    download_update.add_argument("--folder", default=None, help="Optional download folder")
+    download_update.add_argument("--website", default=None, help="Optional website URL")
     sub.add_parser("download-undo", help="Restore last removed queue entries")
     sub.add_parser("download-trash-file", help="Move stored queue file to trash").add_argument(
         "--url",
@@ -1054,6 +1163,8 @@ def main():
         action_download_clear(args)
     elif args.action == "download-remove":
         action_download_remove(args)
+    elif args.action == "download-update":
+        action_download_update(args)
     elif args.action == "download-undo":
         action_download_undo(args)
     elif args.action == "download-trash-file":

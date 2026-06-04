@@ -38,6 +38,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._isSyncingSearchQueryFromSettings = false;
         this._isSyncingFilterSettingsFromSettings = false;
         this._searchDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-search-dialog"]);
+        this._queueEditDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-queue-edit-dialog"]);
         this._historySection = null;
         this._favoritesSection = null;
         this._filterSection = null;
@@ -771,6 +772,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const subtitle = item.status === "finished" && item.path ? ` — ${item.path}` : "";
             const row = new PopupMenu.PopupSubMenuMenuItem(`${title} (${status})${subtitle}`);
 
+            const edit = new PopupMenu.PopupMenuItem("Download ändern");
+            if (status === "running") {
+                edit.label.text = "Download läuft (nicht änderbar)";
+                edit.setSensitive(false);
+            } else {
+                edit.connect("activate", () => this._runQueueEditDialog(item));
+            }
+            row.menu.addMenuItem(edit);
+
             const cancel = new PopupMenu.PopupMenuItem("Download stoppen");
             cancel.connect("activate", () => this._runQueueCancelItem(item));
             row.menu.addMenuItem(cancel);
@@ -840,6 +850,87 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 this._setStatus(`download-undo ungültige Antwort: ${error.message}`);
             }
         });
+    }
+
+    _runQueueEditDialog(item) {
+        const url = this._normalizeQueueItemUrl(item);
+        if (!url) {
+            this._setStatus("Download ändern fehlgeschlagen: keine URL");
+            return;
+        }
+        if (!GLib.file_test(this._queueEditDialogPath, GLib.FileTest.EXISTS | GLib.FileTest.IS_EXECUTABLE)) {
+            this._setStatus("Editierdialog nicht verfügbar: Script fehlt");
+            return;
+        }
+
+        const args = [
+            this._queueEditDialogPath,
+            `--url=${url}`,
+            `--title=${item.title || ""}`,
+            `--folder=${item.folder || ""}`,
+            `--sender=${item.sender || ""}`,
+            `--genre=${item.genre || ""}`,
+            `--topic=${item.topic || ""}`,
+            `--date=${item.date || ""}`,
+            `--time=${item.time || ""}`,
+            `--duration=${item.duration || ""}`,
+            `--description=${item.description || ""}`,
+            `--website=${item.website || ""}`
+        ];
+
+        this._setStatus(`ändere Download: ${item.title || "Eintrag"}`);
+        try {
+            const proc = Gio.Subprocess.newv(args, Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
+            proc.communicate_utf8_async(null, null, (source, result) => {
+                let stdout = "";
+                let stderr = "";
+                let exitStatus = CMD_SUCCESS;
+                try {
+                    const [, payloadOut, payloadErr] = source.communicate_utf8_finish(result);
+                    stdout = payloadOut || "";
+                    stderr = payloadErr || "";
+                    exitStatus = source.get_exit_status();
+                } catch (error) {
+                    this._setStatus(`Download bearbeiten fehlgeschlagen: ${error.message}`);
+                    this._runQueueList();
+                    return;
+                }
+
+                if (exitStatus !== CMD_SUCCESS) {
+                    this._setStatus(`Download bearbeiten fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                    this._runQueueList();
+                    return;
+                }
+
+                let payload = {};
+                if (stdout && stdout.trim().startsWith("{")) {
+                    try {
+                        payload = JSON.parse(stdout);
+                    } catch (error) {
+                        this._setStatus(`Antwort ungültig: ${error.message}`);
+                    }
+                }
+                if (payload.status && payload.status !== "ok") {
+                    this._setStatus(`Download bearbeiten: ${payload.message || "unbekannter Fehler"}`);
+                    return;
+                }
+                if (payload.cancelled) {
+                    this._setStatus("Download ändern abgebrochen");
+                    this._runQueueList();
+                    return;
+                }
+                if (payload.updated === 0 && payload.running_blocks > 0) {
+                    this._setStatus("laufender Download kann nicht geändert werden");
+                } else if (payload.updated === 0) {
+                    this._setStatus("keine Änderung");
+                } else {
+                    this._setStatus(`Download aktualisiert: ${payload.updated}`);
+                }
+                this._runQueueList();
+            });
+        } catch (error) {
+            this._setStatus(`Download bearbeiten nicht gestartet: ${error.message}`);
+        }
     }
 
     _runQueueRemove(item) {

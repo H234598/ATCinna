@@ -12,10 +12,10 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.14`.
+- `VERSION` is `0.3.15`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
-- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions, `history-*`, and `bookmark-*`.
-- `atcinna@H234598/scripts/atcinna-search-dialog` provides the optional external GTK search dialog used by the "Suche öffnen" popup action; the primary in-popup search remains active when it works locally.
+- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
+- `atcinna@H234598/scripts/atcinna-search-dialog` and `atcinna@H234598/scripts/atcinna-queue-edit-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
 
 ### Quick Follow-up
@@ -27,16 +27,24 @@
 
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions, history, favorites, optional GTK search dialog, D-Bus status, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions including `Download ändern`, history, favorites, optional GTK dialogs, D-Bus status, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 
-- Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has enqueue/list/run-next/run-all/cancel/clear/remove/undo/prefer/put-back/open-directory/copy-url/open-file/trash-file workflows, but not yet `Download ändern` and the table-style selection/reset workflows.
+- Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has enqueue/list/run-next/run-all/cancel/clear/update/remove/undo/prefer/put-back/open-directory/copy-url/open-file/trash-file workflows, but not yet the table-style selection/reset workflows.
 - Blacklist management and filter profiles: ATPlayer has deeper blacklist/filter configuration surfaces; ATCinna now has direct context-menu Blacklist adds and search modes, but not the full Blacklist editor, whitelist/undo/exact toggles, filter profiles, or legacy migration.
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
 
-Next parity implementation priority: add `Download ändern`, then full Blacklist/filter-profile editing and legacy settings/config migration.
+Next parity implementation priority: full Blacklist/filter-profile editing, program/help/reset menu surfaces, and legacy settings/config migration.
+
+### Task 15: Add Queue Download Edit Action (0.3.15)
+
+- [x] Add helper action `download-update --url URL` with optional title/folder/metadata/website updates.
+- [x] Keep queue order stable and reject running downloads from updates.
+- [x] Add optional GTK dialog `atcinna-queue-edit-dialog` with `--self-test`.
+- [x] Add applet queue submenu action **Download ändern** and disable it for running entries.
+- [x] Extend install/package validation and local checks for the new dialog and helper behavior.
 
 ### Task 14: First Blacklist Context-Action Parity (0.3.14)
 

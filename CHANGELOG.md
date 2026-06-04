@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.15
+
+- ATPlayer-Queue-Aktion **„Download ändern“** ergänzt: Queue-Einträge können vor dem Start über einen optionalen GTK-Dialog bearbeitet werden.
+- Neue Helper-Action `download-update --url URL` aktualisiert Titel, Zielordner, Sender, Genre, Thema, Datum, Uhrzeit, Dauer, Beschreibung und Website, blockiert laufende Downloads und erhält die Queue-Reihenfolge.
+- Neuer Dialog `atcinna-queue-edit-dialog` arbeitet ohne Shell-Interpolation, bietet einen Headless-`--self-test` und wird in Install-/Paketvalidierung aufgenommen.
+- Queue-Menü blendet „Download ändern“ pro Eintrag ein und deaktiviert die Aktion für laufende Downloads.
+- Lokale Checks prüfen `download-update` inklusive Erfolgsfall, Reihenfolge, Pflichtfeldfehler, ungültigem Zielordner und laufender-Download-Blockierung.
+
 ## 0.3.14
 
 - Erste ATPlayer-Blacklist-Paritätsstufe ergänzt: persistente `blacklist.json` mit Helper-Aktionen `blacklist-add`, `blacklist-list` und `blacklist-remove`.

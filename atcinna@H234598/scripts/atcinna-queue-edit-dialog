@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from urllib.parse import urlparse
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+HELPER_PATH = SCRIPT_DIR / "atcinna-catalog"
+
+
+def _is_http_url(value):
+    if not value:
+        return False
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
+def _run_helper(args):
+    process = subprocess.run(
+        [str(HELPER_PATH), *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        raise RuntimeError(process.stderr.strip() or process.stdout.strip() or "helper failed")
+    try:
+        return json.loads(process.stdout or "{}")
+    except Exception as exc:
+        raise RuntimeError(f"invalid helper response: {exc}") from exc
+
+
+def _self_test():
+    gtk_available = True
+    gtk_error = ""
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        gtk_available = False
+        gtk_error = str(exc)
+
+    payload = {
+        "status": "ok",
+        "helper": str(HELPER_PATH),
+        "gtk3": gtk_available,
+        "python": sys.executable,
+    }
+    if gtk_error:
+        payload["gtk_error"] = gtk_error
+
+    if not HELPER_PATH.is_file() or not os.access(HELPER_PATH, os.X_OK):
+        payload["status"] = "error"
+        payload["message"] = "helper not executable"
+        print(json.dumps(payload, ensure_ascii=False))
+        return 1
+
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
+def _text_from_buffer(text_view):
+    buffer = text_view.get_buffer()
+    if not buffer:
+        return ""
+    start_iter = buffer.get_start_iter()
+    end_iter = buffer.get_end_iter()
+    return buffer.get_text(start_iter, end_iter, True).strip()
+
+
+def _collect_field(widget):
+    if widget is None:
+        return ""
+    if hasattr(widget, "get_text"):
+        return widget.get_text().strip()
+    return ""
+
+
+def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website):
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        raise RuntimeError(f"GTK 3 not available: {exc}") from exc
+
+    if not HELPER_PATH.is_file() or not os.access(HELPER_PATH, os.X_OK):
+        raise RuntimeError("helper executable is missing")
+
+    if not _is_http_url(url):
+        raise RuntimeError("URL must be http(s)")
+
+    window = Gtk.Window(title="ATCinna Download ändern")
+    window.set_default_size(820, 560)
+    window.set_border_width(8)
+    window.connect("destroy", Gtk.main_quit)
+    result = {"status": "ok", "updated": 0, "cancelled": True}
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    window.add(root)
+
+    info = Gtk.Label(label=f"URL: {url}", xalign=0)
+    info.set_line_wrap(True)
+    root.pack_start(info, False, False, 0)
+
+    grid = Gtk.Grid(column_spacing=8, row_spacing=6)
+    root.pack_start(grid, False, False, 0)
+
+    title_entry = Gtk.Entry()
+    title_entry.set_text(title)
+    folder_entry = Gtk.Entry()
+    folder_entry.set_text(folder)
+    sender_entry = Gtk.Entry()
+    sender_entry.set_text(sender)
+    genre_entry = Gtk.Entry()
+    genre_entry.set_text(genre)
+    topic_entry = Gtk.Entry()
+    topic_entry.set_text(topic)
+    date_entry = Gtk.Entry()
+    date_entry.set_text(date)
+    time_entry = Gtk.Entry()
+    time_entry.set_text(time)
+    duration_entry = Gtk.Entry()
+    duration_entry.set_text(duration)
+    website_entry = Gtk.Entry()
+    website_entry.set_text(website)
+
+    description_view = Gtk.TextView()
+    description_view.set_monospace(False)
+    description_view.set_vexpand(True)
+    description_scroller = Gtk.ScrolledWindow()
+    description_scroller.set_min_content_height(120)
+    description_scroller.add(description_view)
+    description_buffer = description_view.get_buffer()
+    if description:
+        description_buffer.set_text(description, -1)
+
+    status = Gtk.Label(label="Bereit", xalign=0)
+    status.set_line_wrap(True)
+    root.pack_start(status, False, False, 0)
+
+    for label_text, widget, row in [
+        ("Titel", title_entry, 0),
+        ("Zielordner", folder_entry, 1),
+        ("Sender", sender_entry, 2),
+        ("Genre", genre_entry, 3),
+        ("Thema", topic_entry, 4),
+        ("Datum", date_entry, 5),
+        ("Uhrzeit", time_entry, 6),
+        ("Dauer", duration_entry, 7),
+        ("Website", website_entry, 8),
+    ]:
+        label = Gtk.Label(label=f"{label_text}:", xalign=0)
+        label.set_hexpand(False)
+        grid.attach(label, 0, row, 1, 1)
+        grid.attach(widget, 1, row, 1, 1)
+
+    description_label = Gtk.Label(label="Beschreibung:", xalign=0)
+    grid.attach(description_label, 0, 9, 1, 1)
+    grid.attach(description_scroller, 1, 9, 1, 1)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    root.pack_start(actions, False, False, 0)
+
+    save_button = Gtk.Button(label="Speichern")
+    cancel_button = Gtk.Button(label="Abbrechen")
+    actions.pack_end(save_button, False, False, 0)
+    actions.pack_end(cancel_button, False, False, 0)
+
+    controls = {
+        "title": title_entry,
+        "folder": folder_entry,
+        "sender": sender_entry,
+        "genre": genre_entry,
+        "topic": topic_entry,
+        "date": date_entry,
+        "time": time_entry,
+        "duration": duration_entry,
+        "website": website_entry,
+        "description": description_view,
+    }
+
+    def do_save(_button):
+        arguments = [
+            "download-update",
+            f"--url={url}",
+            f"--title={_collect_field(controls['title'])}",
+            f"--sender={_collect_field(controls['sender'])}",
+            f"--genre={_collect_field(controls['genre'])}",
+            f"--topic={_collect_field(controls['topic'])}",
+            f"--date={_collect_field(controls['date'])}",
+            f"--time={_collect_field(controls['time'])}",
+            f"--duration={_collect_field(controls['duration'])}",
+            f"--description={_text_from_buffer(controls['description'])}",
+            f"--website={_collect_field(controls['website'])}",
+        ]
+        folder_value = _collect_field(controls["folder"])
+        if folder_value is not None:
+            arguments.append(f"--folder={folder_value}")
+        try:
+            payload = _run_helper(arguments)
+            if payload.get("status") != "ok":
+                status.set_text(f"Speichern fehlgeschlagen: {payload.get('message') or 'unbekannter Fehler'}")
+                return
+            if payload.get("updated") == 0:
+                status.set_text("Keine Änderung (kein Feld gesetzt)")
+                return
+            result.clear()
+            result.update(payload)
+            status.set_text("Gespeichert")
+            window.close()
+        except Exception as exc:
+            status.set_text(str(exc))
+
+    save_button.connect("clicked", do_save)
+    cancel_button.connect("clicked", lambda _button: window.close())
+
+    window.show_all()
+    Gtk.main()
+    print(json.dumps(result, ensure_ascii=False))
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ATCinna queue edit dialog")
+    parser.add_argument("--self-test", action="store_true", help="Validate runtime dependencies headless")
+    parser.add_argument("--url", default="", help="Target URL")
+    parser.add_argument("--title", default="", help="Title")
+    parser.add_argument("--folder", default="", help="Download folder")
+    parser.add_argument("--sender", default="", help="Sender")
+    parser.add_argument("--genre", default="", help="Genre")
+    parser.add_argument("--topic", default="", help="Topic")
+    parser.add_argument("--date", default="", help="Date")
+    parser.add_argument("--time", default="", help="Time")
+    parser.add_argument("--duration", default="", help="Duration")
+    parser.add_argument("--description", default="", help="Description")
+    parser.add_argument("--website", default="", help="Website")
+    args = parser.parse_args()
+
+    if args.self_test:
+        return _self_test()
+
+    run_dialog(
+        args.url,
+        args.title,
+        args.folder,
+        args.sender,
+        args.genre,
+        args.topic,
+        args.date,
+        args.time,
+        args.duration,
+        args.description,
+        args.website,
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
