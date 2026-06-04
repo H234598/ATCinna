@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.11`.
+- `VERSION` is `0.3.13`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, direct `download`, `download-*` queue actions, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog` provides the optional external GTK search dialog used by the "Suche öffnen" popup action; the primary in-popup search remains active when it works locally.
@@ -27,16 +27,23 @@
 
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, play/open/download handoff, a first FIFO download queue, history, favorites, optional GTK search dialog, D-Bus status, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, play/open/download handoff, a durable download queue with several ATPlayer-style actions, history, favorites, optional GTK search dialog, D-Bus status, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 
-- Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has a first FIFO queue with enqueue/list/run-next/cancel/clear, but not yet edit/delete/reorder/undo/open-directory/copy-url queue workflows.
+- Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has enqueue/list/run-next/run-all/cancel/clear/remove/undo/prefer/put-back/open-directory/copy-url/open-file/trash-file workflows, but not yet `Download ändern` and the table-style selection/reset workflows.
 - Blacklist management and filter profiles: ATPlayer has blacklist/filter configuration surfaces; ATCinna only has simple text filters.
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
 
-Next parity implementation priority: expand the download queue with edit/delete/reorder/undo/open-directory/copy-url workflows, then add blacklist/filter-profile management.
+Next parity implementation priority: add `Download ändern`, then blacklist/filter-profile management and legacy settings/config migration.
+
+### Task 13: Harden Installed Click/Settings Contract (0.3.13)
+
+- [x] Keep `on_applet_clicked()` as the applet menu toggle.
+- [x] Keep the applet popup menu item **Einstellungen** wired to `_openAppletSettings()` and `configureApplet()`.
+- [x] Add installed-tree validation in `scripts/validate-installed.sh` so the copied applet is checked for the same click/settings contract, not just the source tree.
+- [x] Update this plan so ATPlayer parity remains explicitly open.
 
 ### Task 9: First Download Queue Parity Milestone
 

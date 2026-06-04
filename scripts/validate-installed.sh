@@ -140,6 +140,43 @@ if [[ "$meta_version" != "$VERSION" ]]; then
 fi
 
 node --check "$APPLET_JS" >/dev/null
+python3 - "$APPLET_JS" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+source_path = Path(sys.argv[1])
+source = source_path.read_text(encoding="utf-8")
+
+checks = {
+    "on_applet_clicked toggles menu": re.compile(
+        r"on_applet_clicked\s*\([^)]*\)\s*\{[^{}]*\bthis\.menu\.toggle\s*\(\s*\)\s*;",
+        re.S,
+    ),
+    "Einstellungen menu item is created": re.compile(
+        r"this\._openSettingsItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Einstellungen['\"]\s*\)",
+        re.S,
+    ),
+    "Einstellungen item calls settings handler": re.compile(
+        r"this\._openSettingsItem\.connect\s*\(\s*['\"]activate['\"]\s*,\s*\(\s*\)\s*=>\s*\{[^{}]*\bthis\._openAppletSettings\s*\(\s*\)\s*;",
+        re.S,
+    ),
+    "Einstellungen item is added to menu": re.compile(
+        r"this\.menu\.addMenuItem\s*\(\s*this\._openSettingsItem\s*\)",
+        re.S,
+    ),
+    "settings handler calls configureApplet": re.compile(
+        r"_openAppletSettings\s*\(\s*\)\s*\{[\s\S]*?\bthis\.configureApplet\s*\(\s*\)\s*;",
+        re.S,
+    ),
+}
+
+missing = [description for description, pattern in checks.items() if not pattern.search(source)]
+if missing:
+    for description in missing:
+        print(f"ERROR: installed applet contract violation in {source_path}: {description}")
+    raise SystemExit(1)
+PY
 
 if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
     echo "ERROR: helper --help failed"

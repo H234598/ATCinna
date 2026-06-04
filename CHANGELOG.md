@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.13
+
+- Installationsvalidierung härtet jetzt auch die installierte `applet.js`-Kopie gegen die UI-Verträge ab: Linksklick-Handler vorhanden, `this.menu.toggle()` im Handler, Menüpunkt **„Einstellungen“** vorhanden und über `configureApplet()` verdrahtet.
+- Der Linksklick-/Einstellungen-Pfad bleibt im Applet-Code unverändert, weil die Runtime- und Quellprüfung gezeigt hat, dass diese Funktionen bereits vorhanden sind.
+- Implementierungsplan aktualisiert: ATPlayer-Parität wird ausdrücklich als noch nicht vollständig dokumentiert, statt die vorhandenen Kernfunktionen als Abschluss zu werten.
+
 ## 0.3.12
 
 - Queue-Management um sichere gespeicherte-Datei-Löschung ergänzt: neue Helper-Action `download-trash-file --url URL`, die Queue-Eintrag mit vorhandenem `path` prüft, den Download-Pfad per `gio trash` in den Papierkorb verschiebt und den Eintrag defensiv auf `cancelled` setzt.
