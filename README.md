@@ -7,7 +7,8 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 ## Features
 
 - Panel-Anzeige mit Icon/Label.
-- Popup-Menü mit Statuszeile, Refresh-Knopf und Ergebnisliste.
+- Popup-Menü mit Statuszeile, In-Popup-Suchfeld, Refresh-Knopf und Ergebnisliste.
+- Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
 - Play-Aktion über `xdg-open`.
 - Website-Aktion (falls vorhanden).

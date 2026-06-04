@@ -12,8 +12,8 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.1.0`.
-- `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup menu, refresh action, result rendering, and play/open/download handoff.
+- `VERSION` is `0.1.1`.
+- `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, refresh action, result rendering, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, `search`, and `download`.
 - `scripts/check.sh` is the local quality gate.
 
@@ -28,7 +28,7 @@
 - Read: `atcinna@H234598/settings-schema.json`
 - Read: `atcinna@H234598/metadata.json`
 
-- [ ] **Step 1: Add deterministic local checks**
+- [x] **Step 1: Add deterministic local checks**
 
 Ensure `scripts/check.sh` performs these checks:
 
@@ -39,7 +39,7 @@ python3 -m py_compile "$HELPER"
 test -x "$HELPER"
 ```
 
-- [ ] **Step 2: Add static import guard**
+- [x] **Step 2: Add static import guard**
 
 Reject GNOME Shell imports and Java references in the applet source:
 
@@ -49,11 +49,11 @@ for forbidden in ("ExtensionUtils", "PanelMenu", "imports.ui.panelMenu", "import
         raise SystemExit(f"forbidden token in applet.js: {forbidden}")
 ```
 
-- [ ] **Step 3: Add a compressed fixture search test**
+- [x] **Step 3: Add a compressed fixture search test**
 
 Create an `audios.xz` fixture in a temporary `XDG_CACHE_HOME` with two `"Audios"` rows and verify that inherited sender, title, URL, and max-result behavior survive parsing.
 
-- [ ] **Step 4: Add negative URL test**
+- [x] **Step 4: Add negative URL test**
 
 Run:
 
@@ -63,7 +63,7 @@ XDG_CACHE_HOME="$tmp_cache" python3 "$HELPER" download --url "file:///tmp/test.m
 
 Expected: command exits non-zero and stderr contains JSON with `invalid URL scheme`.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run:
 
@@ -78,22 +78,26 @@ Expected: check exits 0; only intended files are modified. The Teamleiterin perf
 
 **Files:**
 - Modify: `atcinna@H234598/applet.js`
+- Modify: `atcinna@H234598/stylesheet.css`
+- Modify: `atcinna@H234598/metadata.json`
 - Modify: `README.md`
 - Modify: `CHANGELOG.md`
+- Modify: `VERSION`
+- Modify: `docs/superpowers/plans/2026-06-04-atcinna-implementation-plan.md`
 
-- [ ] **Step 1: Add a `St.Entry` search field above the refresh action**
+- [x] **Step 1: Add a `St.Entry` search field above the refresh action**
 
 Use the Cinnamon `St.Entry` widget in the applet menu. Keep the existing settings-backed `search-query` as the initial value and fallback.
 
-- [ ] **Step 2: Debounce searches**
+- [x] **Step 2: Debounce searches**
 
 Use a single `Mainloop.timeout_add` handle for input changes. Remove the previous handle before adding a new one.
 
-- [ ] **Step 3: Keep settings and popup in sync**
+- [x] **Step 3: Keep settings and popup in sync**
 
-When the entry changes, update `this.searchQuery` before running `_runSearch()`. Do not write to settings on every keypress; settings writes can be added later behind an explicit save action.
+Keep popup search input and settings value synchronized. On user input, run search from the current field value and do not write to settings on every keypress.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -103,7 +107,7 @@ Run:
 
 Expected: check exits 0 and static import guard still passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add atcinna@H234598/applet.js README.md CHANGELOG.md

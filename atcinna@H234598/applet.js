@@ -19,6 +19,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const appletPath = this.metadata.path || GLib.build_filenamev([global.userdatadir, "applets", UUID]);
         this._helperPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-catalog"]);
         this._refreshTimer = 0;
+        this._searchDebounceTimer = 0;
+        this._searchEntry = null;
+        this._activeSearchQuery = "";
+        this._isSyncingSearchQueryFromSettings = false;
 
         this.setAllowedLayout(Applet.AllowedLayout.BOTH);
         this.set_applet_icon_symbolic_name("audio-x-generic-symbolic");
@@ -27,9 +31,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this.settings = new Settings.AppletSettings(this, UUID, instanceId);
         this.settings.bind("search-query", "searchQuery", this._onSearchSettingsChanged.bind(this));
-        this.settings.bind("max-hits", "maxHits", this._onSearchSettingsChanged.bind(this));
+        this.settings.bind("max-hits", "maxHits", this._onMaxHitsChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
         this.settings.bind("refresh-mirror", "refreshMirror", null);
+        this._activeSearchQuery = this.searchQuery || "";
 
         this.menuManager = new PopupMenu.PopupMenuManager(this);
         this.menu = new Applet.AppletPopupMenu(this, orientation);
@@ -38,6 +43,29 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._statusItem = new PopupMenu.PopupMenuItem("initialisiere...");
         this._statusItem.actor.reactive = false;
         this.menu.addMenuItem(this._statusItem);
+
+        this._searchEntry = new St.Entry({
+            name: "atcinna-search-entry",
+            style_class: "atcinna-search-entry",
+            text: this.searchQuery || "",
+            hint_text: "Suche ...",
+            can_focus: true,
+            track_hover: true,
+            x_expand: true
+        });
+        const searchRow = new St.BoxLayout({
+            style_class: "atcinna-search-row",
+            vertical: false,
+            x_expand: true
+        });
+        searchRow.add_actor(this._searchEntry);
+        this._searchEntry.clutter_text.connect("text-changed", () => {
+            this._onSearchInputChanged();
+        });
+        this._searchEntry.clutter_text.connect("activate", () => {
+            this._runSearchNow();
+        });
+        this.menu.addActor(searchRow);
 
         this._refreshItem = new PopupMenu.PopupMenuItem("Jetzt aktualisieren");
         this._refreshItem.connect("activate", () => this._runRefresh());
@@ -102,9 +130,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
-    _runSearch() {
+    _runSearch(searchQuery = null) {
         this._setStatus("suche im Katalog ...");
-        const query = this.searchQuery || "";
+        const query = searchQuery === null ? this._getActiveSearchQuery() : searchQuery;
         const maxHits = Math.max(1, Math.min(Number(this.maxHits) || 20, 100));
         this._runHelper([
             "search",
@@ -126,6 +154,32 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 this._setStatus(`Antwort ungültig: ${error.message}`);
                 this._clearResults();
             }
+        });
+    }
+
+    _runSearchNow() {
+        const query = this._searchEntry ? this._searchEntry.get_text() : this.searchQuery || "";
+        if (this._searchDebounceTimer > 0) {
+            GLib.source_remove(this._searchDebounceTimer);
+            this._searchDebounceTimer = 0;
+        }
+        this._activeSearchQuery = query;
+        this._runSearch(query);
+    }
+
+    _onSearchInputChanged() {
+        if (this._isSyncingSearchQueryFromSettings) {
+            return;
+        }
+        if (this._searchDebounceTimer > 0) {
+            GLib.source_remove(this._searchDebounceTimer);
+            this._searchDebounceTimer = 0;
+        }
+
+        this._searchDebounceTimer = Mainloop.timeout_add(350, () => {
+            this._searchDebounceTimer = 0;
+            this._runSearchNow();
+            return GLib.SOURCE_REMOVE;
         });
     }
 
@@ -207,7 +261,27 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultsSection.removeAll();
     }
 
+    _getActiveSearchQuery() {
+        if (this._searchEntry) {
+            return this._searchEntry.get_text();
+        }
+        return this._activeSearchQuery || this.searchQuery || "";
+    }
+
     _onSearchSettingsChanged() {
+        this._activeSearchQuery = this.searchQuery || "";
+        if (this._searchEntry && this._searchEntry.get_text() !== this.searchQuery) {
+            this._isSyncingSearchQueryFromSettings = true;
+            try {
+                this._searchEntry.set_text(this.searchQuery || "");
+            } finally {
+                this._isSyncingSearchQueryFromSettings = false;
+            }
+        }
+        this._runSearch(this.searchQuery || "");
+    }
+
+    _onMaxHitsChanged() {
         this._runSearch();
     }
 
@@ -219,6 +293,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (this._refreshTimer > 0) {
             GLib.source_remove(this._refreshTimer);
             this._refreshTimer = 0;
+        }
+        if (this._searchDebounceTimer > 0) {
+            GLib.source_remove(this._searchDebounceTimer);
+            this._searchDebounceTimer = 0;
         }
         if (this.settings) {
             this.settings.finalize();

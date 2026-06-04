@@ -29,6 +29,7 @@ require_command python3 || exit 1
 require_command shellcheck || exit 1
 require_command xz || exit 1
 require_command rg || exit 1
+require_command node || exit 1
 
 if [ ! -x "$HELPER" ]; then
     echo "ERROR: helper is not executable: $HELPER"
@@ -49,9 +50,12 @@ if ! shellcheck "$SCRIPT_DIR/check.sh"; then
 fi
 
 for forbidden_pattern in \
+    'ExtensionUtils' \
+    'PanelMenu' \
+    'imports\\.misc\\.extensionUtils' \
+    'imports\\.ui\\.panelMenu' \
     'imports\\.shell' \
     'imports\\.gi\\.Shell' \
-    'imports\\.ui\\.main' \
     'importPackage.*java' \
     'from java\\.'; do
     if rg -q -e "$forbidden_pattern" "$APPLET_JS"; then
@@ -59,6 +63,8 @@ for forbidden_pattern in \
         STATUS=1
     fi
 done
+
+node --check "$APPLET_JS" >/dev/null
 
 if ! python3 -m py_compile "$HELPER"; then
     echo "ERROR: py_compile failed for helper"
