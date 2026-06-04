@@ -12,10 +12,10 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.17`.
+- `VERSION` is `0.3.18`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
-- `atcinna@H234598/scripts/atcinna-search-dialog` and `atcinna@H234598/scripts/atcinna-queue-edit-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
+- `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, and `atcinna@H234598/scripts/atcinna-blacklist-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
 
 ### Quick Follow-up
@@ -68,7 +68,28 @@ Known parity gaps from `/home/teladi/ATPlayer`:
   - Wiring-Checks auf alle 4 Menükontexte (`_addFilterActions`).
   - Regex-Check auf kombinierte `Sender + Titel`-Aktion (`sender-filter` + `search-query`).
 
-Next parity implementation priority: full Blacklist/filter-profile editing, program/help/reset menu surfaces, and legacy settings/config migration.
+Next parity implementation priority: filter-profile editing, deeper Blacklist modes such as whitelist/exact handling, table-style selection/reset workflows, and legacy settings/config migration.
+
+### Task 18: Add Optional Blacklist Dialog (0.3.18)
+
+- [x] **Menu and fixed-launch path**
+  - Add `this._blacklistDialogPath` in the applet constructor.
+  - Add help/program submenu item `Blacklist verwalten`.
+  - Add handler `_launchBlacklistDialog` and launch `Util.spawn` with a fixed argument list.
+
+- [x] **GTK dialog script**
+  - Add executable script `atcinna@H234598/scripts/atcinna-blacklist-dialog`.
+  - Implement `--self-test` output (`status`, `helper`, `gtk3`) for headless checks.
+  - List blacklist rules via `blacklist-list` and remove checked rows via `blacklist-remove`.
+  - No shell strings, fixed helper argument lists only.
+
+- [x] **Static/install checks**
+  - Extend `scripts/check.sh` with executable, py_compile, static wiring, and dialog self-test checks.
+  - Extend `scripts/validate-installed.sh` with executable and self-test checks.
+  - Extend package/install verification for presence of the new script.
+
+- [x] **Docs + version**
+  - Update `README.md`, `CHANGELOG.md`, `VERSION`, and `atcinna@H234598/metadata.json` to 0.3.18.
 
 ### Task 15: Add Queue Download Edit Action (0.3.15)
 

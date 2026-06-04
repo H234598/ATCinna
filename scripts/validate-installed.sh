@@ -67,6 +67,7 @@ APPLET_DIR="$TARGET_DIR/$APPLET_ID"
 HELPER="$APPLET_DIR/scripts/atcinna-catalog"
 SEARCH_DIALOG="$APPLET_DIR/scripts/atcinna-search-dialog"
 QUEUE_EDIT_DIALOG="$APPLET_DIR/scripts/atcinna-queue-edit-dialog"
+BLACKLIST_DIALOG="$APPLET_DIR/scripts/atcinna-blacklist-dialog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
@@ -102,7 +103,8 @@ for required_file in \
     "$APPLET_DIR/stylesheet.css" \
     "$METADATA_JSON" \
     "$HELPER" \
-    "$SEARCH_DIALOG"; do
+    "$SEARCH_DIALOG" \
+    "$BLACKLIST_DIALOG"; do
     if [[ ! -f "$required_file" ]]; then
         echo "ERROR: expected installed file missing: $required_file"
         exit 1
@@ -119,6 +121,10 @@ if [[ ! -x "$SEARCH_DIALOG" ]]; then
 fi
 if [[ ! -x "$QUEUE_EDIT_DIALOG" ]]; then
     echo "ERROR: queue edit dialog not executable: $QUEUE_EDIT_DIALOG"
+    exit 1
+fi
+if [[ ! -x "$BLACKLIST_DIALOG" ]]; then
+    echo "ERROR: blacklist dialog not executable: $BLACKLIST_DIALOG"
     exit 1
 fi
 
@@ -196,11 +202,22 @@ if ! python3 -m py_compile "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: py_compile failed for queue edit dialog"
     exit 1
 fi
+if ! python3 -m py_compile "$BLACKLIST_DIALOG"; then
+    echo "ERROR: py_compile failed for blacklist dialog"
+    exit 1
+fi
 
 QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
 if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
     echo "ERROR: installed queue edit dialog self-test failed"
     echo "$QUEUE_EDIT_DIALOG_SELF_TEST"
+    exit 1
+fi
+
+BLACKLIST_DIALOG_SELF_TEST="$(python3 "$BLACKLIST_DIALOG" --self-test)"
+if ! echo "$BLACKLIST_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
+    echo "ERROR: installed blacklist dialog self-test failed"
+    echo "$BLACKLIST_DIALOG_SELF_TEST"
     exit 1
 fi
 

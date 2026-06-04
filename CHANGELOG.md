@@ -1,4 +1,14 @@
 # Changelog
+## 0.3.18
+
+- Neue optionale Blacklist-Verwaltung im Hilfe-Menü hinzugefügt: Menüpunkt **Blacklist verwalten**.
+- Neuer GTK-Dialog `atcinna-blacklist-dialog` mit:
+  - Self-Test (`--self-test`) für Helper-/GTK-Verfügbarkeit
+  - Listenansicht vorhandener `blacklist-list`-Regeln
+  - Entfernen ausgewählter Regeln über `blacklist-remove`
+- Applet startet den Dialog über festen `Util.spawn`-Argumentpfad (`[this._blacklistDialogPath]`), bestehend aus optionaler UI in der Hilfe-/Programm-Fläche.
+- Install-/Validierungs-Pipeline erweitert um neuen Dialog (ausführbar, `py_compile`, Self-Test, Paket-/Installationsartefakt).
+
 ## 0.3.17
 
 - ATPlayer-ähnliches Hilfemenü ergänzt (unter "Hilfe") mit Aktionen:

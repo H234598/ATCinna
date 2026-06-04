@@ -39,6 +39,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._isSyncingFilterSettingsFromSettings = false;
         this._searchDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-search-dialog"]);
         this._queueEditDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-queue-edit-dialog"]);
+        this._blacklistDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-blacklist-dialog"]);
         this._historySection = null;
         this._favoritesSection = null;
         this._filterSection = null;
@@ -131,6 +132,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._showHelpDialog();
         });
         this._helpMenu.menu.addMenuItem(this._helpDialogItem);
+
+        this._helpBlacklistItem = new PopupMenu.PopupMenuItem("Blacklist verwalten");
+        this._helpBlacklistItem.connect("activate", () => {
+            this._launchBlacklistDialog();
+        });
+        this._helpMenu.menu.addMenuItem(this._helpBlacklistItem);
 
         this._helpResetItem = new PopupMenu.PopupMenuItem("Alle Programmeinstellungen zurücksetzen");
         this._helpResetItem.connect("activate", () => {
@@ -553,6 +560,20 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ]);
         } catch (error) {
             this._setStatus(`Suchdialog konnte nicht gestartet werden: ${error}`);
+        }
+    }
+
+    _launchBlacklistDialog() {
+        if (!GLib.file_test(this._blacklistDialogPath, GLib.FileTest.EXISTS | GLib.FileTest.IS_EXECUTABLE)) {
+            this._setStatus("Blacklist-Dialog nicht verfügbar: Script fehlt");
+            return;
+        }
+        try {
+            Util.spawn([
+                this._blacklistDialogPath
+            ]);
+        } catch (error) {
+            this._setStatus(`Blacklist-Dialog konnte nicht gestartet werden: ${error}`);
         }
     }
 

@@ -7,6 +7,7 @@ APPLET_UUID="atcinna@H234598"
 HELPER="$APPLET_DIR/scripts/atcinna-catalog"
 SEARCH_DIALOG="$APPLET_DIR/scripts/atcinna-search-dialog"
 QUEUE_EDIT_DIALOG="$APPLET_DIR/scripts/atcinna-queue-edit-dialog"
+BLACKLIST_DIALOG="$APPLET_DIR/scripts/atcinna-blacklist-dialog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
@@ -61,6 +62,10 @@ if [ ! -x "$SEARCH_DIALOG" ]; then
 fi
 if [ ! -x "$QUEUE_EDIT_DIALOG" ]; then
     echo "ERROR: queue edit dialog is not executable: $QUEUE_EDIT_DIALOG"
+    exit 1
+fi
+if [ ! -x "$BLACKLIST_DIALOG" ]; then
+    echo "ERROR: blacklist dialog is not executable: $BLACKLIST_DIALOG"
     exit 1
 fi
 
@@ -141,8 +146,20 @@ if ! rg -q -F '_showAboutProgram' "$APPLET_JS"; then
     echo "ERROR: applet about action handler is missing"
     STATUS=1
 fi
+if ! rg -q -F '_launchBlacklistDialog' "$APPLET_JS"; then
+    echo "ERROR: applet blacklist dialog action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_blacklistDialogPath' "$APPLET_JS"; then
+    echo "ERROR: applet blacklist dialog path wiring is missing"
+    STATUS=1
+fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Hilfedialog")' "$APPLET_JS"; then
     echo "ERROR: applet help dialog menu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Blacklist verwalten")' "$APPLET_JS"; then
+    echo "ERROR: applet blacklist manage menu label is missing"
     STATUS=1
 fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Programmeinstellungen zurücksetzen")' "$APPLET_JS"; then
@@ -386,6 +403,10 @@ if ! python3 -m py_compile "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: py_compile failed for queue edit dialog"
     exit 1
 fi
+if ! python3 -m py_compile "$BLACKLIST_DIALOG"; then
+    echo "ERROR: py_compile failed for blacklist dialog"
+    exit 1
+fi
 
 export XDG_DATA_HOME="$TMP_DIR/data"
 
@@ -418,6 +439,12 @@ QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
 if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean")' >/dev/null; then
     echo "ERROR: queue edit dialog self-test failed"
     echo "$QUEUE_EDIT_DIALOG_SELF_TEST"
+    exit 1
+fi
+BLACKLIST_DIALOG_SELF_TEST="$(python3 "$BLACKLIST_DIALOG" --self-test)"
+if ! echo "$BLACKLIST_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then
+    echo "ERROR: blacklist dialog self-test failed"
+    echo "$BLACKLIST_DIALOG_SELF_TEST"
     exit 1
 fi
 
@@ -1272,6 +1299,10 @@ if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
         echo "ERROR: install-local did not place executable queue edit dialog"
         exit 1
     fi
+    if [ ! -x "$TMP_DIR/$APPLET_UUID/scripts/atcinna-blacklist-dialog" ]; then
+        echo "ERROR: install-local did not place executable blacklist dialog"
+        exit 1
+    fi
     PACKAGE_DIST="$TMP_DIR/dist"
     if ! "$SCRIPT_DIR/package.sh" --skip-check --dist-dir "$PACKAGE_DIST"; then
         echo "ERROR: package.sh failed during self-test"
@@ -1293,6 +1324,10 @@ if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
     fi
     if ! grep -qx "$APPLET_UUID/scripts/atcinna-queue-edit-dialog" <<<"$PACKAGE_LIST"; then
         echo "ERROR: package artifact missing queue edit dialog"
+        exit 1
+    fi
+    if ! grep -qx "$APPLET_UUID/scripts/atcinna-blacklist-dialog" <<<"$PACKAGE_LIST"; then
+        echo "ERROR: package artifact missing blacklist dialog"
         exit 1
     fi
     if grep -Eq '(^|/)(\\.git|dist|__pycache__)(/|$)|\\.pyc$|~$' <<<"$PACKAGE_LIST"; then
