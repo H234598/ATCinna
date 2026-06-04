@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.22
+
+- ATPlayer-nahe Filter um `only_new` und dreistufiges `podcast_mode` (`all`, `only`, `none`) erweitert; beide Felder werden aus den echten Audiolisten-Feldern `JSON_AUDIO_NEW` und `JSON_AUDIO_PODCAST` gelesen.
+- Applet-Settings, Filterprofile, externer Suchdialog, Filterprofil-Dialog, D-Bus-Status und Runtime-Smoke transportieren die neuen Filter.
+- Lokale Checks und Installvalidierung prüfen `--only-new`, `--podcast-mode only` und `--podcast-mode none` funktional.
+- ATPlayer-Parität bleibt weiter offen; Whitelist-/ThemeTitle-Blacklist-Details und weitere Tabellen-/Migrationsworkflows fehlen noch.
+
 ## 0.3.21
 
 - 0.3.21 erweitert die ATPlayer-nahe Filterbasis um zusätzliche Felder (`title`, `theme_title`, `somewhere`, `max_days`, `min_duration`, `max_duration`, `only_bookmarks`, `hide_history`) und nimmt diese auch in den Filterprofil-Speicherpfad auf.

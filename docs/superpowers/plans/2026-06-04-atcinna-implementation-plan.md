@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.21`.
+- `VERSION` is `0.3.22`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -36,14 +36,26 @@
   - Keep `on_applet_clicked()` as menu toggle and explicit, direct settings launch via `configureApplet()`.
   - Mark ATPlayer parity as explicitly incomplete in changelog/plan/README even with these filter improvements in place.
 
+### Task 22: ATPlayer New/Podcast Filter Parity (0.3.22)
+
+- [x] **Nur-neue-Filter**
+  - Read `JSON_AUDIO_NEW` from the ATPlayer-compatible audio list and expose it as `is_new`.
+  - Add helper `--only-new`, applet setting `only-new-filter`, profile persistence, dialogs, D-Bus status and checks.
+- [x] **Podcast-Filter**
+  - Read `JSON_AUDIO_PODCAST` from the audio list and expose it as `podcast`.
+  - Add ATPlayer-style three-state filtering with `podcast_mode`: `all`, `only`, `none`.
+  - Keep missing podcast metadata non-podcast by default; do not infer podcasts from text.
+- [x] **Verification**
+  - Extend `scripts/check.sh`, `scripts/validate-installed.sh`, and runtime D-Bus profile smoke coverage for the new fields.
+
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions including `Download ändern`, history, favorites, optional GTK dialogs, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions including `Download ändern`, history, favorites, optional GTK dialogs, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 
 - Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has enqueue/list/run-next/run-all/cancel/clear/update/remove/undo/prefer/put-back/open-directory/copy-url/open-file/trash-file workflows, but not yet the table-style selection/reset workflows.
-- Blacklist management and filter profiles: ATPlayer has deeper blacklist/filter configuration surfaces; ATCinna now has direct context-menu Blacklist adds, search modes, a first Blacklist editor, exact/active toggles, undo/clean/clear, and first Filterprofile management, but not whitelist handling, the full rich filter predicate set, or legacy migration.
+- Blacklist management and filter profiles: ATPlayer has deeper blacklist/filter configuration surfaces; ATCinna now has direct context-menu Blacklist adds, search modes, a first Blacklist editor, exact/active toggles, undo/clean/clear, and first Filterprofile management, but not Blacklist `themeTitle` fields, Whitelist wording parity, exclude-rule semantics, or legacy migration.
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
 

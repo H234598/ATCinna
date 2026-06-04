@@ -76,8 +76,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("max-days-filter", "maxDaysFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("min-duration-filter", "minDurationFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("max-duration-filter", "maxDurationFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("only-new-filter", "onlyNewFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("only-bookmarks-filter", "onlyBookmarksFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("hide-history-filter", "hideHistoryFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("podcast-filter", "podcastFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("blacklist-mode", "blacklistMode", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("max-hits", "maxHits", this._onMaxHitsChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
@@ -291,8 +293,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             maxDaysFilter: this._boundedInt(this.maxDaysFilter, 0, 0, 50),
             minDurationFilter: this._boundedInt(this.minDurationFilter, 0, 0, 150),
             maxDurationFilter: this._boundedInt(this.maxDurationFilter, 150, 0, 150),
+            onlyNewFilter: Boolean(this.onlyNewFilter),
             onlyBookmarksFilter: Boolean(this.onlyBookmarksFilter),
             hideHistoryFilter: Boolean(this.hideHistoryFilter),
+            podcastFilter: this._getPodcastMode(),
             blacklistMode: this._getBlacklistMode(),
             maxHits: maxHits,
             hasHelper: hasHelper,
@@ -378,9 +382,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             maxDays: this._boundedInt(this.maxDaysFilter, 0, 0, 50),
             minDuration: this._boundedInt(this.minDurationFilter, 0, 0, 150),
             maxDuration: this._boundedInt(this.maxDurationFilter, 150, 0, 150),
+            onlyNew: Boolean(this.onlyNewFilter),
             onlyBookmarks: Boolean(this.onlyBookmarksFilter),
-            hideHistory: Boolean(this.hideHistoryFilter)
+            hideHistory: Boolean(this.hideHistoryFilter),
+            podcastMode: this._getPodcastMode()
         };
+    }
+
+    _getPodcastMode(value = this.podcastFilter) {
+        const mode = this._toTrimmed(value).toLowerCase();
+        return mode === "only" || mode === "none" ? mode : "all";
     }
 
     _getBlacklistMode() {
@@ -432,11 +443,19 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (filters.maxDuration < 150) {
             active.push(`Max:${filters.maxDuration}`);
         }
+        if (filters.onlyNew) {
+            active.push("nur neue");
+        }
         if (filters.onlyBookmarks) {
             active.push("nur Favoriten");
         }
         if (filters.hideHistory) {
             active.push("ohne Verlauf");
+        }
+        if (filters.podcastMode === "only") {
+            active.push("Podcast:nur");
+        } else if (filters.podcastMode === "none") {
+            active.push("Podcast:keine");
         }
         const blacklistMode = this._getBlacklistMode();
         const modeText = blacklistMode === "hide" ? "BL: ausblenden" : blacklistMode === "only" ? "BL: nur" : "BL: aus";
@@ -483,8 +502,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             `--max-hits=${this._profileMaxHits(this.maxHits)}`,
             `--max-days=${filters.maxDays}`,
             `--min-duration=${filters.minDuration}`,
-            `--max-duration=${filters.maxDuration}`
+            `--max-duration=${filters.maxDuration}`,
+            `--podcast-mode=${filters.podcastMode}`
         ];
+        if (filters.onlyNew) {
+            args.push("--only-new");
+        }
         if (filters.onlyBookmarks) {
             args.push("--only-bookmarks");
         }
@@ -514,8 +537,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const nextMaxDays = this._boundedInt(profile.max_days, 0, 0, 50);
         const nextMinDuration = this._boundedInt(profile.min_duration, 0, 0, 150);
         const nextMaxDuration = this._boundedInt(profile.max_duration, 150, 0, 150);
+        const nextOnlyNew = this._profileBool(profile.only_new);
         const nextOnlyBookmarks = this._profileBool(profile.only_bookmarks);
         const nextHideHistory = this._profileBool(profile.hide_history);
+        const nextPodcastMode = this._getPodcastMode(profile.podcast_mode);
 
         this._isSyncingSearchQueryFromSettings = true;
         this._isSyncingFilterSettingsFromSettings = true;
@@ -533,8 +558,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.maxDaysFilter = nextMaxDays;
             this.minDurationFilter = nextMinDuration;
             this.maxDurationFilter = nextMaxDuration;
+            this.onlyNewFilter = nextOnlyNew;
             this.onlyBookmarksFilter = nextOnlyBookmarks;
             this.hideHistoryFilter = nextHideHistory;
+            this.podcastFilter = nextPodcastMode;
             this.settings.setValue("search-query", nextSearchQuery);
             this.settings.setValue("sender-filter", nextSender);
             this.settings.setValue("genre-filter", nextGenre);
@@ -547,8 +574,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("max-days-filter", nextMaxDays);
             this.settings.setValue("min-duration-filter", nextMinDuration);
             this.settings.setValue("max-duration-filter", nextMaxDuration);
+            this.settings.setValue("only-new-filter", nextOnlyNew);
             this.settings.setValue("only-bookmarks-filter", nextOnlyBookmarks);
             this.settings.setValue("hide-history-filter", nextHideHistory);
+            this.settings.setValue("podcast-filter", nextPodcastMode);
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
             }
@@ -634,7 +663,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const filters = this._getActiveFilters();
         const hasAdvancedFilters = filters.title || filters.themeTitle || filters.somewhere ||
             filters.maxDays > 0 || filters.minDuration > 0 || filters.maxDuration < 150 ||
-            filters.onlyBookmarks || filters.hideHistory;
+            filters.onlyNew || filters.onlyBookmarks || filters.hideHistory || filters.podcastMode !== "all";
         if (!filters.sender && !filters.genre && !filters.topic && !hasAdvancedFilters) {
             this._refreshFilterSummary();
             this._runSearch();
@@ -652,8 +681,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.maxDaysFilter = 0;
             this.minDurationFilter = 0;
             this.maxDurationFilter = 150;
+            this.onlyNewFilter = false;
             this.onlyBookmarksFilter = false;
             this.hideHistoryFilter = false;
+            this.podcastFilter = "all";
             this.settings.setValue("sender-filter", "");
             this.settings.setValue("genre-filter", "");
             this.settings.setValue("topic-filter", "");
@@ -663,8 +694,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("max-days-filter", 0);
             this.settings.setValue("min-duration-filter", 0);
             this.settings.setValue("max-duration-filter", 150);
+            this.settings.setValue("only-new-filter", false);
             this.settings.setValue("only-bookmarks-filter", false);
             this.settings.setValue("hide-history-filter", false);
+            this.settings.setValue("podcast-filter", "all");
         } finally {
             this._isSyncingFilterSettingsFromSettings = false;
         }
@@ -721,11 +754,17 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (filters.maxDuration < 150) {
             args.push(`--max-duration=${filters.maxDuration}`);
         }
+        if (filters.onlyNew) {
+            args.push("--only-new");
+        }
         if (filters.onlyBookmarks) {
             args.push("--only-bookmarks");
         }
         if (filters.hideHistory) {
             args.push("--hide-history");
+        }
+        if (filters.podcastMode !== "all") {
+            args.push(`--podcast-mode=${filters.podcastMode}`);
         }
 
         this._runHelper(args, (status, stdout, stderr) => {
@@ -801,8 +840,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "max-days-filter": 0,
             "min-duration-filter": 0,
             "max-duration-filter": 150,
+            "only-new-filter": false,
             "only-bookmarks-filter": false,
-            "hide-history-filter": false
+            "hide-history-filter": false,
+            "podcast-filter": "all"
         };
         const nextSearchQuery = defaults["search-query"];
 
@@ -821,8 +862,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.maxDaysFilter = defaults["max-days-filter"];
             this.minDurationFilter = defaults["min-duration-filter"];
             this.maxDurationFilter = defaults["max-duration-filter"];
+            this.onlyNewFilter = defaults["only-new-filter"];
             this.onlyBookmarksFilter = defaults["only-bookmarks-filter"];
             this.hideHistoryFilter = defaults["hide-history-filter"];
+            this.podcastFilter = defaults["podcast-filter"];
 
             this.settings.setValue("search-query", defaults["search-query"]);
             this.settings.setValue("sender-filter", defaults["sender-filter"]);
@@ -836,8 +879,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("max-days-filter", defaults["max-days-filter"]);
             this.settings.setValue("min-duration-filter", defaults["min-duration-filter"]);
             this.settings.setValue("max-duration-filter", defaults["max-duration-filter"]);
+            this.settings.setValue("only-new-filter", defaults["only-new-filter"]);
             this.settings.setValue("only-bookmarks-filter", defaults["only-bookmarks-filter"]);
             this.settings.setValue("hide-history-filter", defaults["hide-history-filter"]);
+            this.settings.setValue("podcast-filter", defaults["podcast-filter"]);
 
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
@@ -863,8 +908,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["Max-Treffer", `${defaults["max-hits"]}`],
             ["Zeitraum", "alles"],
             ["Dauer", "alles"],
+            ["Nur neue", "nein"],
             ["Nur Favoriten", "nein"],
-            ["Verlauf ausblenden", "nein"]
+            ["Verlauf ausblenden", "nein"],
+            ["Podcast", "alles"]
         ]);
         this._runSearch();
     }
@@ -931,11 +978,17 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (filters.maxDuration < 150) {
             args.push(`--max-duration=${filters.maxDuration}`);
         }
+        if (filters.onlyNew) {
+            args.push("--only-new=true");
+        }
         if (filters.onlyBookmarks) {
             args.push("--only-bookmarks=true");
         }
         if (filters.hideHistory) {
             args.push("--hide-history=true");
+        }
+        if (filters.podcastMode !== "all") {
+            args.push(`--podcast-mode=${filters.podcastMode}`);
         }
         try {
             Util.spawn(args);
@@ -979,8 +1032,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 `--max-days=${filters.maxDays}`,
                 `--min-duration=${filters.minDuration}`,
                 `--max-duration=${filters.maxDuration}`,
+                `--only-new=${filters.onlyNew ? "true" : "false"}`,
                 `--only-bookmarks=${filters.onlyBookmarks ? "true" : "false"}`,
-                `--hide-history=${filters.hideHistory ? "true" : "false"}`
+                `--hide-history=${filters.hideHistory ? "true" : "false"}`,
+                `--podcast-mode=${filters.podcastMode}`
             ]);
         } catch (error) {
             this._setStatus(`Filterprofil-Dialog konnte nicht gestartet werden: ${error}`);

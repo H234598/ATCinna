@@ -269,8 +269,10 @@ check_atcinna_dbus() {
         max_days: (.maxDaysFilter // 0),
         min_duration: (.minDurationFilter // 0),
         max_duration: (.maxDurationFilter // 150),
+        only_new: (.onlyNewFilter // false),
         only_bookmarks: (.onlyBookmarksFilter // false),
         hide_history: (.hideHistoryFilter // false),
+        podcast_mode: (.podcastFilter // "all"),
         blacklist_mode: (.blacklistMode // "hide"),
         max_hits: (.maxHits // 20)
     }' <<<"$status_json")"; then

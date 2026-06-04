@@ -28,6 +28,7 @@ UNDO_MAX_ENTRIES = 100
 BLACKLIST_MAX_ENTRIES = 500
 BLACKLIST_MODES = {"off", "hide", "only"}
 BLACKLIST_UNDO_MAX_ENTRIES = 100
+PODCAST_MODES = {"all", "only", "none"}
 FILTER_PROFILE_MAX_ENTRIES = 100
 FILTER_PROFILE_NAME_MAX_LENGTH = 120
 FILTER_PROFILE_DEFAULT_BLACKLIST_MODE = "hide"
@@ -35,6 +36,7 @@ FILTER_PROFILE_DEFAULT_MAX_HITS = 20
 FILTER_PROFILE_DEFAULT_MAX_DAYS = 0
 FILTER_PROFILE_DEFAULT_MIN_DURATION = 0
 FILTER_PROFILE_DEFAULT_MAX_DURATION = 150
+FILTER_PROFILE_DEFAULT_PODCAST_MODE = "all"
 
 
 def die(message, exit_code=1):
@@ -189,6 +191,11 @@ def _normalize_blacklist_mode(value, default=FILTER_PROFILE_DEFAULT_BLACKLIST_MO
     return mode if mode in BLACKLIST_MODES else default
 
 
+def _normalize_podcast_mode(value, default=FILTER_PROFILE_DEFAULT_PODCAST_MODE):
+    mode = _normalize_entry_value(value).lower()
+    return mode if mode in PODCAST_MODES else default
+
+
 def _normalize_max_hits(value, default=FILTER_PROFILE_DEFAULT_MAX_HITS):
     try:
         parsed = int(value)
@@ -237,8 +244,10 @@ def _normalize_filter_profile(profile):
         "max_days": _normalize_filter_max_days(profile.get("max_days")),
         "min_duration": _normalize_min_duration(profile.get("min_duration")),
         "max_duration": _normalize_max_duration(profile.get("max_duration")),
+        "only_new": _normalize_bool_value(profile.get("only_new"), False),
         "only_bookmarks": _normalize_bool_value(profile.get("only_bookmarks"), False),
         "hide_history": _normalize_bool_value(profile.get("hide_history"), False),
+        "podcast_mode": _normalize_podcast_mode(profile.get("podcast_mode")),
         "timestamp": _normalize_timestamp(profile.get("timestamp"), int(time.time())),
     }
 
@@ -260,8 +269,10 @@ def _default_filter_profiles():
             "max_days": FILTER_PROFILE_DEFAULT_MAX_DAYS,
             "min_duration": FILTER_PROFILE_DEFAULT_MIN_DURATION,
             "max_duration": FILTER_PROFILE_DEFAULT_MAX_DURATION,
+            "only_new": False,
             "only_bookmarks": False,
             "hide_history": False,
+            "podcast_mode": FILTER_PROFILE_DEFAULT_PODCAST_MODE,
             "timestamp": timestamp,
         },
         {
@@ -278,8 +289,10 @@ def _default_filter_profiles():
             "max_days": 10,
             "min_duration": FILTER_PROFILE_DEFAULT_MIN_DURATION,
             "max_duration": FILTER_PROFILE_DEFAULT_MAX_DURATION,
+            "only_new": False,
             "only_bookmarks": False,
             "hide_history": False,
+            "podcast_mode": FILTER_PROFILE_DEFAULT_PODCAST_MODE,
             "timestamp": timestamp,
         },
         {
@@ -296,8 +309,10 @@ def _default_filter_profiles():
             "max_days": FILTER_PROFILE_DEFAULT_MAX_DAYS,
             "min_duration": FILTER_PROFILE_DEFAULT_MIN_DURATION,
             "max_duration": FILTER_PROFILE_DEFAULT_MAX_DURATION,
+            "only_new": False,
             "only_bookmarks": False,
             "hide_history": False,
+            "podcast_mode": FILTER_PROFILE_DEFAULT_PODCAST_MODE,
             "timestamp": timestamp,
         },
     ]
@@ -375,8 +390,10 @@ def _profile_from_args(args, profiles):
         "max_days": getattr(args, "max_days", FILTER_PROFILE_DEFAULT_MAX_DAYS),
         "min_duration": getattr(args, "min_duration", FILTER_PROFILE_DEFAULT_MIN_DURATION),
         "max_duration": getattr(args, "max_duration", FILTER_PROFILE_DEFAULT_MAX_DURATION),
+        "only_new": getattr(args, "only_new", False),
         "only_bookmarks": getattr(args, "only_bookmarks", False),
         "hide_history": getattr(args, "hide_history", False),
+        "podcast_mode": getattr(args, "podcast_mode", FILTER_PROFILE_DEFAULT_PODCAST_MODE),
         "timestamp": int(time.time()),
     })
 
@@ -841,6 +858,11 @@ def _duration_matches(duration_minutes, min_duration, max_duration):
     if max_duration < FILTER_PROFILE_DEFAULT_MAX_DURATION and duration_minutes > max_duration:
         return False
     return True
+
+
+def _parse_audio_bool(value):
+    text = _normalize_entry_value(value).lower()
+    return text in {"1", "true", "yes", "on", "ja", "j", "x"}
 
 
 def action_history_add(args):
@@ -1504,8 +1526,10 @@ def _iter_results(query, max_hits, filters):
     filter_max_days = _normalize_filter_max_days(getattr(filters, "max_days", FILTER_PROFILE_DEFAULT_MAX_DAYS))
     filter_min_duration = _normalize_min_duration(getattr(filters, "min_duration", FILTER_PROFILE_DEFAULT_MIN_DURATION))
     filter_max_duration = _normalize_max_duration(getattr(filters, "max_duration", FILTER_PROFILE_DEFAULT_MAX_DURATION))
+    only_new = _normalize_bool_value(getattr(filters, "only_new", False), False)
     only_bookmarks = _normalize_bool_value(getattr(filters, "only_bookmarks", False), False)
     hide_history = _normalize_bool_value(getattr(filters, "hide_history", False), False)
+    podcast_mode = _normalize_podcast_mode(getattr(filters, "podcast_mode", FILTER_PROFILE_DEFAULT_PODCAST_MODE))
     bookmark_urls = _store_url_set("bookmarks.json") if only_bookmarks else set()
     history_urls = _store_url_set("history.json") if hide_history else set()
     hits = []
@@ -1533,6 +1557,8 @@ def _iter_results(query, max_hits, filters):
         description = normalize_value(raw[8], "") if len(raw) > 8 else ""
         url = normalize_value(raw[9], "")
         website = normalize_value(raw[10], "") if len(raw) > 10 else ""
+        is_new = _parse_audio_bool(raw[11]) if len(raw) > 11 else False
+        is_podcast = _parse_audio_bool(raw[12]) if len(raw) > 12 else False
         if not _is_http_url(url):
             continue
         if website and not _is_http_url(website):
@@ -1558,9 +1584,15 @@ def _iter_results(query, max_hits, filters):
         duration_minutes = _parse_duration_minutes(duration)
         if not _duration_matches(duration_minutes, filter_min_duration, filter_max_duration):
             continue
+        if only_new and not is_new:
+            continue
         if only_bookmarks and url not in bookmark_urls:
             continue
         if hide_history and url in history_urls:
+            continue
+        if podcast_mode == "only" and not is_podcast:
+            continue
+        if podcast_mode == "none" and is_podcast:
             continue
 
         result_item = {
@@ -1574,6 +1606,8 @@ def _iter_results(query, max_hits, filters):
             "description": description,
             "url": url,
             "website": website,
+            "is_new": is_new,
+            "podcast": is_podcast,
         }
         if blacklist_mode in {"hide", "only"}:
             is_blacklisted = any(_rule_matches_result(rule, result_item) for rule in blacklist_rules)
@@ -1633,8 +1667,10 @@ def parse_args():
     search.add_argument("--max-days", default=FILTER_PROFILE_DEFAULT_MAX_DAYS, help="Only show entries from the last N days; 0 disables")
     search.add_argument("--min-duration", default=FILTER_PROFILE_DEFAULT_MIN_DURATION, help="Minimum duration in minutes; 0 disables")
     search.add_argument("--max-duration", default=FILTER_PROFILE_DEFAULT_MAX_DURATION, help="Maximum duration in minutes; 150 disables")
+    search.add_argument("--only-new", action="store_true", default=False, help="Only show entries marked new")
     search.add_argument("--only-bookmarks", action="store_true", default=False, help="Only show bookmarked entries")
     search.add_argument("--hide-history", action="store_true", default=False, help="Hide entries already present in history")
+    search.add_argument("--podcast-mode", default=FILTER_PROFILE_DEFAULT_PODCAST_MODE, choices=tuple(sorted(PODCAST_MODES)), help="Podcast filter mode")
     search.add_argument("--blacklist-mode", dest="blacklist_mode", default="off", help="Blacklist filter mode", choices=tuple(sorted(BLACKLIST_MODES)))
     search.add_argument("--max", type=int, default=20, dest="max", help="Max results")
 
@@ -1681,8 +1717,10 @@ def parse_args():
     filter_profile_save.add_argument("--max-days", default=FILTER_PROFILE_DEFAULT_MAX_DAYS, help="Saved maximum age in days")
     filter_profile_save.add_argument("--min-duration", default=FILTER_PROFILE_DEFAULT_MIN_DURATION, help="Saved minimum duration in minutes")
     filter_profile_save.add_argument("--max-duration", default=FILTER_PROFILE_DEFAULT_MAX_DURATION, help="Saved maximum duration in minutes")
+    filter_profile_save.add_argument("--only-new", action="store_true", default=False, help="Saved only-new filter")
     filter_profile_save.add_argument("--only-bookmarks", action="store_true", default=False, help="Saved only-bookmarks filter")
     filter_profile_save.add_argument("--hide-history", action="store_true", default=False, help="Saved hide-history filter")
+    filter_profile_save.add_argument("--podcast-mode", default=FILTER_PROFILE_DEFAULT_PODCAST_MODE, choices=tuple(sorted(PODCAST_MODES)), help="Saved podcast filter mode")
 
     filter_profile_rename = sub.add_parser("filter-profile-rename", help="Rename a filter profile")
     filter_profile_rename.add_argument("--name", required=True, help="Existing filter profile name")

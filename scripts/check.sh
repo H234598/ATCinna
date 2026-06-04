@@ -211,6 +211,14 @@ if ! rg -q -F "max-duration-filter\": 150" "$APPLET_JS"; then
     echo "ERROR: settings reset default for max-duration-filter is missing"
     STATUS=1
 fi
+if ! rg -q -F "only-new-filter\": false" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for only-new-filter is missing"
+    STATUS=1
+fi
+if ! rg -q -F "podcast-filter\": \"all\"" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for podcast-filter is missing"
+    STATUS=1
+fi
 if ! rg -q -F '"max-hits": 20' "$APPLET_JS"; then
     echo "ERROR: settings reset default for max-hits is missing"
     STATUS=1
@@ -271,7 +279,7 @@ if ! rg -q -F -- "--topic-exact" "$HELPER"; then
     echo "ERROR: blacklist-add action is missing --topic-exact"
     STATUS=1
 fi
-for helper_arg in "--title" "--theme-title" "--somewhere" "--max-days" "--min-duration" "--max-duration" "--only-bookmarks" "--hide-history"; do
+for helper_arg in "--title" "--theme-title" "--somewhere" "--max-days" "--min-duration" "--max-duration" "--only-new" "--only-bookmarks" "--hide-history" "--podcast-mode"; do
     if ! rg -q -F -- "$helper_arg" "$HELPER"; then
         echo "ERROR: helper search/profile action is missing ${helper_arg}"
         STATUS=1
@@ -411,7 +419,7 @@ if ! rg -q -F '"blacklist-mode"' "$SETTINGS_SCHEMA"; then
     echo "ERROR: settings schema does not define blacklist-mode"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-bookmarks-filter hide-history-filter; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
         STATUS=1
@@ -443,7 +451,7 @@ if ! rg -q -F -- '--blacklist-mode' "$SEARCH_DIALOG"; then
     echo "ERROR: search dialog does not accept/pass blacklist-mode"
     STATUS=1
 fi
-for search_arg in '--theme-title' '--somewhere' '--max-days' '--min-duration' '--max-duration' '--only-bookmarks' '--hide-history'; do
+for search_arg in '--theme-title' '--somewhere' '--max-days' '--min-duration' '--max-duration' '--only-new' '--only-bookmarks' '--hide-history' '--podcast-mode'; do
     if ! rg -q -F -- "$search_arg" "$SEARCH_DIALOG"; then
         echo "ERROR: search dialog does not accept/pass ${search_arg}"
         STATUS=1
@@ -486,10 +494,10 @@ export XDG_DATA_HOME="$TMP_DIR/data"
 TODAY="$(date +%F)"
 OLD_DATE="$(date -d '100 days ago' +%F)"
 cat > "$TMP_DIR/audios.jsonl" <<JSONL
-"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","","00:12:30","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
-"Audios":["","","","Zweite Kurzmeldung","${TODAY}","","00:03:10","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
-"Audios":["","", "","Gefährlich","${TODAY}","","00:01:00","","Unsichere URL","file://evil/audio.mp3","https://example.com/file"]
-"Audios":["","", "","Ungültige Website","${OLD_DATE}","","02:30:00","","Archiv Beschreibung","https://example.com/valid-audio","javascript://alert('x')"]
+"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","","00:12:30","","Kurzbeschreibung","https://example.com/stream","https://example.com","true","false"]
+"Audios":["","","","Zweite Kurzmeldung","${TODAY}","","00:03:10","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page","false","true"]
+"Audios":["","", "","Gefährlich","${TODAY}","","00:01:00","","Unsichere URL","file://evil/audio.mp3","https://example.com/file","true","true"]
+"Audios":["","", "","Ungültige Website","${OLD_DATE}","","02:30:00","","Archiv Beschreibung","https://example.com/valid-audio","javascript://alert('x')","false","false"]
 JSONL
 
 export XDG_CACHE_HOME="$TMP_DIR"
@@ -643,6 +651,24 @@ if ! echo "$SEARCH_MAX_DURATION" | jq -e '.status == "ok" and .count == 1 and .r
     echo "$SEARCH_MAX_DURATION"
     exit 1
 fi
+SEARCH_ONLY_NEW="$(python3 "$HELPER" search --query "" --only-new)"
+if ! echo "$SEARCH_ONLY_NEW" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Kurzmeldung" and .results[0].is_new == true' >/dev/null; then
+    echo "ERROR: only-new filter should restrict to entries marked new in the catalog"
+    echo "$SEARCH_ONLY_NEW"
+    exit 1
+fi
+SEARCH_PODCAST_ONLY="$(python3 "$HELPER" search --query "" --podcast-mode only)"
+if ! echo "$SEARCH_PODCAST_ONLY" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].podcast == true' >/dev/null; then
+    echo "ERROR: podcast-mode only should show only podcast entries"
+    echo "$SEARCH_PODCAST_ONLY"
+    exit 1
+fi
+SEARCH_PODCAST_NONE="$(python3 "$HELPER" search --query "" --podcast-mode none)"
+if ! echo "$SEARCH_PODCAST_NONE" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.podcast == true)] | length) == 0' >/dev/null; then
+    echo "ERROR: podcast-mode none should hide podcast entries"
+    echo "$SEARCH_PODCAST_NONE"
+    exit 1
+fi
 python3 "$HELPER" bookmark-add --title "Zweite Kurzmeldung" --sender "WDR" --genre "Genre" --topic "Thema" --date "$TODAY" --duration "00:03:10" --url "https://example.com/second" --website "https://example.com/second-page" >/dev/null
 SEARCH_ONLY_BOOKMARKS="$(python3 "$HELPER" search --query "" --only-bookmarks)"
 if ! echo "$SEARCH_ONLY_BOOKMARKS" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
@@ -674,14 +700,14 @@ if ! echo "$FILTER_PROFILE_DEFAULTS" | jq -e '.status == "ok" and .count >= 3 an
     echo "$FILTER_PROFILE_DEFAULTS"
     exit 1
 fi
-FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "WDR Kurz" --search-query "Kurz" --sender "WDR" --genre "Genre" --topic "Thema" --title "Kurzmeldung" --theme-title "Thema" --somewhere "Kurzbeschreibung" --blacklist-mode only --max-hits 7 --max-days 10 --min-duration 3 --max-duration 20 --only-bookmarks --hide-history)"
-if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.search_query == "Kurz" and .profile.sender == "WDR" and .profile.title == "Kurzmeldung" and .profile.theme_title == "Thema" and .profile.somewhere == "Kurzbeschreibung" and .profile.blacklist_mode == "only" and .profile.max_hits == 7 and .profile.max_days == 10 and .profile.min_duration == 3 and .profile.max_duration == 20 and .profile.only_bookmarks == true and .profile.hide_history == true' >/dev/null; then
+FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "WDR Kurz" --search-query "Kurz" --sender "WDR" --genre "Genre" --topic "Thema" --title "Kurzmeldung" --theme-title "Thema" --somewhere "Kurzbeschreibung" --blacklist-mode only --max-hits 7 --max-days 10 --min-duration 3 --max-duration 20 --only-new --only-bookmarks --hide-history --podcast-mode only)"
+if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.search_query == "Kurz" and .profile.sender == "WDR" and .profile.title == "Kurzmeldung" and .profile.theme_title == "Thema" and .profile.somewhere == "Kurzbeschreibung" and .profile.blacklist_mode == "only" and .profile.max_hits == 7 and .profile.max_days == 10 and .profile.min_duration == 3 and .profile.max_duration == 20 and .profile.only_new == true and .profile.only_bookmarks == true and .profile.hide_history == true and .profile.podcast_mode == "only"' >/dev/null; then
     echo "ERROR: filter-profile-save did not persist normalized profile fields"
     echo "$FILTER_PROFILE_SAVE"
     exit 1
 fi
 FILTER_PROFILE_GET="$(python3 "$HELPER" filter-profile-get --name "wdr kurz")"
-if ! echo "$FILTER_PROFILE_GET" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.topic == "Thema" and .profile.only_bookmarks == true' >/dev/null; then
+if ! echo "$FILTER_PROFILE_GET" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.topic == "Thema" and .profile.only_new == true and .profile.only_bookmarks == true and .profile.podcast_mode == "only"' >/dev/null; then
     echo "ERROR: filter-profile-get should find profiles case-insensitively"
     echo "$FILTER_PROFILE_GET"
     exit 1

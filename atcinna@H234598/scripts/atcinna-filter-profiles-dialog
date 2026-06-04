@@ -55,9 +55,12 @@ def _current_save_args(args, name):
         f"--max-days={args.max_days}",
         f"--min-duration={args.min_duration}",
         f"--max-duration={args.max_duration}",
+        f"--podcast-mode={args.podcast_mode}",
     ]
     if name:
         save_args.append(f"--name={name}")
+    if _parse_bool_value(args.only_new):
+        save_args.append("--only-new")
     if _parse_bool_value(args.only_bookmarks):
         save_args.append("--only-bookmarks")
     if _parse_bool_value(args.hide_history):
@@ -118,6 +121,7 @@ def _profile_to_text(profile):
     max_days = int(profile.get("max_days") or 0)
     min_duration = int(profile.get("min_duration") or 0)
     max_duration = int(profile.get("max_duration") or 150)
+    podcast_mode = str(profile.get("podcast_mode") or "all").strip()
     if search_query:
         parts.append(f"Suche: {search_query}")
     if sender:
@@ -138,10 +142,16 @@ def _profile_to_text(profile):
         parts.append(f"Min: {min_duration}")
     if max_duration < 150:
         parts.append(f"Max: {max_duration}")
+    if profile.get("only_new"):
+        parts.append("nur neue")
     if profile.get("only_bookmarks"):
         parts.append("nur Favoriten")
     if profile.get("hide_history"):
         parts.append("ohne Verlauf")
+    if podcast_mode == "only":
+        parts.append("Podcast: nur")
+    elif podcast_mode == "none":
+        parts.append("Podcast: keine")
     parts.append(f"BL: {blacklist_mode}")
     parts.append(f"Max: {max_hits}")
     return " · ".join(parts)
@@ -435,8 +445,10 @@ def parse_args():
     parser.add_argument("--max-days", type=int, default=0, help="Current maximum age in days")
     parser.add_argument("--min-duration", type=int, default=0, help="Current minimum duration in minutes")
     parser.add_argument("--max-duration", type=int, default=150, help="Current maximum duration in minutes")
+    parser.add_argument("--only-new", default="false", help="Whether current profile only shows new entries")
     parser.add_argument("--only-bookmarks", default="false", help="Whether current profile only shows bookmarks")
     parser.add_argument("--hide-history", default="false", help="Whether current profile hides history entries")
+    parser.add_argument("--podcast-mode", default="all", choices=("all", "only", "none"), help="Current podcast filter mode")
     return parser.parse_args()
 
 

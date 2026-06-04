@@ -156,7 +156,7 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
-for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-bookmarks-filter" "hide-history-filter"; do
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter"; do
     if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
         echo "ERROR: settings-schema key missing: $key"
         exit 1
@@ -254,9 +254,9 @@ mkdir -p "$(dirname "$CACHE_FILE")"
 TODAY="$(date +%F)"
 OLD_DATE="$(date -d '100 days ago' +%F)"
 cat > "$TMP_DIR/audios.jsonl" <<JSONL
-"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","12:00","5","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
-"Audios":["","","","Zweite Kurzmeldung","${TODAY}","12:00","12","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
-"Audios":["","","","Archivmeldung","${OLD_DATE}","12:00","15","","Alte Beschreibung","https://example.com/old","https://example.com/old-page"]
+"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","12:00","5","","Kurzbeschreibung","https://example.com/stream","https://example.com","true","false"]
+"Audios":["","","","Zweite Kurzmeldung","${TODAY}","12:00","12","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page","false","true"]
+"Audios":["","","","Archivmeldung","${OLD_DATE}","12:00","15","","Alte Beschreibung","https://example.com/old","https://example.com/old-page","false","false"]
 JSONL
 
 xz -z -c "$TMP_DIR/audios.jsonl" > "$CACHE_FILE"
@@ -318,8 +318,29 @@ if ! echo "$SEARCH_DURATION_FILTER" | jq -e '.status == "ok" and .count == 1 and
     exit 1
 fi
 
-FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "Installtest" --search-query "Kurz" --sender "WDR" --title "Titel" --theme-title "ThemaTitel" --somewhere "Kurz" --blacklist-mode hide --max-hits 5 --max-days 3 --min-duration 5 --max-duration 55 --only-bookmarks --hide-history)"
-if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "Installtest" and .profile.max_hits == 5 and .profile.title == "Titel" and .profile.theme_title == "ThemaTitel" and .profile.somewhere == "Kurz" and .profile.max_days == 3 and .profile.min_duration == 5 and .profile.max_duration == 55 and .profile.only_bookmarks == true and .profile.hide_history == true' >/dev/null; then
+SEARCH_ONLY_NEW="$(python3 "$HELPER" search --query "Kurz" --only-new --max 2)"
+if ! echo "$SEARCH_ONLY_NEW" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/stream" and .results[0].is_new == true' >/dev/null; then
+    echo "ERROR: installed helper search only-new validation failed"
+    echo "$SEARCH_ONLY_NEW"
+    exit 1
+fi
+
+SEARCH_PODCAST_ONLY="$(python3 "$HELPER" search --query "Zweite" --podcast-mode only --max 2)"
+if ! echo "$SEARCH_PODCAST_ONLY" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second" and .results[0].podcast == true' >/dev/null; then
+    echo "ERROR: installed helper search podcast-mode only validation failed"
+    echo "$SEARCH_PODCAST_ONLY"
+    exit 1
+fi
+
+SEARCH_PODCAST_NONE="$(python3 "$HELPER" search --query "Zweite" --podcast-mode none --max 2)"
+if ! echo "$SEARCH_PODCAST_NONE" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: installed helper search podcast-mode none validation failed"
+    echo "$SEARCH_PODCAST_NONE"
+    exit 1
+fi
+
+FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "Installtest" --search-query "Kurz" --sender "WDR" --title "Titel" --theme-title "ThemaTitel" --somewhere "Kurz" --blacklist-mode hide --max-hits 5 --max-days 3 --min-duration 5 --max-duration 55 --only-new --only-bookmarks --hide-history --podcast-mode only)"
+if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "Installtest" and .profile.max_hits == 5 and .profile.title == "Titel" and .profile.theme_title == "ThemaTitel" and .profile.somewhere == "Kurz" and .profile.max_days == 3 and .profile.min_duration == 5 and .profile.max_duration == 55 and .profile.only_new == true and .profile.only_bookmarks == true and .profile.hide_history == true and .profile.podcast_mode == "only"' >/dev/null; then
     echo "ERROR: installed helper filter-profile-save validation failed"
     echo "$FILTER_PROFILE_SAVE"
     exit 1

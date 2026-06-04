@@ -66,6 +66,10 @@ def _run_search(query, max_hits, args):
         helper_args.append("--only-bookmarks")
     if _parse_bool_value(args.hide_history):
         helper_args.append("--hide-history")
+    if _parse_bool_value(args.only_new):
+        helper_args.append("--only-new")
+    if args.podcast_mode != "all":
+        helper_args.append(f"--podcast-mode={args.podcast_mode}")
 
     status, stdout, stderr = _run_helper(helper_args)
     if status != 0:
@@ -144,8 +148,10 @@ def _self_test():
             max_days=0,
             min_duration=0,
             max_duration=150,
+            only_new="false",
             only_bookmarks="false",
             hide_history="false",
+            podcast_mode="all",
         ))
     except Exception as exc:
         payload["status"] = "error"
@@ -310,8 +316,10 @@ def main():
     parser.add_argument("--max-days", type=int, default=0, help="Maximum age in days")
     parser.add_argument("--min-duration", type=int, default=0, help="Minimum duration in minutes")
     parser.add_argument("--max-duration", type=int, default=150, help="Maximum duration in minutes")
+    parser.add_argument("--only-new", default="false", help="Only show entries marked new")
     parser.add_argument("--only-bookmarks", default="false", help="Only show bookmarked entries")
     parser.add_argument("--hide-history", default="false", help="Hide history entries")
+    parser.add_argument("--podcast-mode", default="all", choices=["all", "only", "none"], help="Podcast filter mode")
     args = parser.parse_args()
     if args.self_test:
         return _self_test()

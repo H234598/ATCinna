@@ -72,6 +72,12 @@
     "max": 150,
     "step": 1
   },
+  "only-new-filter": {
+    "type": "switch",
+    "description": "Nur neue",
+    "tooltip": "Nur Treffer anzeigen, die in der Audioliste als neu markiert sind.",
+    "default": false
+  },
   "only-bookmarks-filter": {
     "type": "switch",
     "description": "Nur Favoriten",
@@ -83,6 +89,17 @@
     "description": "Verlauf ausblenden",
     "tooltip": "Treffer ausblenden, die bereits im Verlauf gespeichert sind.",
     "default": false
+  },
+  "podcast-filter": {
+    "type": "combobox",
+    "description": "Podcast",
+    "tooltip": "ATPlayer-Filter: alle Audios, nur Podcasts oder keine Podcasts anzeigen.",
+    "default": "all",
+    "options": {
+      "Alle": "all",
+      "Nur Podcasts": "only",
+      "Keine Podcasts": "none"
+    }
   },
   "blacklist-mode": {
     "type": "combobox",
