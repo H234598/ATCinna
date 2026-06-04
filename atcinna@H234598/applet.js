@@ -1287,6 +1287,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         saveSelected.connect("activate", () => this._runResultSaveSelected());
         this._resultsSection.addMenuItem(saveSelected);
 
+        const markShownSelected = new PopupMenu.PopupMenuItem("Markierte als gesehen markieren");
+        markShownSelected.connect("activate", () => this._runResultMarkShownSelected());
+        this._resultsSection.addMenuItem(markShownSelected);
+
+        const markUnshownSelected = new PopupMenu.PopupMenuItem("Markierte als ungesehen markieren");
+        markUnshownSelected.connect("activate", () => this._runResultMarkUnshownSelected());
+        this._resultsSection.addMenuItem(markUnshownSelected);
+
         const bookmarkSelected = new PopupMenu.PopupMenuItem("Markierte als Bookmarks anlegen");
         bookmarkSelected.connect("activate", () => this._runResultBookmarkSelected());
         this._resultsSection.addMenuItem(bookmarkSelected);
@@ -1300,6 +1308,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionResetSelection = resetSelection;
         this._resultActionPlaySelected = playSelected;
         this._resultActionSaveSelected = saveSelected;
+        this._resultActionMarkShownSelected = markShownSelected;
+        this._resultActionMarkUnshownSelected = markUnshownSelected;
         this._resultActionBookmarkSelected = bookmarkSelected;
         this._resultActionRemoveBookmarksSelected = removeBookmarksSelected;
     }
@@ -1353,9 +1363,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "Alle markierten Audios abspielen",
             this._getSelectedResultItems(),
             (item, callback) => {
-                this._runHistoryAdd(item, () => {
-                    this._xdgOpen(item.url || "");
-                    callback(true, 1);
+                this._runHistoryAdd(item, (result) => {
+                    if (!result) {
+                        callback(false, 0);
+                        return;
+                    }
+                    const opened = this._xdgOpen(item.url || "");
+                    callback(opened, opened ? 1 : 0);
                 });
             },
             false
@@ -1388,6 +1402,26 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             (item, callback) => this._runBookmarkRemove(item, callback),
             false,
             () => this._loadBookmarks()
+        );
+    }
+
+    _runResultMarkShownSelected() {
+        this._runResultBatchAction(
+            "Markierte als gesehen markieren",
+            this._getSelectedResultItems(),
+            (item, callback) => this._runHistoryAdd(item, callback),
+            false,
+            () => this._loadHistory()
+        );
+    }
+
+    _runResultMarkUnshownSelected() {
+        this._runResultBatchAction(
+            "Markierte als ungesehen markieren",
+            this._getSelectedResultItems(),
+            (item, callback) => this._runHistoryRemove(item, callback),
+            false,
+            () => this._loadHistory()
         );
     }
 
@@ -1482,6 +1516,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._resultActionSaveSelected) {
             this._resultActionSaveSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionMarkShownSelected) {
+            this._resultActionMarkShownSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionMarkUnshownSelected) {
+            this._resultActionMarkUnshownSelected.setSensitive(hasSelection);
         }
         if (this._resultActionBookmarkSelected) {
             this._resultActionBookmarkSelected.setSensitive(hasSelection);
@@ -2948,15 +2988,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         menu.addMenuItem(web);
     }
 
-    _runHistoryAdd(item, onComplete = null) {
+    _runHistoryAdd(item, callback = null) {
         this._runHelper([
             "history-add",
             ...this._entryArgs(item)
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`history-add fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
-                if (onComplete) {
-                    onComplete();
+                if (callback) {
+                    callback(false, 0);
                 }
                 return;
             }
@@ -2964,25 +3004,32 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 const payload = JSON.parse((stdout || "{}"));
                 if (payload.status !== "ok") {
                     this._setStatus("history-add: unerwartete Antwort");
-                    if (onComplete) {
-                        onComplete();
+                    if (callback) {
+                        callback(false, 0);
                     }
                     return;
                 }
-                this._loadHistory();
+                if (callback) {
+                    callback(true, 1);
+                } else {
+                    this._loadHistory();
+                }
             } catch (error) {
                 this._setStatus(`history-add ungültige Antwort: ${error.message}`);
-            }
-            if (onComplete) {
-                onComplete();
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
 
-    _runHistoryRemove(item) {
+    _runHistoryRemove(item, callback = null) {
         const url = item.url || "";
         if (!url) {
             this._setStatus("history-remove fehlgeschlagen: keine URL");
+            if (callback) {
+                callback(false, 0);
+            }
             return;
         }
         this._runHelper([
@@ -2991,18 +3038,31 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`history-remove fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse((stdout || "{}"));
                 if (payload.status !== "ok") {
                     this._setStatus("history-remove: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
                 }
-                this._setStatus(payload.removed ? "Als ungesehen markiert" : "nicht in History");
-                this._loadHistory();
+                if (callback) {
+                    callback(true, payload.removed ? 1 : 0);
+                } else {
+                    this._setStatus(payload.removed ? "Als ungesehen markiert" : "nicht in History");
+                    this._loadHistory();
+                }
             } catch (error) {
                 this._setStatus(`history-remove ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
@@ -3236,18 +3296,19 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     _xdgOpen(uri) {
         if (!uri) {
             this._setStatus("öffnen fehlgeschlagen: keine URL");
-            return;
+            return false;
         }
 
         const targetUri = `${uri}`.trim();
         const lowered = targetUri.toLowerCase();
         if (!lowered.startsWith("http://") && !lowered.startsWith("https://")) {
             this._setStatus("öffnen fehlgeschlagen: unzulässiges URL-Schema");
-            return;
+            return false;
         }
 
         this._setStatus(`öffne: ${targetUri}`);
         Util.spawn(["xdg-open", targetUri]);
+        return true;
     }
 
     _clearResults() {

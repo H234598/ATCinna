@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.35
+
+- ATPlayer-nahe History-Batch-Aktionen für markierte Treffer ergänzt: **Markierte als gesehen markieren** und **Markierte als ungesehen markieren**.
+- Batch-Play nutzt jetzt eine echte Erfolgsmeldung aus dem URL-Öffnen statt impliziter Annahmen; History-Helper-Callbacks melden Erfolg/Fehler an die Batch-Zählung.
+- Source- und Installationschecks schützen neue Labels und Handler.
+- Versionssprung auf `0.3.35`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.34
 
 - ATPlayer-nahe Bookmark-Batch-Aktionen für markierte Treffer ergänzt: **Markierte als Bookmarks anlegen** und **Markierte Bookmarks löschen**.
