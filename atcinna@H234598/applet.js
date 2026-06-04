@@ -1085,6 +1085,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._addFilterActions(entry.menu, item);
             this._addInfoAction(entry.menu, item);
             this._addMetadataCopyActions(entry.menu, item);
+            this._addHistoryActions(entry.menu, item);
             this._addBlacklistActions(entry.menu, item);
 
             const download = new PopupMenu.PopupMenuItem("Herunterladen");
@@ -1462,6 +1463,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._addInfoAction(row.menu, item);
             this._addFilterActions(row.menu, item);
             this._addMetadataCopyActions(row.menu, item);
+            this._addHistoryActions(row.menu, item);
             this._addBlacklistActions(row.menu, item);
 
             const play = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");
@@ -2113,6 +2115,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._addFilterActions(row.menu, item);
         this._addInfoAction(row.menu, item);
         this._addMetadataCopyActions(row.menu, item);
+        this._addHistoryActions(row.menu, item);
         this._addBlacklistActions(row.menu, item);
 
         if (withRemoveAction) {
@@ -2154,6 +2157,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._addCopyFieldAction(menu, "Titel in die Zwischenablage kopieren", item.title);
         this._addCopyFieldAction(menu, "Genre in die Zwischenablage kopieren", item.genre);
         this._addCopyFieldAction(menu, "Thema in die Zwischenablage kopieren", item.topic);
+    }
+
+    _addHistoryActions(menu, item) {
+        const markShown = new PopupMenu.PopupMenuItem("Als gesehen markieren");
+        markShown.connect("activate", () => this._runHistoryAdd(item));
+        menu.addMenuItem(markShown);
+
+        const markUnshown = new PopupMenu.PopupMenuItem("Als ungesehen markieren");
+        markUnshown.connect("activate", () => this._runHistoryRemove(item));
+        menu.addMenuItem(markUnshown);
     }
 
     _addFilterActions(menu, item) {
@@ -2469,6 +2482,34 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             }
             if (onComplete) {
                 onComplete();
+            }
+        });
+    }
+
+    _runHistoryRemove(item) {
+        const url = item.url || "";
+        if (!url) {
+            this._setStatus("history-remove fehlgeschlagen: keine URL");
+            return;
+        }
+        this._runHelper([
+            "history-remove",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`history-remove fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                if (payload.status !== "ok") {
+                    this._setStatus("history-remove: unerwartete Antwort");
+                    return;
+                }
+                this._setStatus(payload.removed ? "Als ungesehen markiert" : "nicht in History");
+                this._loadHistory();
+            } catch (error) {
+                this._setStatus(`history-remove ungültige Antwort: ${error.message}`);
             }
         });
     }

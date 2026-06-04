@@ -277,6 +277,12 @@ for helper_action in bookmark-add bookmark-remove bookmark-clear bookmark-list; 
         STATUS=1
     fi
 done
+for helper_action in history-add history-remove history-list; do
+    if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
+        echo "ERROR: helper history action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F -- "--active" "$HELPER"; then
     echo "ERROR: blacklist-add action is missing --active"
     STATUS=1
@@ -330,6 +336,12 @@ done
 for bookmark_label in "Zu Favoriten hinzufügen" "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; do
     if ! rg -q -F "${bookmark_label}" "$APPLET_JS"; then
         echo "ERROR: applet bookmark action label is missing: ${bookmark_label}"
+        STATUS=1
+    fi
+done
+for history_label in "Als gesehen markieren" "Als ungesehen markieren"; do
+    if ! rg -q -F "${history_label}" "$APPLET_JS"; then
+        echo "ERROR: applet history action label is missing: ${history_label}"
         STATUS=1
     fi
 done
@@ -437,6 +449,10 @@ if ! rg -q -F '_runBlacklistAdd' "$APPLET_JS"; then
 fi
 if ! rg -q -F '_runBookmarkClear' "$APPLET_JS"; then
     echo "ERROR: applet bookmark clear handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_addHistoryActions' "$APPLET_JS" || ! rg -q -F '_runHistoryRemove' "$APPLET_JS"; then
+    echo "ERROR: applet history mark/unmark handlers are missing"
     STATUS=1
 fi
 BLACKLIST_ACTION_CALLS="$(rg -c -F '_addBlacklistActions' "$APPLET_JS" || true)"
@@ -1293,6 +1309,23 @@ fi
 if ! echo "$HISTORY_LIST" | jq -e '[.results[] | select(.url=="https://example.com/history/100")] | length == 0' >/dev/null; then
     echo "ERROR: history limit did not drop the oldest entry"
     echo "$HISTORY_LIST"
+    exit 1
+fi
+
+HISTORY_REMOVE_TRUE="$(python3 "$HELPER" history-remove --url "https://example.com/history/newest")"
+if ! echo "$HISTORY_REMOVE_TRUE" | jq -e '.status == "ok" and .removed == true' >/dev/null; then
+    echo "ERROR: history-remove should remove existing history entry"
+    echo "$HISTORY_REMOVE_TRUE"
+    exit 1
+fi
+if ! jq -e '.results | map(select(.url=="https://example.com/history/newest")) | length == 0' <<<"$(python3 "$HELPER" history-list)" >/dev/null; then
+    echo "ERROR: history entry still present after history-remove"
+    exit 1
+fi
+HISTORY_REMOVE_FALSE="$(python3 "$HELPER" history-remove --url "https://example.com/history/missing")"
+if ! echo "$HISTORY_REMOVE_FALSE" | jq -e '.status == "ok" and .removed == false' >/dev/null; then
+    echo "ERROR: history-remove should not report removed for missing URL"
+    echo "$HISTORY_REMOVE_FALSE"
     exit 1
 fi
 

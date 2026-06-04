@@ -212,6 +212,12 @@ for applet_label in "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; d
         exit 1
     fi
 done
+for applet_label in "Als gesehen markieren" "Als ungesehen markieren"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
 
 if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
     echo "ERROR: helper --help failed"
@@ -349,6 +355,17 @@ SEARCH_HIDE_HISTORY="$(python3 "$HELPER" search --query "Kurz" --hide-history --
 if ! echo "$SEARCH_HIDE_HISTORY" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/stream"' >/dev/null; then
     echo "ERROR: installed helper search hide-history validation failed"
     echo "$SEARCH_HIDE_HISTORY"
+    exit 1
+fi
+
+HISTORY_REMOVE_INSTALL="$(python3 "$HELPER" history-remove --url "https://example.com/second")"
+if ! echo "$HISTORY_REMOVE_INSTALL" | jq -e '.status == "ok" and .removed == true' >/dev/null; then
+    echo "ERROR: installed helper history-remove validation failed"
+    echo "$HISTORY_REMOVE_INSTALL"
+    exit 1
+fi
+if ! python3 "$HELPER" history-list | jq -e '.status == "ok" and ([.results[] | select(.url=="https://example.com/second")] | length == 0)' >/dev/null; then
+    echo "ERROR: installed helper history list should not include removed entry"
     exit 1
 fi
 

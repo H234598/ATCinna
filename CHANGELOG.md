@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.29
+
+- ATPlayer-nahe Verlauf-Aktionen ergänzt: Kontextmenüs bieten jetzt **Als gesehen markieren** und **Als ungesehen markieren**.
+- Der Helper erhält die atomare Aktion `history-remove`, die einzelne History-Einträge URL-basiert entfernt.
+- Source- und Installationschecks prüfen Linksklick/Einstellungen weiter und validieren die neuen History-Labels plus `history-remove` funktional.
+- Versionssprung auf `0.3.29`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.28
 
 - ATPlayer-nahe Bookmark-Aktionen ergänzt: Einträge bieten jetzt **Bookmarks löschen** zusätzlich zum Favoriten-Hinzufügen.

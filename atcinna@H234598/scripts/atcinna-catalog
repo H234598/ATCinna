@@ -930,6 +930,18 @@ def action_history_list(args):
     _list_store(data_dir() / "history.json")
 
 
+def action_history_remove(args):
+    _validate_and_normalize_url("url", args.url)
+    path = data_dir() / "history.json"
+    with _store_lock(path):
+        entries = _load_list(path)
+        filtered = [entry for entry in entries if _normalize_entry_value(entry.get("url")) != _normalize_entry_value(args.url)]
+        removed = len(filtered) != len(entries)
+        if removed:
+            _store_list(path, filtered)
+    print(json.dumps({"status": "ok", "removed": bool(removed)}))
+
+
 def action_bookmark_add(args):
     _validate_and_normalize_url("url", args.url)
     _validate_and_normalize_url("website", args.website)
@@ -1813,6 +1825,9 @@ def parse_args():
 
     history_list = sub.add_parser("history-list", help="List history entries")
 
+    history_remove = sub.add_parser("history-remove", help="Remove history entry by URL")
+    history_remove.add_argument("--url", required=True, help="Content URL")
+
     bookmark_add = sub.add_parser("bookmark-add", help="Add bookmark entry")
     bookmark_add.add_argument("--title", default="", help="Optional title")
     bookmark_add.add_argument("--sender", default="", help="Optional sender")
@@ -1952,6 +1967,8 @@ def main():
         action_history_add(args)
     elif args.action == "history-list":
         action_history_list(args)
+    elif args.action == "history-remove":
+        action_history_remove(args)
     elif args.action == "bookmark-add":
         action_bookmark_add(args)
     elif args.action == "bookmark-remove":
