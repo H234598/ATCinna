@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.27
+
+- Audiokontext-Menüs um ATPlayer-nahe Aktion **Audio-URL kopieren** ergänzt.
+- Die Aktion nutzt den bestehenden Clipboard-Helfer ohne Shellaufruf und ist in Treffer-, Verlauf-, Favoriten- und Queue-Kontexten verfügbar.
+- Source- und Installationschecks schützen das neue Label.
+- Versionssprung auf `0.3.27`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.26
 
 - Blacklist-Dialog näher an ATPlayer-Tabellenbedienung gebracht: **Alles auswählen**, **Auswahl umkehren**, **Tabelle zurücksetzen** und **Gelöschte wieder anlegen** sind jetzt sichtbar.

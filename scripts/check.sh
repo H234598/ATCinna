@@ -315,7 +315,7 @@ if ! rg -q -F '"[x]"' "$APPLET_JS" || ! rg -q -F '"[ ]"' "$APPLET_JS"; then
     echo "ERROR: applet queue selection markers are missing"
     STATUS=1
 fi
-for info_label in "Audioinformation anzeigen" "Titel in die Zwischenablage kopieren" "Genre in die Zwischenablage kopieren" "Thema in die Zwischenablage kopieren"; do
+for info_label in "Audioinformation anzeigen" "Audio-URL kopieren" "Titel in die Zwischenablage kopieren" "Genre in die Zwischenablage kopieren" "Thema in die Zwischenablage kopieren"; do
     if ! rg -q -F "${info_label}" "$APPLET_JS"; then
         echo "ERROR: applet metadata action label is missing: ${info_label}"
         STATUS=1

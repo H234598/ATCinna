@@ -202,6 +202,11 @@ if missing:
     raise SystemExit(1)
 PY
 
+if ! rg -q -F "Audio-URL kopieren" "$APPLET_JS"; then
+    echo "ERROR: installed applet label is missing: Audio-URL kopieren"
+    exit 1
+fi
+
 if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
     echo "ERROR: helper --help failed"
     cat "$TMP_DIR/help.out"

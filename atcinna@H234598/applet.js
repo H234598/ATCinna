@@ -2138,6 +2138,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     }
 
     _addMetadataCopyActions(menu, item) {
+        this._addCopyFieldAction(menu, "Audio-URL kopieren", item.url);
         this._addCopyFieldAction(menu, "Titel in die Zwischenablage kopieren", item.title);
         this._addCopyFieldAction(menu, "Genre in die Zwischenablage kopieren", item.genre);
         this._addCopyFieldAction(menu, "Thema in die Zwischenablage kopieren", item.topic);
