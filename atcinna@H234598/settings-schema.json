@@ -9,6 +9,24 @@
     "tooltip": "Standard-Suchbegriff fuer die Ergebnisliste im Popup.",
     "default": ""
   },
+  "sender-filter": {
+    "type": "entry",
+    "description": "Sender-Filter",
+    "tooltip": "Optional: nur Treffer eines Senders anzeigen. Teiltreffer sind moeglich.",
+    "default": ""
+  },
+  "genre-filter": {
+    "type": "entry",
+    "description": "Genre-Filter",
+    "tooltip": "Optional: nur Treffer eines Genres anzeigen. Teiltreffer sind moeglich.",
+    "default": ""
+  },
+  "topic-filter": {
+    "type": "entry",
+    "description": "Thema-Filter",
+    "tooltip": "Optional: nur Treffer eines Themas anzeigen. Teiltreffer sind moeglich.",
+    "default": ""
+  },
   "max-hits": {
     "type": "spinbutton",
     "description": "Maximale Treffer",

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Neue Einstellungen für Filter (`sender-filter`, `genre-filter`, `topic-filter`) hinzugefügt.
+- Popup zeigt jetzt einen kompakten Filterstatus und den Befehl „Filter löschen“; bei Nichtnutzung wird „Filter: keine“ angezeigt.
+- Filter werden als Teiltreffer an den Helper mit `--sender`, `--genre`, `--topic` weitergereicht; Änderungen aus Einstellungen lösen sofort neue Suche aus.
+- Plan-Stand wurde auf Version 0.3.0 angehoben.
+
 ## 0.2.0
 
 - Suche erweitert um Verlauf und Favoriten in der Popup-UI: Abschnitte „Zuletzt gespielt“ und „Favoriten“ werden nach Suchlauf geladen, jeweils bis zu 5 Einträge.

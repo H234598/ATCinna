@@ -10,6 +10,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Popup-Menü mit Statuszeile, In-Popup-Suchfeld, Refresh-Knopf und Ergebnisliste.
 - Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
+- Erweiterte Teiltreffer-Filter (`sender-filter`, `genre-filter`, `topic-filter`) im Popup mit kompaktem Status (`Filter: ...`) und Schnellaktion „Filter löschen“.
 - Play-Aktion über `xdg-open`.
 - Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert.
 - Website-Aktion (falls vorhanden).

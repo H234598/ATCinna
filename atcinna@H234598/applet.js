@@ -23,8 +23,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._searchEntry = null;
         this._activeSearchQuery = "";
         this._isSyncingSearchQueryFromSettings = false;
+        this._isSyncingFilterSettingsFromSettings = false;
         this._historySection = null;
         this._favoritesSection = null;
+        this._filterSection = null;
+        this._filterSummaryItem = null;
+        this._clearFiltersItem = null;
 
         this.setAllowedLayout(Applet.AllowedLayout.BOTH);
         this.set_applet_icon_symbolic_name("audio-x-generic-symbolic");
@@ -33,6 +37,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this.settings = new Settings.AppletSettings(this, UUID, instanceId);
         this.settings.bind("search-query", "searchQuery", this._onSearchSettingsChanged.bind(this));
+        this.settings.bind("sender-filter", "senderFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("genre-filter", "genreFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("topic-filter", "topicFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("max-hits", "maxHits", this._onMaxHitsChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
         this.settings.bind("refresh-mirror", "refreshMirror", null);
@@ -69,6 +76,19 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
         this.menu.addActor(searchRow);
 
+        this._filterSection = new PopupMenu.PopupMenuSection();
+        this._filterSummaryItem = new PopupMenu.PopupMenuItem("Filter: keine");
+        this._filterSummaryItem.actor.reactive = false;
+        this._filterSummaryItem.actor.add_style_class_name("atcinna-filter-summary");
+        this._filterSection.addMenuItem(this._filterSummaryItem);
+
+        this._clearFiltersItem = new PopupMenu.PopupMenuItem("Filter löschen");
+        this._clearFiltersItem.connect("activate", () => {
+            this._clearFilters();
+        });
+        this._filterSection.addMenuItem(this._clearFiltersItem);
+        this.menu.addMenuItem(this._filterSection);
+
         this._refreshItem = new PopupMenu.PopupMenuItem("Jetzt aktualisieren");
         this._refreshItem.connect("activate", () => this._runRefresh());
         this.menu.addMenuItem(this._refreshItem);
@@ -81,6 +101,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._favoritesSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._favoritesSection);
+
+        this._refreshFilterSummary();
 
         this._refreshTimer = Mainloop.timeout_add_seconds(1, () => {
             this._refreshTimer = 0;
@@ -138,15 +160,101 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
+    _toTrimmed(value) {
+        return (value || "").trim();
+    }
+
+    _getActiveFilters() {
+        return {
+            sender: this._toTrimmed(this.senderFilter),
+            genre: this._toTrimmed(this.genreFilter),
+            topic: this._toTrimmed(this.topicFilter)
+        };
+    }
+
+    _shortFilterValue(value) {
+        const clean = this._toTrimmed(value).replace(/\s+/g, " ");
+        if (clean.length <= 32) {
+            return clean;
+        }
+        return `${clean.slice(0, 29)}...`;
+    }
+
+    _refreshFilterSummary() {
+        if (!this._filterSummaryItem) {
+            return;
+        }
+        const filters = this._getActiveFilters();
+        const active = [];
+        if (filters.sender.length > 0) {
+            active.push(`S:${this._shortFilterValue(filters.sender)}`);
+        }
+        if (filters.genre.length > 0) {
+            active.push(`G:${this._shortFilterValue(filters.genre)}`);
+        }
+        if (filters.topic.length > 0) {
+            active.push(`T:${this._shortFilterValue(filters.topic)}`);
+        }
+        this._filterSummaryItem.label.text = active.length ? `Filter: ${active.join(" · ")}` : "Filter: keine";
+        if (this._clearFiltersItem) {
+            this._clearFiltersItem.setSensitive(active.length > 0);
+        }
+    }
+
+    _clearFilters() {
+        const filters = this._getActiveFilters();
+        if (!filters.sender && !filters.genre && !filters.topic) {
+            this._refreshFilterSummary();
+            this._runSearch();
+            return;
+        }
+
+        this._isSyncingFilterSettingsFromSettings = true;
+        try {
+            this.senderFilter = "";
+            this.genreFilter = "";
+            this.topicFilter = "";
+            this.settings.setValue("sender-filter", "");
+            this.settings.setValue("genre-filter", "");
+            this.settings.setValue("topic-filter", "");
+        } finally {
+            this._isSyncingFilterSettingsFromSettings = false;
+        }
+
+        this._refreshFilterSummary();
+        this._runSearch();
+    }
+
+    _onFilterSettingsChanged() {
+        if (this._isSyncingFilterSettingsFromSettings) {
+            return;
+        }
+        this._refreshFilterSummary();
+        this._runSearch();
+    }
+
     _runSearch(searchQuery = null) {
         this._setStatus("suche im Katalog ...");
         const query = searchQuery === null ? this._getActiveSearchQuery() : searchQuery;
         const maxHits = Math.max(1, Math.min(Number(this.maxHits) || 20, 100));
-        this._runHelper([
+        const filters = this._getActiveFilters();
+        const args = [
             "search",
             `--query=${query}`,
             `--max=${maxHits}`
-        ], (status, stdout, stderr) => {
+        ];
+
+        if (filters.sender.length > 0) {
+            args.push(`--sender=${filters.sender}`);
+        }
+        if (filters.genre.length > 0) {
+            args.push(`--genre=${filters.genre}`);
+        }
+        if (filters.topic.length > 0) {
+            args.push(`--topic=${filters.topic}`);
+        }
+
+        this._runHelper(args, (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`suche fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
                 this._clearResults();
@@ -522,6 +630,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 this._isSyncingSearchQueryFromSettings = false;
             }
         }
+        this._refreshFilterSummary();
         this._runSearch(this.searchQuery || "");
     }
 

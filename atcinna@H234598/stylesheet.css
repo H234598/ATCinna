@@ -18,3 +18,8 @@
 .atcinna-section-title {
   opacity: 0.8;
 }
+
+.atcinna-filter-summary {
+  font-size: 10px;
+  opacity: 0.85;
+}

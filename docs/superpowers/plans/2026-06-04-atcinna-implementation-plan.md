@@ -12,9 +12,9 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.1.1`.
-- `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, refresh action, result rendering, and play/open/download handoff.
-- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, `search`, and `download`.
+- `VERSION` is `0.3.0`.
+- `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
+- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, `download`, `history-*`, and `bookmark-*`.
 - `scripts/check.sh` is the local quality gate.
 
 ## Primary Plan
@@ -169,19 +169,19 @@ git commit -m "feat: add history and bookmarks"
 - Modify: `README.md`
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Extend helper search arguments**
+- [x] **Step 1: Extend helper search arguments**
 
 Add optional `--sender`, `--genre`, and `--topic` filters. Match them case-insensitively after inherited row values are normalized.
 
-- [ ] **Step 2: Add settings schema entries**
+- [x] **Step 2: Add settings schema entries**
 
 Add string settings for sender, genre, and topic filters.
 
-- [ ] **Step 3: Add compact filter actions**
+- [x] **Step 3: Add compact filter actions**
 
 Add menu items that expose current filter values and a clear-filters action.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -191,7 +191,7 @@ Run:
 
 Expected: fixture search validates filter matching and clear-filters leaves broad search working.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add atcinna@H234598 README.md CHANGELOG.md
