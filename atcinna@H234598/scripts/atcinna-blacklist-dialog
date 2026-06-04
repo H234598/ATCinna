@@ -66,6 +66,8 @@ def _rule_to_text(rule):
     genre = str(rule.get("genre") or "").strip()
     topic = str(rule.get("topic") or "").strip()
     title = str(rule.get("title") or "").strip()
+    active = bool(rule.get("active", True))
+    topic_exact = bool(rule.get("topic_exact", True))
 
     parts = []
     if sender:
@@ -77,7 +79,9 @@ def _rule_to_text(rule):
     if title:
         parts.append(f"Titel: {title}")
 
-    return " · ".join(parts) if parts else "(leere Regel)"
+    state = "aktiv" if active else "inaktiv"
+    mode = "exakt" if topic_exact else "enthält"
+    return " · ".join(parts) + f" [{state}, Thema {mode}]" if parts else f"(leere Regel) [{state}, Thema {mode}]"
 
 
 def _rule_from_row(row):
@@ -86,6 +90,8 @@ def _rule_from_row(row):
         "genre": str(row["genre"] or ""),
         "topic": str(row["topic"] or ""),
         "title": str(row["title"] or ""),
+        "active": bool(row.get("active", True)),
+        "topic_exact": bool(row.get("topic_exact", True)),
     }
 
 
@@ -112,6 +118,8 @@ def _build_row(rule, gtk_module):
     row.set_data("genre", genre)
     row.set_data("topic", topic)
     row.set_data("title", title)
+    row.set_data("active", bool(rule.get("active", True)))
+    row.set_data("topic_exact", bool(rule.get("topic_exact", True)))
     row.set_data("check", check)
     return row
 
@@ -119,6 +127,21 @@ def _build_row(rule, gtk_module):
 def _set_status(label, message):
     if label:
         label.set_text(message)
+
+
+def _show_clear_confirm(parent, Gtk):
+    dialog = Gtk.MessageDialog(
+        transient_for=parent,
+        flags=Gtk.DialogFlags.MODAL,
+        type=Gtk.MessageType.WARNING,
+        buttons=Gtk.ButtonsType.NONE,
+        text="Alle Blacklist-Regeln entfernen?",
+    )
+    dialog.format_secondary_text("Diese Aktion kann mit Undo wiederhergestellt werden.")
+    dialog.add_buttons("Abbrechen", Gtk.ResponseType.CANCEL, "Alles entfernen", Gtk.ResponseType.OK)
+    response = dialog.run()
+    dialog.destroy()
+    return response == Gtk.ResponseType.OK
 
 
 def run_dialog():
@@ -135,18 +158,39 @@ def run_dialog():
 
     from gi.repository import Gtk
 
-    payload = _run_helper(["blacklist-list"])
-    rules = payload.get("results", [])
-    if not isinstance(rules, list):
-        raise RuntimeError("helper returned invalid blacklist format")
-
     window = Gtk.Window(title="ATCinna Blacklist verwalten")
-    window.set_default_size(760, 520)
+    window.set_default_size(920, 560)
     window.set_border_width(8)
     window.connect("destroy", Gtk.main_quit)
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     window.add(root)
+
+    form = Gtk.Grid(column_spacing=8, row_spacing=6)
+    sender_entry = Gtk.Entry()
+    genre_entry = Gtk.Entry()
+    topic_entry = Gtk.Entry()
+    title_entry = Gtk.Entry()
+    sender_entry.set_placeholder_text("Sender")
+    genre_entry.set_placeholder_text("Genre")
+    topic_entry.set_placeholder_text("Thema")
+    title_entry.set_placeholder_text("Titel")
+
+    active_check = Gtk.CheckButton(label="aktiv")
+    active_check.set_active(True)
+    topic_exact_check = Gtk.CheckButton(label="Thema exakt")
+    topic_exact_check.set_active(True)
+
+    form.attach(Gtk.Label(label="Neue Regel"), 0, 0, 2, 1)
+    form.attach(sender_entry, 0, 1, 1, 1)
+    form.attach(genre_entry, 1, 1, 1, 1)
+    form.attach(topic_entry, 2, 1, 1, 1)
+    form.attach(title_entry, 3, 1, 1, 1)
+    form.attach(active_check, 4, 1, 1, 1)
+    form.attach(topic_exact_check, 5, 1, 1, 1)
+    add_rule_button = Gtk.Button(label="Neue Regel hinzufügen")
+    form.attach(add_rule_button, 6, 1, 1, 1)
+    root.pack_start(form, False, False, 0)
 
     list_box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
     list_scroller = Gtk.ScrolledWindow()
@@ -160,53 +204,111 @@ def run_dialog():
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     remove_button = Gtk.Button(label="Markierte Regeln entfernen")
+    undo_button = Gtk.Button(label="Undo")
+    clean_button = Gtk.Button(label="Putzen")
+    clear_button = Gtk.Button(label="Alle entfernen")
     close_button = Gtk.Button(label="Schließen")
     actions.pack_start(remove_button, False, False, 0)
-    actions.pack_start(close_button, False, False, 0)
+    actions.pack_start(undo_button, False, False, 0)
+    actions.pack_start(clean_button, False, False, 0)
+    actions.pack_start(clear_button, False, False, 0)
+    actions.pack_end(close_button, False, False, 0)
     root.pack_start(actions, False, False, 0)
 
     rows = []
 
-    for rule in rules:
-        if not isinstance(rule, dict):
-            continue
-        row = _build_row(rule, Gtk)
-        row.set_tooltip_text(_rule_to_text(rule))
-        list_box.add(row)
-        rows.append(row)
+    def refresh_rules():
+        for row in list(rows):
+            list_box.remove(row)
+        rows.clear()
 
-    if not rows:
-        empty = Gtk.ListBoxRow()
-        label = Gtk.Label(label="Keine Blacklist-Regeln", xalign=0)
-        empty.add(label)
-        list_box.add(empty)
+        payload = _run_helper(["blacklist-list"])
+        rules = payload.get("results", [])
+        if not isinstance(rules, list):
+            raise RuntimeError("helper returned invalid blacklist format")
 
-    list_box.show_all()
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+            row = _build_row(rule, Gtk)
+            row.set_tooltip_text(_rule_to_text(rule))
+            list_box.add(row)
+            rows.append(row)
 
-    def remove_selected(_btn):
+        if not rows:
+            empty = Gtk.ListBoxRow()
+            label = Gtk.Label(label="Keine Blacklist-Regeln", xalign=0)
+            empty.add(label)
+            list_box.add(empty)
+
+        list_box.show_all()
+
+    def _collect_selected_rules():
         selected = []
         for row in rows:
             check = row.get_data("check")
             if not check or not check.get_active():
                 continue
-
             selected_rule = _rule_from_row({
                 "sender": row.get_data("sender"),
                 "genre": row.get_data("genre"),
                 "topic": row.get_data("topic"),
                 "title": row.get_data("title"),
+                "active": row.get_data("active"),
+                "topic_exact": row.get_data("topic_exact"),
             })
             if selected_rule["sender"] or selected_rule["genre"] or selected_rule["topic"] or selected_rule["title"]:
                 selected.append(selected_rule)
+        return selected
 
+    def add_rule(_btn):
+        sender = sender_entry.get_text().strip()
+        genre = genre_entry.get_text().strip()
+        topic = topic_entry.get_text().strip()
+        title = title_entry.get_text().strip()
+        if not (sender or genre or topic or title):
+            _set_status(status_label, "Bitte mindestens ein Feld befüllen")
+            return
+
+        args = [
+            "blacklist-add",
+            f"--active={'true' if active_check.get_active() else 'false'}",
+            f"--topic-exact={'true' if topic_exact_check.get_active() else 'false'}",
+        ]
+        if sender:
+            args.append(f"--sender={sender}")
+        if genre:
+            args.append(f"--genre={genre}")
+        if topic:
+            args.append(f"--topic={topic}")
+        if title:
+            args.append(f"--title={title}")
+
+        try:
+            _run_helper(args)
+            sender_entry.set_text("")
+            genre_entry.set_text("")
+            topic_entry.set_text("")
+            title_entry.set_text("")
+            refresh_rules()
+            _set_status(status_label, "Neue Regel gespeichert")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def remove_selected(_btn):
+        selected = _collect_selected_rules()
         if not selected:
             _set_status(status_label, "Bitte mindestens eine Regel auswählen")
             return
 
-        removed = 0
         try:
+            removed = 0
             for rule in selected:
-                args = ["blacklist-remove"]
+                args = [
+                    "blacklist-remove",
+                    f"--active={'true' if rule['active'] else 'false'}",
+                    f"--topic-exact={'true' if rule['topic_exact'] else 'false'}",
+                ]
                 if rule["sender"]:
                     args.append(f"--sender={rule['sender']}")
                 if rule["genre"]:
@@ -218,14 +320,51 @@ def run_dialog():
                 remove_payload = _run_helper(args)
                 removed += int(remove_payload.get("removed", 0) or 0)
 
+            refresh_rules()
             _set_status(status_label, f"{removed} Regel(n) entfernt")
-            window.close()
         except Exception as exc:
             _set_status(status_label, str(exc))
 
-    remove_button.connect("clicked", remove_selected)
-    close_button.connect("clicked", lambda _btn: window.close())
+    def undo_last(_btn):
+        try:
+            payload = _run_helper(["blacklist-undo"])
+            restored = int(payload.get("restored", 0) or 0)
+            refresh_rules()
+            _set_status(status_label, f"{restored} Regel(n) wiederhergestellt")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
 
+    def clean_list(_btn):
+        try:
+            payload = _run_helper(["blacklist-clean"])
+            removed = int(payload.get("removed", 0) or 0)
+            refresh_rules()
+            _set_status(status_label, f"{removed} leere/doppelte Regel(n) entfernt")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def clear_list(_btn):
+        if not _show_clear_confirm(window, Gtk):
+            return
+        try:
+            payload = _run_helper(["blacklist-clear"])
+            removed = int(payload.get("removed", 0) or 0)
+            refresh_rules()
+            _set_status(status_label, f"{removed} Regel(n) entfernt")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def close_dialog(_btn):
+        window.close()
+
+    add_rule_button.connect("clicked", add_rule)
+    remove_button.connect("clicked", remove_selected)
+    undo_button.connect("clicked", undo_last)
+    clean_button.connect("clicked", clean_list)
+    clear_button.connect("clicked", clear_list)
+    close_button.connect("clicked", close_dialog)
+
+    refresh_rules()
     window.show_all()
     Gtk.main()
 

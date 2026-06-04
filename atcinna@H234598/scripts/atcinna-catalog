@@ -25,6 +25,7 @@ QUEUE_STATUSES = {"queued", "running", "finished", "error", "cancelled"}
 UNDO_MAX_ENTRIES = 100
 BLACKLIST_MAX_ENTRIES = 500
 BLACKLIST_MODES = {"off", "hide", "only"}
+BLACKLIST_UNDO_MAX_ENTRIES = 100
 
 
 def die(message, exit_code=1):
@@ -62,6 +63,42 @@ def _normalize_entry_value(value):
     if isinstance(value, str):
         return value.strip()
     return ""
+
+
+def _normalize_timestamp(value, default):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_bool_value(value, default):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
+def _parse_bool_arg(value, field):
+    normalized = _normalize_bool_value(value, None)
+    if normalized is None:
+        die(f"{field} must be true or false")
+    return normalized
+
+
+def _blacklist_path():
+    return data_dir() / "blacklist.json"
+
+
+def _blacklist_undo_path():
+    return data_dir() / "blacklist-undo.json"
 
 
 def _load_list(path):
@@ -105,8 +142,27 @@ def _normalize_rule(rule):
 
 
 def _load_blacklist():
-    entries = _load_list(data_dir() / "blacklist.json")
-    return [_normalize_rule(entry) for entry in entries]
+    entries = _load_list(_blacklist_path())
+    normalized = []
+    for entry in entries:
+        normalized_entry = _normalize_blacklist_entry(entry)
+        if normalized_entry:
+            normalized.append(normalized_entry)
+    return normalized
+
+
+def _load_blacklist_undo():
+    entries = _load_list(_blacklist_undo_path())
+    normalized = []
+    for entry in entries:
+        normalized_entry = _normalize_blacklist_entry(entry)
+        if normalized_entry:
+            normalized.append(normalized_entry)
+    return normalized
+
+
+def _store_blacklist_undo(entries):
+    _store_list(_blacklist_undo_path(), entries)
 
 
 def _store_list(path, items):
@@ -174,20 +230,26 @@ def _list_store(path):
 
 
 def action_blacklist_add(args):
+    # pylint: disable=too-many-locals
     rule = _normalize_rule(args)
     if not (rule["sender"] or rule["genre"] or rule["topic"] or rule["title"]):
         die("at least one blacklist field is required")
 
-    path = data_dir() / "blacklist.json"
+    active = _parse_bool_arg(args.active, "active") if args.active is not None else True
+    topic_exact = _parse_bool_arg(args.topic_exact, "topic-exact") if args.topic_exact is not None else True
+    path = _blacklist_path()
     with _store_lock(path):
         entries = _load_blacklist()
-        target = _normalize_blacklist_entry(rule)
+        target = _load_blacklist_rule({
+            **rule,
+            "active": active,
+            "topic_exact": topic_exact,
+            "timestamp": int(time.time()),
+        })
+        target_key = _blacklist_rule_key(target)
         filtered = [
             entry for entry in entries
-            if _normalize_blacklist_field(entry.get("sender")) != target["sender"] or
-            _normalize_blacklist_field(entry.get("genre")) != target["genre"] or
-            _normalize_blacklist_field(entry.get("topic")) != target["topic"] or
-            _normalize_blacklist_field(entry.get("title")) != target["title"]
+            if _blacklist_rule_key(entry) != target_key
         ]
         target["timestamp"] = int(time.time())
         filtered.insert(0, target)
@@ -198,7 +260,8 @@ def action_blacklist_add(args):
 
 
 def action_blacklist_list(args):
-    _list_store(data_dir() / "blacklist.json")
+    entries = _load_blacklist()
+    print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
 
 
 def action_blacklist_remove(args):
@@ -207,13 +270,16 @@ def action_blacklist_remove(args):
     target_genre = target_rule["genre"]
     target_topic = target_rule["topic"]
     target_title = target_rule["title"]
+    target_active = _parse_bool_arg(args.active, "active") if args.active is not None else None
+    target_topic_exact = _parse_bool_arg(args.topic_exact, "topic-exact") if args.topic_exact is not None else None
     if not (target_sender or target_genre or target_topic or target_title):
         die("at least one blacklist field is required")
 
-    path = data_dir() / "blacklist.json"
+    path = _blacklist_path()
     with _store_lock(path):
         entries = _load_blacklist()
         filtered = []
+        removed_entries = []
         removed = 0
         for entry in entries:
             normalized = _normalize_blacklist_entry(entry)
@@ -221,15 +287,87 @@ def action_blacklist_remove(args):
                 (not target_sender or normalized["sender"] == target_sender) and
                 (not target_genre or normalized["genre"] == target_genre) and
                 (not target_topic or normalized["topic"] == target_topic) and
-                (not target_title or normalized["title"] == target_title)
+                (not target_title or normalized["title"] == target_title) and
+                (target_active is None or normalized["active"] == target_active) and
+                (target_topic_exact is None or normalized["topic_exact"] == target_topic_exact)
             )
             if matches:
+                removed_entries.append(entry)
                 removed += 1
             else:
                 filtered.append(entry)
         if removed:
             _store_list(path, filtered)
+            undo_entries = _load_blacklist_undo()
+            undo_entries.extend(removed_entries)
+            if BLACKLIST_UNDO_MAX_ENTRIES > 0:
+                undo_entries = undo_entries[-BLACKLIST_UNDO_MAX_ENTRIES:]
+            _store_blacklist_undo(undo_entries)
     print(json.dumps({"status": "ok", "removed": removed}))
+
+
+def action_blacklist_clean(args):
+    path = _blacklist_path()
+    with _store_lock(path):
+        entries = _load_blacklist()
+        kept = []
+        removed_entries = []
+        seen = set()
+        for entry in entries:
+            rule_key = _blacklist_rule_key(entry)
+            if _blacklist_rule_is_empty(entry) or rule_key in seen:
+                removed_entries.append(entry)
+            else:
+                seen.add(rule_key)
+                kept.append(entry)
+        if removed_entries:
+            _store_list(path, kept)
+            undo_entries = _load_blacklist_undo()
+            undo_entries.extend(removed_entries)
+            if BLACKLIST_UNDO_MAX_ENTRIES > 0:
+                undo_entries = undo_entries[-BLACKLIST_UNDO_MAX_ENTRIES:]
+            _store_blacklist_undo(undo_entries)
+    print(json.dumps({"status": "ok", "removed": len(removed_entries)}))
+
+
+def action_blacklist_clear(args):
+    path = _blacklist_path()
+    with _store_lock(path):
+        entries = _load_blacklist()
+        if entries:
+            _store_list(path, [])
+            undo_entries = _load_blacklist_undo()
+            undo_entries.extend(entries)
+            if BLACKLIST_UNDO_MAX_ENTRIES > 0:
+                undo_entries = undo_entries[-BLACKLIST_UNDO_MAX_ENTRIES:]
+            _store_blacklist_undo(undo_entries)
+    print(json.dumps({"status": "ok", "removed": len(entries)}))
+
+
+def action_blacklist_undo(args):
+    with _store_lock(_blacklist_path()):
+        entries = _load_blacklist()
+        undo_entries = _load_blacklist_undo()
+        restored = []
+        existing = {_blacklist_rule_key(entry) for entry in entries}
+        to_restore = []
+        for entry in reversed(undo_entries):
+            if _blacklist_rule_is_empty(entry):
+                continue
+            rule_key = _blacklist_rule_key(entry)
+            if rule_key in existing:
+                continue
+            existing.add(rule_key)
+            restored.append(entry)
+            to_restore.append(_normalize_blacklist_entry(entry))
+        if to_restore:
+            entries.extend(to_restore)
+            if BLACKLIST_MAX_ENTRIES > 0:
+                entries = entries[-BLACKLIST_MAX_ENTRIES:]
+            _store_list(_blacklist_path(), entries)
+        if undo_entries:
+            _store_blacklist_undo([])
+    print(json.dumps({"status": "ok", "restored": len(restored)}))
 
 
 def _validate_and_normalize_url(field_name, value):
@@ -239,16 +377,49 @@ def _validate_and_normalize_url(field_name, value):
         die(f"invalid {field_name} URL scheme")
 
 
+def _load_blacklist_rule(rule):
+    if not isinstance(rule, dict):
+        return None
+    normalized = _normalize_rule(rule)
+    return {
+        "sender": normalized["sender"].lower(),
+        "genre": normalized["genre"].lower(),
+        "topic": normalized["topic"].lower(),
+        "title": normalized["title"].lower(),
+        "active": _normalize_bool_value(rule.get("active"), True),
+        "topic_exact": _normalize_bool_value(rule.get("topic_exact"), True),
+        "timestamp": _normalize_timestamp(rule.get("timestamp"), normalized["timestamp"]),
+    }
+
+
 def _normalize_blacklist_entry(entry):
-    rule = _normalize_rule(entry)
-    rule["sender"] = rule["sender"].lower()
-    rule["genre"] = rule["genre"].lower()
-    rule["topic"] = rule["topic"].lower()
-    rule["title"] = rule["title"].lower()
-    return rule
+    return _load_blacklist_rule(entry)
+
+
+def _blacklist_rule_is_empty(rule):
+    return not (
+        _normalize_blacklist_field(rule.get("sender"))
+        or _normalize_blacklist_field(rule.get("genre"))
+        or _normalize_blacklist_field(rule.get("topic"))
+        or _normalize_blacklist_field(rule.get("title"))
+    )
+
+
+def _blacklist_rule_key(rule):
+    topic = _normalize_blacklist_field(rule.get("topic"))
+    return (
+        _normalize_blacklist_field(rule.get("sender")),
+        _normalize_blacklist_field(rule.get("genre")),
+        topic,
+        _normalize_blacklist_field(rule.get("title")),
+        _normalize_bool_value(rule.get("topic_exact"), True) if topic else True,
+    )
 
 
 def _rule_matches_result(rule, item):
+    if not _normalize_bool_value(rule.get("active"), True):
+        return False
+
     fields = {
         "sender": _normalize_blacklist_field(item.get("sender")),
         "genre": _normalize_blacklist_field(item.get("genre")),
@@ -258,11 +429,15 @@ def _rule_matches_result(rule, item):
     for key, rule_value in rule.items():
         if key == "timestamp":
             continue
+        if key not in fields:
+            continue
         if not rule_value:
             continue
         item_value = fields.get(key, "")
-        if key == "topic":
+        if key == "topic" and _normalize_bool_value(rule.get("topic_exact"), True):
             matches = item_value == rule_value
+        elif key == "topic":
+            matches = rule_value in item_value
         else:
             matches = rule_value in item_value
         if not matches:
@@ -1041,6 +1216,8 @@ def parse_args():
     blacklist_add.add_argument("--genre", default="", help="Blacklist genre")
     blacklist_add.add_argument("--topic", default="", help="Blacklist topic")
     blacklist_add.add_argument("--title", default="", help="Blacklist title")
+    blacklist_add.add_argument("--active", default=None, help="Whether rule is active (true/false)")
+    blacklist_add.add_argument("--topic-exact", default=None, help="Whether topic matches exactly (true/false)")
 
     blacklist_list = sub.add_parser("blacklist-list", help="List blacklist rules")
 
@@ -1049,6 +1226,12 @@ def parse_args():
     blacklist_remove.add_argument("--genre", default="", help="Blacklist genre")
     blacklist_remove.add_argument("--topic", default="", help="Blacklist topic")
     blacklist_remove.add_argument("--title", default="", help="Blacklist title")
+    blacklist_remove.add_argument("--active", default=None, help="Only remove rules with this active state (true/false)")
+    blacklist_remove.add_argument("--topic-exact", default=None, help="Only remove rules with this topic mode (true/false)")
+
+    blacklist_undo = sub.add_parser("blacklist-undo", help="Restore removed blacklist rules")
+    sub.add_parser("blacklist-clean", help="Remove empty/duplicate blacklist rules and store removed entries in undo")
+    sub.add_parser("blacklist-clear", help="Remove all blacklist rules and store removed entries in undo")
 
     history_add = sub.add_parser("history-add", help="Add history entry")
     history_add.add_argument("--title", default="", help="Optional title")
@@ -1149,6 +1332,12 @@ def main():
         action_blacklist_list(args)
     elif args.action == "blacklist-remove":
         action_blacklist_remove(args)
+    elif args.action == "blacklist-undo":
+        action_blacklist_undo(args)
+    elif args.action == "blacklist-clean":
+        action_blacklist_clean(args)
+    elif args.action == "blacklist-clear":
+        action_blacklist_clear(args)
     elif args.action == "download":
         action_download(args)
     elif args.action == "download-enqueue":

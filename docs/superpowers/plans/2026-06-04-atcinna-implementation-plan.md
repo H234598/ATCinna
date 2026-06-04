@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.18`.
+- `VERSION` is `0.3.19`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, and `atcinna@H234598/scripts/atcinna-blacklist-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -90,6 +90,28 @@ Next parity implementation priority: filter-profile editing, deeper Blacklist mo
 
 - [x] **Docs + version**
   - Update `README.md`, `CHANGELOG.md`, `VERSION`, and `atcinna@H234598/metadata.json` to 0.3.18.
+
+### Task 19: First real ATPlayer Blacklist Core Parity (0.3.19)
+
+- [x] **Blacklist-Regeln mit Aktivierungs- und Topic-Match-Modus**
+  - Regeln speichern/normalisieren `active` und `topic_exact` mit Standard `true` und behalten bestehende `sender`/`genre`/`topic`/`title`-Kompatibilität.
+  - Matching respektiert inaktive Regeln (`active=false`) als nicht wirksam.
+  - `topic_exact=true` erzwingt exakte Themenübereinstimmung, `topic_exact=false` erlaubt Teiltreffer; Sender/Genre/Title bleiben Teiltreffer.
+- [x] **Undo/Putzen/Clear**
+  - Neue Helper-Aktionen `blacklist-undo`, `blacklist-clean`, `blacklist-clear`.
+  - `blacklist-clean` entfernt ATPlayer-artig leere und doppelte Regeln.
+  - `blacklist-remove`, `blacklist-clean` und `blacklist-clear` lagern entfernte Regeln in eine Undo-Datei.
+  - `blacklist-undo` stellt dedupliziert vorherig entfernte Regeln wieder her.
+- [x] **`blacklist-add` Optionals**
+  - `--active` und `--topic-exact` als optionale Flags ergänzt.
+  - Gleiche `sender`/`genre`/`topic`/`title`/`topic_exact`-Kombination aktualisiert stattdessen bestehende Regel.
+- [x] **Gezielte Entfernung von Regelvarianten**
+  - `blacklist-remove` akzeptiert optional `--active` und `--topic-exact`, damit der Dialog bei gleicher Topic-Regel exakt die markierte Variante entfernen kann.
+- [x] **Dialog-Oberfläche erweitern**
+  - `atcinna-blacklist-dialog` zeigt `active`/`topic_exact` an.
+  - Neue Regler erlauben Hinzufügen, Entfernen markierter Regeln, Undo, Putzen und Komplett-Löschen mit GTK-Abfrage.
+- [x] **Checks**
+  - `scripts/check.sh` erweitert um neue Helper-Args/Actions, Suchsemantik (`topic_exact`), Undo/Clean/Clear und Dialog-Wiring.
 
 ### Task 15: Add Queue Download Edit Action (0.3.15)
 

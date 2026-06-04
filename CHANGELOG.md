@@ -1,4 +1,18 @@
 # Changelog
+## 0.3.19
+
+- Blacklist-Ressourcen werden jetzt um ATPlayer-nahe Kern-Felder `active` (Standard: `true`) und `topic_exact` (Standard: `true`) normalisiert. Inaktive Regeln werden beim Suchen automatisch ignoriert.
+- `blacklist-search`-Matching für `topic` ist jetzt abhängig von `topic_exact` (exakt oder Teiltreffer), während `sender`/`genre`/`title` weiterhin Teiltreffer bleiben.
+- Neue Helper-Operationen:
+  - `blacklist-undo` mit Deduplizierung gegen bestehende Regeln
+  - `blacklist-clean` zum Entfernen leerer und doppelter Regeln
+  - `blacklist-clear` zum vollständigen Entfernen aller Regeln
+  - Alle drei Operationen persistieren entferntes Material in `blacklist-undo.json`.
+- `blacklist-add` akzeptiert optionale Flags `--active` und `--topic-exact`; beim Hinzufügen werden identische Regeln per Sender/Genre/Topic/Title/Topic-Exact aktualisiert statt dupliziert.
+- `blacklist-remove` kann mit optionalen Flags `--active` und `--topic-exact` gezielt einzelne Regelvarianten entfernen, bleibt ohne diese Flags aber kompatibel zum alten Feld-Matching.
+- `atcinna-blacklist-dialog` wurde für ATPlayer-paritäres Verhalten erweitert: Anzeige von `active`/`topic_exact`, Hinzufügen neuer Regeln und sichere UI-Aktionen für Entfernen markierter Regeln, Undo, Putzen und Alles-Entfernen mit GTK-Abfrage.
+- `scripts/check.sh` enthält neue statische Checks auf die neuen Helper-Flags/Actions sowie funktionale Checks für `active`/`topic_exact`, Undo/Clean/Clear und Dialog-Wiring.
+
 ## 0.3.18
 
 - Neue optionale Blacklist-Verwaltung im Hilfe-Menü hinzugefügt: Menüpunkt **Blacklist verwalten**.

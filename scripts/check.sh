@@ -222,12 +222,20 @@ if ! rg -q -F "\"download-update\"" "$HELPER"; then
     echo "ERROR: helper action is missing: download-update"
     STATUS=1
 fi
-for helper_action in blacklist-add blacklist-list blacklist-remove; do
+for helper_action in blacklist-add blacklist-list blacklist-remove blacklist-undo blacklist-clean blacklist-clear; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
         STATUS=1
     fi
 done
+if ! rg -q -F -- "--active" "$HELPER"; then
+    echo "ERROR: blacklist-add action is missing --active"
+    STATUS=1
+fi
+if ! rg -q -F -- "--topic-exact" "$HELPER"; then
+    echo "ERROR: blacklist-add action is missing --topic-exact"
+    STATUS=1
+fi
 if ! rg -q -F '"--blacklist-mode"' "$HELPER"; then
     echo "ERROR: helper search action is missing --blacklist-mode argument"
     STATUS=1
@@ -548,6 +556,149 @@ if ! echo "$BLACKLIST_LIST" | jq -e '.status == "ok" and .count == 1' >/dev/null
     echo "$BLACKLIST_LIST"
     exit 1
 fi
+if ! echo "$BLACKLIST_LIST" | jq -e '.results[0].active == true and .results[0].topic_exact == true' >/dev/null; then
+    echo "ERROR: blacklist default flags should normalize to active=true and topic_exact=true"
+    echo "$BLACKLIST_LIST"
+    exit 1
+fi
+BLACKLIST_ADD_INACTIVE="$(python3 "$HELPER" blacklist-add --sender "WDR" --active false)"
+if ! echo "$BLACKLIST_ADD_INACTIVE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add with active=false failed"
+    echo "$BLACKLIST_ADD_INACTIVE"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-list | jq -e '.results | map(select(.sender=="wdr")) | .[0].active == false' >/dev/null; then
+    echo "ERROR: blacklist-add active=false should persist"
+    exit 1
+fi
+SEARCH_BLACKLIST_INACTIVE_IGNORED="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_INACTIVE_IGNORED" | jq -e '.status == "ok" and .count == 2' >/dev/null; then
+    echo "ERROR: inactive blacklist rules should be ignored during search filtering"
+    echo "$SEARCH_BLACKLIST_INACTIVE_IGNORED"
+    exit 1
+fi
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598" / "blacklist.json"
+entries = json.loads(path.read_text(encoding="utf-8"))
+entries.append(dict(entries[0]))
+entries.append({
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "title": "",
+    "active": True,
+    "topic_exact": True,
+    "timestamp": 1,
+})
+path.write_text(json.dumps(entries), encoding="utf-8")
+PY
+BLACKLIST_CLEAN="$(python3 "$HELPER" blacklist-clean)"
+if ! echo "$BLACKLIST_CLEAN" | jq -e '.status == "ok" and .removed == 2' >/dev/null; then
+    echo "ERROR: blacklist-clean did not remove expected empty/duplicate rules"
+    echo "$BLACKLIST_CLEAN"
+    exit 1
+fi
+BLACKLIST_LIST_AFTER_CLEAN="$(python3 "$HELPER" blacklist-list)"
+if ! echo "$BLACKLIST_LIST_AFTER_CLEAN" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.sender=="wdr" and .active==false)] | length) == 1' >/dev/null; then
+    echo "ERROR: blacklist-clean should remove empty/duplicate rules but keep inactive rules"
+    echo "$BLACKLIST_LIST_AFTER_CLEAN"
+    exit 1
+fi
+BLACKLIST_UNDO="$(python3 "$HELPER" blacklist-undo)"
+if ! echo "$BLACKLIST_UNDO" | jq -e '.status == "ok" and .restored == 0' >/dev/null; then
+    echo "ERROR: blacklist-undo should not restore empty or duplicate cleaned rules"
+    echo "$BLACKLIST_UNDO"
+    exit 1
+fi
+BLACKLIST_LIST_AFTER_UNDO="$(python3 "$HELPER" blacklist-list)"
+if ! echo "$BLACKLIST_LIST_AFTER_UNDO" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.sender=="wdr" and .active==false)] | length) == 1' >/dev/null; then
+    echo "ERROR: blacklist-undo after clean changed blacklist unexpectedly"
+    echo "$BLACKLIST_LIST_AFTER_UNDO"
+    exit 1
+fi
+BLACKLIST_TOPIC_PARTIAL="$(python3 "$HELPER" blacklist-add --topic the --topic-exact false)"
+if ! echo "$BLACKLIST_TOPIC_PARTIAL" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add with topic-exact=false failed"
+    echo "$BLACKLIST_TOPIC_PARTIAL"
+    exit 1
+fi
+BLACKLIST_TOPIC_EXACT_COEXIST="$(python3 "$HELPER" blacklist-add --topic the --topic-exact true)"
+if ! echo "$BLACKLIST_TOPIC_EXACT_COEXIST" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add with topic-exact=true failed"
+    echo "$BLACKLIST_TOPIC_EXACT_COEXIST"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-list | jq -e '([.results[] | select(.topic=="the")] | length == 2) and ([.results[] | select(.topic=="the" and .topic_exact==true)] | length == 1) and ([.results[] | select(.topic=="the" and .topic_exact==false)] | length == 1)' >/dev/null; then
+    echo "ERROR: topic_exact=true and topic_exact=false should coexist for same topic"
+    python3 "$HELPER" blacklist-list
+    exit 1
+fi
+BLACKLIST_REMOVE_TOPIC_EXACT="$(python3 "$HELPER" blacklist-remove --topic the --topic-exact true)"
+if ! echo "$BLACKLIST_REMOVE_TOPIC_EXACT" | jq -e '.status == "ok" and .removed == 1' >/dev/null; then
+    echo "ERROR: blacklist-remove should allow targeting topic_exact=true"
+    echo "$BLACKLIST_REMOVE_TOPIC_EXACT"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-list | jq -e '([.results[] | select(.topic=="the")] | length == 1) and ([.results[] | select(.topic=="the" and .topic_exact==false)] | length == 1)' >/dev/null; then
+    echo "ERROR: blacklist-remove --topic-exact true should keep topic_exact=false rule"
+    python3 "$HELPER" blacklist-list
+    exit 1
+fi
+SEARCH_BLACKLIST_TOPIC_PARTIAL="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_TOPIC_PARTIAL" | jq -e '.status == "ok" and .count == 3 and ([.results[] | select(.title=="Kurzmeldung" or .title=="Zweite Kurzmeldung" or .title=="Ungültige Website")] | length)==3' >/dev/null; then
+    echo "ERROR: topic_exact=false should use substring matching for topic"
+    echo "$SEARCH_BLACKLIST_TOPIC_PARTIAL"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-remove --topic the --topic-exact false >/dev/null; then
+    echo "ERROR: blacklist-remove for partial topic test failed"
+    exit 1
+fi
+BLACKLIST_REMOVE_DUP="$(python3 "$HELPER" blacklist-remove --sender wdr)"
+if ! echo "$BLACKLIST_REMOVE_DUP" | jq -e '.status == "ok" and .removed >= 1' >/dev/null; then
+    echo "ERROR: blacklist-remove should remove matching rule"
+    echo "$BLACKLIST_REMOVE_DUP"
+    exit 1
+fi
+BLACKLIST_PREP_CLEAR="$(python3 "$HELPER" blacklist-add --sender "clear-only")"
+if ! echo "$BLACKLIST_PREP_CLEAR" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add failed before clear test"
+    echo "$BLACKLIST_PREP_CLEAR"
+    exit 1
+fi
+BLACKLIST_CLEAR="$(python3 "$HELPER" blacklist-clear)"
+if ! echo "$BLACKLIST_CLEAR" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-clear failed"
+    echo "$BLACKLIST_CLEAR"
+    exit 1
+fi
+BLACKLIST_CLEAR_LIST="$(python3 "$HELPER" blacklist-list)"
+if ! echo "$BLACKLIST_CLEAR_LIST" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: blacklist-clear should remove all rules"
+    echo "$BLACKLIST_CLEAR_LIST"
+    exit 1
+fi
+BLACKLIST_UNDO_CLEAR="$(python3 "$HELPER" blacklist-undo)"
+if ! echo "$BLACKLIST_UNDO_CLEAR" | jq -e '.status == "ok" and (.restored | tonumber) >= 1' >/dev/null; then
+    echo "ERROR: blacklist-undo after clear should restore at least one rule"
+    echo "$BLACKLIST_UNDO_CLEAR"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: blacklist-clear failed during cleanup"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-undo >/dev/null; then
+    echo "ERROR: blacklist-undo cleanup failed"
+    exit 1
+fi
+python3 "$HELPER" blacklist-clear >/dev/null
+python3 "$HELPER" blacklist-add --title "Kurzmeldung" --sender "WDR" >/dev/null
+
 SEARCH_BLACKLIST_OFF="$(python3 "$HELPER" search --query "" --blacklist-mode off)"
 if ! echo "$SEARCH_BLACKLIST_OFF" | jq -e '.status == "ok" and .count == 3' >/dev/null; then
     echo "ERROR: search off mode should not filter results"
