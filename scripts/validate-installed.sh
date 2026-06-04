@@ -234,6 +234,12 @@ for applet_label in "Download starten" "Downloads aktualisieren" "Liste der Down
         exit 1
     fi
 done
+for applet_label in "Abspielen" "Speichern" "Filminformation anzeigen"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
 
 if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
     echo "ERROR: helper --help failed"

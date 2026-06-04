@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.33
+
+- Audio-Kontextmenüs näher an ATPlayer geführt: Einträge zeigen jetzt **Abspielen** und **Speichern** als direkte Aktionen; **Speichern** nutzt Java-frei die bestehende Download-Warteschlange.
+- **Filminformation anzeigen** als ATPlayer-naher Alias auf die vorhandene kompakte Audioinformation ergänzt.
+- Source- und Installationschecks schützen die neuen Audio-Kontextlabels.
+- Versionssprung auf `0.3.33`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.32
 
 - ATPlayer-nahe Queue-Aktion **Download starten** pro Warteschlangen-Eintrag ergänzt; der Helper kann mit `download-run --url URL` gezielt einen wartenden Eintrag starten.

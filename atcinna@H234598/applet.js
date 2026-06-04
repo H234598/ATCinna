@@ -1225,7 +1225,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             toggleSelection.connect("activate", () => this._runResultToggleSelection(item));
             entry.menu.addMenuItem(toggleSelection);
 
-            const play = new PopupMenu.PopupMenuItem("Abspielen (xdg-open)");
+            const play = new PopupMenu.PopupMenuItem("Abspielen");
             play.connect("activate", () => this._playItem(item));
             entry.menu.addMenuItem(play);
 
@@ -1239,6 +1239,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const download = new PopupMenu.PopupMenuItem("Herunterladen");
             download.connect("activate", () => this._runDownload(item));
             entry.menu.addMenuItem(download);
+
+            const save = new PopupMenu.PopupMenuItem("Speichern");
+            save.connect("activate", () => this._runDownloadEnqueue(item));
+            entry.menu.addMenuItem(save);
 
             const enqueue = new PopupMenu.PopupMenuItem("In Warteschlange legen");
             enqueue.connect("activate", () => this._runDownloadEnqueue(item));
@@ -2548,9 +2552,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const subtitle = [sender, genre, topic].filter(Boolean).join(" · ");
         const row = new PopupMenu.PopupSubMenuMenuItem(`${title}${subtitle ? ` — ${subtitle}` : ""}`);
 
-        const play = new PopupMenu.PopupMenuItem("Abspielen (xdg-open)");
+        const play = new PopupMenu.PopupMenuItem("Abspielen");
         play.connect("activate", () => this._playItem(item));
         row.menu.addMenuItem(play);
+
+        const save = new PopupMenu.PopupMenuItem("Speichern");
+        save.connect("activate", () => this._runDownloadEnqueue(item));
+        row.menu.addMenuItem(save);
 
         this._addWebsiteAction(row.menu, item);
         this._addFilterActions(row.menu, item);
@@ -2591,6 +2599,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const action = new PopupMenu.PopupMenuItem("Audioinformation anzeigen");
         action.connect("activate", () => this._setInfoSection(item));
         menu.addMenuItem(action);
+
+        const filmInfo = new PopupMenu.PopupMenuItem("Filminformation anzeigen");
+        filmInfo.connect("activate", () => this._setInfoSection(item));
+        menu.addMenuItem(filmInfo);
     }
 
     _addMetadataCopyActions(menu, item) {

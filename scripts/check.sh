@@ -349,6 +349,12 @@ if ! rg -q -F '"[x]"' "$APPLET_JS" || ! rg -q -F '"[ ]"' "$APPLET_JS"; then
     echo "ERROR: applet queue selection markers are missing"
     STATUS=1
 fi
+for audio_context_label in "Abspielen" "Speichern" "Filminformation anzeigen"; do
+    if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${audio_context_label}\")" "$APPLET_JS"; then
+        echo "ERROR: applet audio context label is missing: ${audio_context_label}"
+        STATUS=1
+    fi
+done
 for info_label in "Audioinformation anzeigen" "Audio-URL kopieren" "Titel in die Zwischenablage kopieren" "Genre in die Zwischenablage kopieren" "Thema in die Zwischenablage kopieren"; do
     if ! rg -q -F "${info_label}" "$APPLET_JS"; then
         echo "ERROR: applet metadata action label is missing: ${info_label}"
