@@ -96,10 +96,52 @@ if ! echo "$SEARCH_JSON" | jq -e '.results[0].title == "Kurzmeldung" and .result
     exit 1
 fi
 
+SEARCH_BROAD_JSON="$(python3 "$HELPER" search --query "Kurz")"
+if ! echo "$SEARCH_BROAD_JSON" | jq -e '.status == "ok" and .count == 2 and .results[0].title == "Kurzmeldung" and .results[1].title == "Zweite Kurzmeldung"' >/dev/null; then
+    echo "ERROR: search without filters is not returning expected baseline results"
+    echo "$SEARCH_BROAD_JSON"
+    exit 1
+fi
+
 INHERITED_JSON="$(python3 "$HELPER" search --query "Zweite" --max 1)"
 if ! echo "$INHERITED_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].sender == "WDR" and .results[0].genre == "Genre" and .results[0].topic == "Thema" and .results[0].url == "https://example.com/second"' >/dev/null; then
     echo "ERROR: inherited catalog fields are not preserved"
     echo "$INHERITED_JSON"
+    exit 1
+fi
+
+SEARCH_FILTER_SENDER="$(python3 "$HELPER" search --query "Zweite" --sender "wdr")"
+if ! echo "$SEARCH_FILTER_SENDER" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
+    echo "ERROR: sender filter does not match inherited sender case-insensitively"
+    echo "$SEARCH_FILTER_SENDER"
+    exit 1
+fi
+
+SEARCH_FILTER_GENRE="$(python3 "$HELPER" search --query "Zweite" --genre "enr")"
+if ! echo "$SEARCH_FILTER_GENRE" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
+    echo "ERROR: genre filter does not match inherited genre case-insensitively by substring"
+    echo "$SEARCH_FILTER_GENRE"
+    exit 1
+fi
+
+SEARCH_FILTER_TOPIC="$(python3 "$HELPER" search --query "Zweite" --topic "HEM")"
+if ! echo "$SEARCH_FILTER_TOPIC" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
+    echo "ERROR: topic filter does not match inherited topic case-insensitively by substring"
+    echo "$SEARCH_FILTER_TOPIC"
+    exit 1
+fi
+
+SEARCH_FILTER_NO_MATCH="$(python3 "$HELPER" search --query "Kurz" --sender "NDR")"
+if ! echo "$SEARCH_FILTER_NO_MATCH" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: non-matching sender filter should produce zero results"
+    echo "$SEARCH_FILTER_NO_MATCH"
+    exit 1
+fi
+
+SEARCH_COMBINED="$(python3 "$HELPER" search --query "Zweite" --sender "WD" --genre "enr" --topic "hem" --max 10)"
+if ! echo "$SEARCH_COMBINED" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
+    echo "ERROR: query+filter combination is not working"
+    echo "$SEARCH_COMBINED"
     exit 1
 fi
 

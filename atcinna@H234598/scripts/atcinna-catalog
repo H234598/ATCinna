@@ -143,6 +143,10 @@ def _validate_and_normalize_url(field_name, value):
         die(f"invalid {field_name} URL scheme")
 
 
+def _matches_filter(value, needle):
+    return not needle or needle in value.lower()
+
+
 def action_history_add(args):
     _validate_and_normalize_url("url", args.url)
     _validate_and_normalize_url("website", args.website)
@@ -256,12 +260,15 @@ def action_refresh(args):
     die("all mirrors failed")
 
 
-def _iter_results(query, max_hits):
+def _iter_results(query, max_hits, filters):
     path = cache_dir() / "audios.xz"
     if not path.exists():
         return 0, []
 
-    lower = (query or "").lower()
+    lower = (query or "").strip().lower()
+    filter_sender = _normalize_entry_value(filters.sender).lower()
+    filter_genre = _normalize_entry_value(filters.genre).lower()
+    filter_topic = _normalize_entry_value(filters.topic).lower()
     hits = []
     last_sender = ""
     last_genre = ""
@@ -287,6 +294,13 @@ def _iter_results(query, max_hits):
         if not url or not title:
             continue
 
+        if not _matches_filter(sender, filter_sender):
+            continue
+        if not _matches_filter(genre, filter_genre):
+            continue
+        if not _matches_filter(topic, filter_topic):
+            continue
+
         haystack = " ".join([sender, genre, topic, title, description, url]).lower()
         if lower and lower not in haystack:
             continue
@@ -309,7 +323,7 @@ def _iter_results(query, max_hits):
 
 
 def action_search(args):
-    count, hits = _iter_results(args.query, args.max)
+    count, hits = _iter_results(args.query, args.max, args)
     print(json.dumps({"status": "ok", "query": args.query, "count": count, "results": hits}))
 
 
@@ -366,6 +380,9 @@ def parse_args():
 
     search = sub.add_parser("search")
     search.add_argument("--query", default="", help="Search query")
+    search.add_argument("--sender", default="", help="Filter by sender")
+    search.add_argument("--genre", default="", help="Filter by genre")
+    search.add_argument("--topic", default="", help="Filter by topic")
     search.add_argument("--max", type=int, default=20, dest="max", help="Max results")
 
     history_add = sub.add_parser("history-add", help="Add history entry")
