@@ -1,0 +1,11 @@
+{
+  "uuid": "atcinna@H234598",
+  "name": "ATCinna",
+  "description": "ATPlayer-like radio catalogue applet for Cinnamon",
+  "description:de": "ATPlayer-ähnliches Cinnamon-Applet für Radio-Kataloge",
+  "url": "",
+  "version": "0.1.0",
+  "icon": "audio-x-generic",
+  "max-instances": 1,
+  "schema-version": 1
+}

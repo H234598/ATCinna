@@ -1,0 +1,259 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+from pathlib import Path
+from urllib.parse import urlparse
+import lzma
+import sys
+
+
+MIRRORS = [
+    "https://atlist.de/audios.xz",
+    "https://p2atlist.de/audios.xz",
+    "https://atlist.eu/audios.xz",
+]
+
+
+def die(message, exit_code=1):
+    print(json.dumps({"status": "error", "message": message}), file=sys.stderr)
+    raise SystemExit(exit_code)
+
+
+def cache_dir():
+    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(base) / "atcinna@H234598"
+
+
+def ensure_dir(path):
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def normalize_value(value, fallback):
+    if isinstance(value, str):
+        text = value.strip()
+        return text if text else fallback
+    return fallback
+
+
+def _is_http_url(url):
+    parsed = urlparse(url)
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def _iter_audio_rows(path):
+    if not path.exists():
+        return
+
+    with lzma.open(path, "rt", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            text = line.strip()
+            if not text or '"Audios"' not in text:
+                continue
+            match = re.search(r'"Audios"\s*:\s*(\[.*\])\s*,?\s*$', text)
+            if not match:
+                continue
+            try:
+                row = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(row, list) or not row:
+                continue
+            if row[0] == "Sender":
+                continue
+            yield row
+
+
+def _count_audio_rows(path):
+    return sum(1 for _ in _iter_audio_rows(path))
+
+
+def action_refresh(args):
+    target_cache = cache_dir() / "audios.xz"
+    tmp_cache = cache_dir() / "audios.xz.tmp"
+    ensure_dir(cache_dir())
+
+    mirrors = []
+    if args.mirror:
+        mirrors.append(args.mirror)
+    mirrors.extend(m for m in MIRRORS if m not in mirrors)
+    curl = shutil.which("curl")
+    if not curl:
+        die("curl not found")
+
+    for mirror in mirrors:
+        if not _is_http_url(mirror):
+            print(json.dumps({"status": "warning", "mirror": mirror, "message": "invalid mirror URL"}))
+            continue
+        try:
+            completed = subprocess.run(
+                [curl, "--fail", "--location", "--silent", "--show-error", "--max-time", "60", mirror],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+                timeout=60,
+            )
+        except Exception as exc:
+            print(json.dumps({"status": "warning", "mirror": mirror, "message": str(exc)}))
+            continue
+
+        if completed.returncode != 0:
+            print(json.dumps({"status": "warning", "mirror": mirror, "message": completed.stderr.decode("utf-8", "replace").strip()}))
+            continue
+
+        try:
+            with open(tmp_cache, "wb") as out:
+                out.write(completed.stdout)
+            count = _count_audio_rows(tmp_cache)
+            if count <= 0:
+                tmp_cache.unlink(missing_ok=True)
+                print(json.dumps({"status": "warning", "mirror": mirror, "message": "no audio entries found"}))
+                continue
+            os.replace(tmp_cache, target_cache)
+        except Exception as exc:
+            tmp_cache.unlink(missing_ok=True)
+            die(f"failed to write cache: {exc}")
+
+        print(json.dumps({"status": "ok", "entries": count, "cache": str(target_cache), "mirror": mirror}))
+        return 0
+
+    die("all mirrors failed")
+
+
+def _iter_results(query, max_hits):
+    path = cache_dir() / "audios.xz"
+    if not path.exists():
+        return 0, []
+
+    lower = (query or "").lower()
+    hits = []
+    last_sender = ""
+    last_genre = ""
+    last_topic = ""
+
+    for raw in _iter_audio_rows(path):
+        if len(raw) < 10:
+            continue
+
+        sender = normalize_value(raw[0], last_sender)
+        genre = normalize_value(raw[1], last_genre)
+        topic = normalize_value(raw[2], last_topic)
+        last_sender, last_genre, last_topic = sender, genre, topic
+
+        title = normalize_value(raw[3], "")
+        date = normalize_value(raw[4], "") if len(raw) > 4 else ""
+        time = normalize_value(raw[5], "") if len(raw) > 5 else ""
+        duration = normalize_value(raw[6], "") if len(raw) > 6 else ""
+        description = normalize_value(raw[8], "") if len(raw) > 8 else ""
+        url = normalize_value(raw[9], "")
+        website = normalize_value(raw[10], "") if len(raw) > 10 else ""
+
+        if not url or not title:
+            continue
+
+        haystack = " ".join([sender, genre, topic, title, description, url]).lower()
+        if lower and lower not in haystack:
+            continue
+
+        hits.append({
+            "title": title,
+            "sender": sender,
+            "genre": genre,
+            "topic": topic,
+            "date": date,
+            "time": time,
+            "duration": duration,
+            "url": url,
+            "website": website,
+        })
+        if len(hits) >= max_hits:
+            return len(hits), hits
+
+    return len(hits), hits
+
+
+def action_search(args):
+    count, hits = _iter_results(args.query, args.max)
+    print(json.dumps({"status": "ok", "query": args.query, "count": count, "results": hits}))
+
+
+def _safe_filename(value):
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", value).strip("._-")
+    return cleaned[:120] or "atcinnaradio"
+
+
+def action_download(args):
+    parsed = urlparse(args.url)
+    if not _is_http_url(args.url):
+        die("invalid URL scheme")
+
+    curl = shutil.which("curl")
+    if not curl:
+        die("curl not found")
+
+    folder = Path(args.folder or "~/Downloads").expanduser()
+    if not folder.is_absolute():
+        folder = folder.resolve()
+    ensure_dir(folder)
+
+    stem = _safe_filename(args.title or Path(parsed.path).name or "stream")
+    suffix = Path(parsed.path).suffix or ".mp3"
+    file_name = f"{stem}{suffix}"
+    destination = folder / file_name
+    candidate = 1
+    while destination.exists():
+        destination = folder / f"{stem}_{candidate}{suffix}"
+        candidate += 1
+
+    try:
+        subprocess.run(
+            [curl, "--fail", "--location", "--silent", "--show-error", "-L", "-o", str(destination), args.url],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            timeout=120,
+        )
+    except subprocess.CalledProcessError as exc:
+        die((exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc))
+    except Exception as exc:
+        die(str(exc))
+
+    print(json.dumps({"status": "ok", "path": str(destination)}))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="ATCinna catalog helper")
+    sub = parser.add_subparsers(dest="action", required=True)
+
+    refresh = sub.add_parser("refresh")
+    refresh.add_argument("--mirror", dest="mirror", default="", help="Primary mirror URL")
+
+    search = sub.add_parser("search")
+    search.add_argument("--query", default="", help="Search query")
+    search.add_argument("--max", type=int, default=20, dest="max", help="Max results")
+
+    download = sub.add_parser("download")
+    download.add_argument("--url", required=True, help="Media URL")
+    download.add_argument("--folder", default="", help="Download folder")
+    download.add_argument("--title", default="", help="Optional file base title")
+
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    if args.action == "refresh":
+        action_refresh(args)
+    elif args.action == "search":
+        action_search(args)
+    elif args.action == "download":
+        action_download(args)
+    else:
+        die("unknown action")
+
+
+if __name__ == "__main__":
+    main()

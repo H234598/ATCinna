@@ -1,0 +1,38 @@
+{
+  "head": {
+    "type": "header",
+    "description": "ATCinna"
+  },
+  "search-query": {
+    "type": "entry",
+    "description": "Suchbegriff",
+    "tooltip": "Standard-Suchbegriff fuer die Ergebnisliste im Popup.",
+    "default": ""
+  },
+  "max-hits": {
+    "type": "spinbutton",
+    "description": "Maximale Treffer",
+    "tooltip": "Maximale Anzahl der im Popup angezeigten Katalogtreffer.",
+    "default": 20,
+    "min": 1,
+    "max": 100,
+    "step": 1
+  },
+  "download-folder": {
+    "type": "filechooser",
+    "description": "Download-Ordner",
+    "tooltip": "Zielordner fuer heruntergeladene Audiodateien. Leer verwendet ~/Downloads.",
+    "default": ""
+  },
+  "refresh-mirror": {
+    "type": "combobox",
+    "description": "Katalog-Mirror",
+    "tooltip": "Primaerer Mirror fuer die ATPlayer-kompatible Audioliste.",
+    "default": "https://atlist.de/audios.xz",
+    "options": {
+      "atlist.de": "https://atlist.de/audios.xz",
+      "p2atlist.de": "https://p2atlist.de/audios.xz",
+      "atlist.eu": "https://atlist.eu/audios.xz"
+    }
+  }
+}
