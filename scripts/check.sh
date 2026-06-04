@@ -110,6 +110,8 @@ export XDG_DATA_HOME="$TMP_DIR/data"
 cat > "$TMP_DIR/audios.jsonl" <<'JSONL'
 "Audios":["WDR","Genre","Thema","Kurzmeldung","2026-06-04","","","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
 "Audios":["","","","Zweite Kurzmeldung","2026-06-04","","","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
+"Audios":["","", "","Gefährlich","2026-06-04","","","","Unsichere URL","file://evil/audio.mp3","https://example.com/file"]
+"Audios":["","", "","Ungültige Website","2026-06-04","","","","Website ist kaputt","https://example.com/valid-audio","javascript://alert('x')"]
 JSONL
 
 export XDG_CACHE_HOME="$TMP_DIR"
@@ -130,10 +132,23 @@ if ! echo "$SEARCH_JSON" | jq -e '.results[0].title == "Kurzmeldung" and .result
     exit 1
 fi
 
-SEARCH_BROAD_JSON="$(python3 "$HELPER" search --query "Kurz")"
-if ! echo "$SEARCH_BROAD_JSON" | jq -e '.status == "ok" and .count == 2 and .results[0].title == "Kurzmeldung" and .results[1].title == "Zweite Kurzmeldung"' >/dev/null; then
+SEARCH_BROAD_JSON="$(python3 "$HELPER" search --query "")"
+if ! echo "$SEARCH_BROAD_JSON" | jq -e '.status == "ok" and .count == 3 and .results[0].title == "Kurzmeldung" and .results[1].title == "Zweite Kurzmeldung" and .results[2].title == "Ungültige Website"' >/dev/null; then
     echo "ERROR: search without filters is not returning expected baseline results"
     echo "$SEARCH_BROAD_JSON"
+    exit 1
+fi
+
+if ! echo "$SEARCH_BROAD_JSON" | jq -e '.results | map(select(.title=="Gefährlich" or (.url | startswith("file://")))) | length == 0' >/dev/null; then
+    echo "ERROR: search should skip non-http(s) audio URLs"
+    echo "$SEARCH_BROAD_JSON"
+    exit 1
+fi
+
+SEARCH_WEB_SANITIZED="$(python3 "$HELPER" search --query "Ungültige" --max 1)"
+if ! echo "$SEARCH_WEB_SANITIZED" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Ungültige Website" and .results[0].website == ""' >/dev/null; then
+    echo "ERROR: invalid website in search results should be sanitized to empty string"
+    echo "$SEARCH_WEB_SANITIZED"
     exit 1
 fi
 

@@ -604,8 +604,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._setStatus("öffnen fehlgeschlagen: keine URL");
             return;
         }
-        this._setStatus(`öffne: ${uri}`);
-        Util.spawn(["xdg-open", uri]);
+
+        const targetUri = `${uri}`.trim();
+        const lowered = targetUri.toLowerCase();
+        if (!lowered.startsWith("http://") && !lowered.startsWith("https://")) {
+            this._setStatus("öffnen fehlgeschlagen: unzulässiges URL-Schema");
+            return;
+        }
+
+        this._setStatus(`öffne: ${targetUri}`);
+        Util.spawn(["xdg-open", targetUri]);
     }
 
     _clearResults() {

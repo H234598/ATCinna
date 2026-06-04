@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- Suchergebnisse im Helper filtern auf vertrauenswürdige `http`/`https`-Audio-URLs.
+- Ungültige Website-URLs in Katalogzeilen werden auf leeren Wert bereinigt; solche Zeilen werden nicht für `file://`-Audio-URLs mehr angezeigt.
+- `xdg-open` im Applet lehnt nicht-HTTP(S)-URIs aktiv ab und setzt den Status vor dem Aufruf.
+
 ## 0.3.2
 
 - `scripts/validate-installed.sh` eingeführt: neue nicht-mutierende Validierung für installierte Applets mit Prüfung auf

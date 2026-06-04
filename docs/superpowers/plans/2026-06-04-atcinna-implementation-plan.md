@@ -12,10 +12,16 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.2`.
+- `VERSION` is `0.3.3`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, `download`, `history-*`, and `bookmark-*`.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
+
+### URL-Trust-Boundary-Härtung
+
+- [x] **Suchergebnisse filtern Audio-URLs auf http/https, nicht-http(s)-Audiozeilen auslassen**
+- [x] **`website`-Feld in Suchergebnissen auf http/https reduzieren (sonst leer)**
+- [x] **`_xdgOpen` blockt nicht-HTTP(S)-URIs und setzt Status vor `Util.spawn`**
 
 ## Primary Plan
 

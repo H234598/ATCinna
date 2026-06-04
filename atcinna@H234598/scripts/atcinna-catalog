@@ -290,6 +290,10 @@ def _iter_results(query, max_hits, filters):
         description = normalize_value(raw[8], "") if len(raw) > 8 else ""
         url = normalize_value(raw[9], "")
         website = normalize_value(raw[10], "") if len(raw) > 10 else ""
+        if not _is_http_url(url):
+            continue
+        if website and not _is_http_url(website):
+            website = ""
 
         if not url or not title:
             continue

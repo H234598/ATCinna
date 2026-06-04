@@ -25,7 +25,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.2`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.3`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 
 - Für manuelle Entwicklung kann das Applet auch direkt nach `~/.local/share/cinnamon/applets/atcinna@H234598` kopiert werden.
 - Cinnamon Applets-Neuladen oder Neu-Anmeldung.
@@ -41,4 +41,6 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 
 - Keine Shell-Interpolation: Helper nutzt `subprocess`-Aufrufe mit festen Argumentlisten.
 - `xdg-open` und `curl` werden ebenfalls ohne Shell-String-Konkatentation aufgerufen.
+- Suchergebnisse werden im Helper auf `http`/`https`-Audio-URLs gefiltert. Nicht vertrauenswürdige
+  Website-URIs werden verworfen bzw. bereinigt.
 - Es werden keine Java- oder JavaFX-Abhängigkeiten genutzt.
