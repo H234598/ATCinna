@@ -14,3 +14,7 @@
 .atcinna-search-entry {
   min-width: 260px;
 }
+
+.atcinna-section-title {
+  opacity: 0.8;
+}

@@ -123,7 +123,7 @@ git commit -m "feat: add popup search input"
 - Modify: `README.md`
 - Modify: `CHANGELOG.md`
 
-- [ ] **Step 1: Add helper actions**
+- [x] **Step 1: Add helper actions**
 
 Add helper actions that store small JSON files below `XDG_DATA_HOME/atcinna@H234598`:
 
@@ -135,15 +135,15 @@ bookmark-remove
 bookmark-list
 ```
 
-- [ ] **Step 2: Add bounded storage**
+- [x] **Step 2: Add bounded storage**
 
-Keep history at 100 entries and bookmarks at 500 entries. Store only title, sender, topic, URL, website, and timestamp.
+Keep history at 100 entries and bookmarks at 500 entries. Store only title, sender, genre, topic, URL, website, and timestamp.
 
-- [ ] **Step 3: Add menu sections**
+- [x] **Step 3: Add menu sections**
 
 Render "Zuletzt gespielt" and "Favoriten" as separate popup sections below search results.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -153,7 +153,7 @@ Run:
 
 Expected: helper fixture tests pass and no unbounded file writes are introduced.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add atcinna@H234598 README.md CHANGELOG.md

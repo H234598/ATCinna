@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- Suche erweitert um Verlauf und Favoriten in der Popup-UI: Abschnitte „Zuletzt gespielt“ und „Favoriten“ werden nach Suchlauf geladen, jeweils bis zu 5 Einträge.
+- Beim Abspielen wird der Titel vor dem Öffnen zuerst als History-Eintrag (`history-add`) gespeichert; danach startet `xdg-open`.
+- Treffer bieten direkt „Zu Favoriten hinzufügen“ an; Favoriten zeigen zusätzlich „Entfernen“.
+- Fehler von Helper-Aktionen (history/bookmark/search/download/refresh) werden abgefangen und als Status angezeigt, ohne UI-Absturz.
+
 ## 0.1.1
 
 - Popup-Suche im Menü hinzugefügt (`St.Entry` über den Refresh-Knopf): initial aus `search-query`, Debounce bei Eingabe (ca. 350 ms), Sofortsuche auf Enter.

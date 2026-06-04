@@ -11,7 +11,10 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
 - Play-Aktion über `xdg-open`.
+- Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert.
 - Website-Aktion (falls vorhanden).
+- Favoriten: Einträge können pro Treffer als Favorit gespeichert, in der Liste angezeigt und wieder entfernt werden.
+- Unterhalb der Treffer werden zusätzlich die letzten Einträge aus dem Verlauf sowie Favoriten (je max. 5) als kompakte Untermenüs gezeigt.
 - Download per sicherem Helper mit `curl` in konfigurierbaren Zielordner.
 
 ## Installation (lokal)

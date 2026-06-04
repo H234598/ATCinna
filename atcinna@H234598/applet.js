@@ -23,6 +23,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._searchEntry = null;
         this._activeSearchQuery = "";
         this._isSyncingSearchQueryFromSettings = false;
+        this._historySection = null;
+        this._favoritesSection = null;
 
         this.setAllowedLayout(Applet.AllowedLayout.BOTH);
         this.set_applet_icon_symbolic_name("audio-x-generic-symbolic");
@@ -73,6 +75,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._resultsSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._resultsSection);
+
+        this._historySection = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(this._historySection);
+
+        this._favoritesSection = new PopupMenu.PopupMenuSection();
+        this.menu.addMenuItem(this._favoritesSection);
 
         this._refreshTimer = Mainloop.timeout_add_seconds(1, () => {
             this._refreshTimer = 0;
@@ -150,9 +158,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 const results = Array.isArray(payload.results) ? payload.results : [];
                 this._setStatus(`${payload.count || 0} Treffer für "${payload.query || query}"`);
                 this._renderResults(results);
+                this._loadSections();
             } catch (error) {
                 this._setStatus(`Antwort ungültig: ${error.message}`);
                 this._clearResults();
+                this._clearHistoryAndFavorites();
             }
         });
     }
@@ -201,21 +211,252 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const entry = new PopupMenu.PopupSubMenuMenuItem(`${title}${subtitle ? ` — ${subtitle}` : ""}`);
 
             const play = new PopupMenu.PopupMenuItem("Abspielen (xdg-open)");
-            play.connect("activate", () => this._xdgOpen(item.url));
+            play.connect("activate", () => this._playItem(item));
             entry.menu.addMenuItem(play);
 
-            if (item.website) {
-                const web = new PopupMenu.PopupMenuItem("Webseite");
-                web.connect("activate", () => this._xdgOpen(item.website));
-                entry.menu.addMenuItem(web);
-            }
+            this._addWebsiteAction(entry.menu, item);
 
             const download = new PopupMenu.PopupMenuItem("Herunterladen");
             download.connect("activate", () => this._runDownload(item));
             entry.menu.addMenuItem(download);
 
+            const addBookmark = new PopupMenu.PopupMenuItem("Zu Favoriten hinzufügen");
+            addBookmark.connect("activate", () => this._runBookmarkAdd(item));
+            entry.menu.addMenuItem(addBookmark);
+
             this._resultsSection.addMenuItem(entry);
         }
+    }
+
+    _loadSections() {
+        this._clearHistoryAndFavorites();
+        this._loadHistory();
+        this._loadBookmarks();
+    }
+
+    _clearHistoryAndFavorites() {
+        if (this._historySection) {
+            this._historySection.removeAll();
+        }
+        if (this._favoritesSection) {
+            this._favoritesSection.removeAll();
+        }
+    }
+
+    _renderHistory(items) {
+        if (!this._historySection) {
+            return;
+        }
+        this._historySection.removeAll();
+
+        const heading = new PopupMenu.PopupMenuItem("Zuletzt gespielt");
+        heading.actor.reactive = false;
+        heading.actor.add_style_class_name("atcinna-section-title");
+        this._historySection.addMenuItem(heading);
+
+        const entries = Array.isArray(items) ? items : [];
+        if (!entries.length) {
+            const empty = new PopupMenu.PopupMenuItem("keine Historie");
+            empty.actor.reactive = false;
+            this._historySection.addMenuItem(empty);
+            return;
+        }
+
+        for (const item of entries.slice(0, 5)) {
+            this._historySection.addMenuItem(this._buildPlayableSubItem(item, false));
+        }
+    }
+
+    _renderBookmarks(items) {
+        if (!this._favoritesSection) {
+            return;
+        }
+        this._favoritesSection.removeAll();
+
+        const heading = new PopupMenu.PopupMenuItem("Favoriten");
+        heading.actor.reactive = false;
+        heading.actor.add_style_class_name("atcinna-section-title");
+        this._favoritesSection.addMenuItem(heading);
+
+        const entries = Array.isArray(items) ? items : [];
+        if (!entries.length) {
+            const empty = new PopupMenu.PopupMenuItem("keine Favoriten");
+            empty.actor.reactive = false;
+            this._favoritesSection.addMenuItem(empty);
+            return;
+        }
+
+        for (const item of entries.slice(0, 5)) {
+            this._favoritesSection.addMenuItem(this._buildPlayableSubItem(item, true));
+        }
+    }
+
+    _buildPlayableSubItem(item, withRemoveAction) {
+        const title = item.title || "";
+        const sender = item.sender || "";
+        const genre = item.genre || "";
+        const topic = item.topic || "";
+        const subtitle = [sender, genre, topic].filter(Boolean).join(" · ");
+        const row = new PopupMenu.PopupSubMenuMenuItem(`${title}${subtitle ? ` — ${subtitle}` : ""}`);
+
+        const play = new PopupMenu.PopupMenuItem("Abspielen (xdg-open)");
+        play.connect("activate", () => this._playItem(item));
+        row.menu.addMenuItem(play);
+
+        this._addWebsiteAction(row.menu, item);
+
+        if (withRemoveAction) {
+            const remove = new PopupMenu.PopupMenuItem("Entfernen");
+            remove.connect("activate", () => this._runBookmarkRemove(item));
+            row.menu.addMenuItem(remove);
+        }
+
+        return row;
+    }
+
+    _entryArgs(item) {
+        return [
+            `--title=${item.title || ""}`,
+            `--sender=${item.sender || ""}`,
+            `--genre=${item.genre || ""}`,
+            `--topic=${item.topic || ""}`,
+            `--url=${item.url || ""}`,
+            `--website=${item.website || ""}`
+        ];
+    }
+
+    _addWebsiteAction(menu, item) {
+        if (!item.website) {
+            return;
+        }
+        const web = new PopupMenu.PopupMenuItem("Webseite");
+        web.connect("activate", () => this._xdgOpen(item.website));
+        menu.addMenuItem(web);
+    }
+
+    _runHistoryAdd(item, onComplete = null) {
+        this._runHelper([
+            "history-add",
+            ...this._entryArgs(item)
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`history-add fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (onComplete) {
+                    onComplete();
+                }
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                if (payload.status !== "ok") {
+                    this._setStatus("history-add: unerwartete Antwort");
+                    if (onComplete) {
+                        onComplete();
+                    }
+                    return;
+                }
+                this._loadHistory();
+            } catch (error) {
+                this._setStatus(`history-add ungültige Antwort: ${error.message}`);
+            }
+            if (onComplete) {
+                onComplete();
+            }
+        });
+    }
+
+    _loadHistory() {
+        this._runHelper([
+            "history-list"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`history-list fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                this._renderHistory(payload.results || []);
+            } catch (error) {
+                this._setStatus(`history-list ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runBookmarkAdd(item) {
+        this._runHelper([
+            "bookmark-add",
+            ...this._entryArgs(item)
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`bookmark-add fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                if (payload.status !== "ok") {
+                    this._setStatus("bookmark-add: unerwartete Antwort");
+                    return;
+                }
+                this._loadSections();
+            } catch (error) {
+                this._setStatus(`bookmark-add ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _loadBookmarks() {
+        this._runHelper([
+            "bookmark-list"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`bookmark-list fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                this._renderBookmarks(payload.results || []);
+            } catch (error) {
+                this._setStatus(`bookmark-list ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runBookmarkRemove(item) {
+        const url = item.url || "";
+        if (!url) {
+            this._setStatus("bookmark-remove fehlgeschlagen: keine URL");
+            return;
+        }
+        this._runHelper([
+            "bookmark-remove",
+            `--url=${url}`
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`bookmark-remove fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                if (payload.status !== "ok") {
+                    this._setStatus("bookmark-remove: unerwartete Antwort");
+                    return;
+                }
+                this._loadBookmarks();
+            } catch (error) {
+                this._setStatus(`bookmark-remove ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _playItem(item) {
+        const url = item.url || "";
+        if (!url) {
+            this._setStatus("abspielen fehlgeschlagen: keine URL");
+            return;
+        }
+        this._runHistoryAdd(item, () => {
+            this._xdgOpen(url);
+        });
     }
 
     _runDownload(item) {
@@ -252,13 +493,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _xdgOpen(uri) {
         if (!uri) {
+            this._setStatus("öffnen fehlgeschlagen: keine URL");
             return;
         }
+        this._setStatus(`öffne: ${uri}`);
         Util.spawn(["xdg-open", uri]);
     }
 
     _clearResults() {
         this._resultsSection.removeAll();
+        this._clearHistoryAndFavorites();
     }
 
     _getActiveSearchQuery() {
