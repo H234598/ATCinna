@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.20`.
+- `VERSION` is `0.3.21`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -24,6 +24,17 @@
   - Add a menu item **Einstellungen** in `atcinna@H234598/applet.js`.
   - Keep `on_applet_clicked()` as menu toggle.
   - Add static `scripts/check.sh` checks for click/menu invariants (`on_applet_clicked`, `this.menu.toggle()`, Einstellungen item, `configureApplet()` wiring).
+
+### Task 21: ATPlayer-near Filters + Profile parity markers (0.3.21)
+
+- [x] **ATPlayer-nahe zusätzliche Suchfilter in 0.3.21 dokumentieren und stabilisieren**
+  - Additional filter fields are now part of the filter stack: `title`, `theme_title`, `somewhere`, `max_days`, `min_duration`, `max_duration`, `only_bookmarks`, `hide_history`.
+  - `filter-profile-*` store/load paths must carry these fields for persistence and restore behavior.
+  - Update task text and docs to avoid claiming ATPlayer parity is complete while these 0.3.21 filter updates are in use.
+
+- [x] **0.3.21 status in user-visible docs**
+  - Keep `on_applet_clicked()` as menu toggle and explicit, direct settings launch via `configureApplet()`.
+  - Mark ATPlayer parity as explicitly incomplete in changelog/plan/README even with these filter improvements in place.
 
 ### ATPlayer Parity Audit
 

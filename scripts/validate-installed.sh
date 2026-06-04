@@ -156,6 +156,13 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-bookmarks-filter" "hide-history-filter"; do
+    if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
+        echo "ERROR: settings-schema key missing: $key"
+        exit 1
+    fi
+done
+
 node --check "$APPLET_JS" >/dev/null
 python3 - "$APPLET_JS" <<'PY'
 import re
@@ -244,9 +251,12 @@ mkdir -p "$XDG_CACHE_HOME"
 CACHE_FILE="$XDG_CACHE_HOME/atcinna@H234598/audios.xz"
 mkdir -p "$(dirname "$CACHE_FILE")"
 
-cat > "$TMP_DIR/audios.jsonl" <<'JSONL'
-"Audios":["WDR","Genre","Thema","Kurzmeldung","2026-06-04","","","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
-"Audios":["","","","Zweite Kurzmeldung","2026-06-04","","","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
+TODAY="$(date +%F)"
+OLD_DATE="$(date -d '100 days ago' +%F)"
+cat > "$TMP_DIR/audios.jsonl" <<JSONL
+"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","12:00","5","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
+"Audios":["","","","Zweite Kurzmeldung","${TODAY}","12:00","12","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
+"Audios":["","","","Archivmeldung","${OLD_DATE}","12:00","15","","Alte Beschreibung","https://example.com/old","https://example.com/old-page"]
 JSONL
 
 xz -z -c "$TMP_DIR/audios.jsonl" > "$CACHE_FILE"
@@ -265,8 +275,51 @@ if ! echo "$SEARCH_JSON_TWO" | jq -e '.status == "ok" and .count == 1 and .resul
     exit 1
 fi
 
-FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "Installtest" --search-query "Kurz" --sender "WDR" --blacklist-mode hide --max-hits 5)"
-if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "Installtest" and .profile.max_hits == 5' >/dev/null; then
+mkdir -p "$XDG_DATA_HOME/atcinna@H234598"
+cat > "$XDG_DATA_HOME/atcinna@H234598/bookmarks.json" <<'JSON'
+[{"url":"https://example.com/stream"}]
+JSON
+cat > "$XDG_DATA_HOME/atcinna@H234598/history.json" <<'JSON'
+[{"url":"https://example.com/second"}]
+JSON
+
+SEARCH_FILTER_TITLE="$(python3 "$HELPER" search --query "Kurz" --title "Zweite Kurzmeldung" --theme-title "Thema" --somewhere "Noch eine Kurzbeschreibung" --max-days 50 --min-duration 1 --max-duration 60 --max 2)"
+if ! echo "$SEARCH_FILTER_TITLE" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].url == "https://example.com/second"' >/dev/null; then
+    echo "ERROR: installed helper search filter validation failed for new filter args"
+    echo "$SEARCH_FILTER_TITLE"
+    exit 1
+fi
+
+SEARCH_MAX_DAYS="$(python3 "$HELPER" search --query "Archiv" --max-days 50 --max 2)"
+if ! echo "$SEARCH_MAX_DAYS" | jq -e '.status == "ok" and .count == 0 and (.results | length) == 0' >/dev/null; then
+    echo "ERROR: installed helper search max-days validation failed"
+    echo "$SEARCH_MAX_DAYS"
+    exit 1
+fi
+
+SEARCH_ONLY_BOOKMARKS="$(python3 "$HELPER" search --query "Kurz" --only-bookmarks --max 2)"
+if ! echo "$SEARCH_ONLY_BOOKMARKS" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/stream"' >/dev/null; then
+    echo "ERROR: installed helper search only-bookmarks validation failed"
+    echo "$SEARCH_ONLY_BOOKMARKS"
+    exit 1
+fi
+
+SEARCH_HIDE_HISTORY="$(python3 "$HELPER" search --query "Kurz" --hide-history --max 2)"
+if ! echo "$SEARCH_HIDE_HISTORY" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/stream"' >/dev/null; then
+    echo "ERROR: installed helper search hide-history validation failed"
+    echo "$SEARCH_HIDE_HISTORY"
+    exit 1
+fi
+
+SEARCH_DURATION_FILTER="$(python3 "$HELPER" search --query "Kurz" --min-duration 10 --max-duration 20 --max 2)"
+if ! echo "$SEARCH_DURATION_FILTER" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].url == "https://example.com/second"' >/dev/null; then
+    echo "ERROR: installed helper search duration filter validation failed"
+    echo "$SEARCH_DURATION_FILTER"
+    exit 1
+fi
+
+FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "Installtest" --search-query "Kurz" --sender "WDR" --title "Titel" --theme-title "ThemaTitel" --somewhere "Kurz" --blacklist-mode hide --max-hits 5 --max-days 3 --min-duration 5 --max-duration 55 --only-bookmarks --hide-history)"
+if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "Installtest" and .profile.max_hits == 5 and .profile.title == "Titel" and .profile.theme_title == "ThemaTitel" and .profile.somewhere == "Kurz" and .profile.max_days == 3 and .profile.min_duration == 5 and .profile.max_duration == 55 and .profile.only_bookmarks == true and .profile.hide_history == true' >/dev/null; then
     echo "ERROR: installed helper filter-profile-save validation failed"
     echo "$FILTER_PROFILE_SAVE"
     exit 1

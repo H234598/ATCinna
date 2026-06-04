@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.21
+
+- 0.3.21 erweitert die ATPlayer-nahe Filterbasis um zusätzliche Felder (`title`, `theme_title`, `somewhere`, `max_days`, `min_duration`, `max_duration`, `only_bookmarks`, `hide_history`) und nimmt diese auch in den Filterprofil-Speicherpfad auf.
+- Linksklick-Verhalten ist bestätigt: `on_applet_clicked()` bleibt als Toggle erhalten und der Menüpunkt **Einstellungen** öffnet weiterhin direkt die Applet-Einstellungen (`configureApplet()`).
+- Die ATPlayer-Parität ist weiterhin nicht vollständig umgesetzt; insbesondere fehlen noch einige weitere ATPlayer-Oberflächen-/Workflow-Pfade (z. B. tiefere Playlist/Queue- und Migrationszustände sowie zusätzliche Settings-Komplexität).
+- Paket- und Runtime-Dokumentation wurden für Version 0.3.21 angepasst.
+
 ## 0.3.20
 
 - Erste ATPlayer-nahe Filterprofil-Verwaltung ergänzt: Profile speichern `search_query`, Sender-, Genre-, Thema-Filter, Blacklist-Modus und maximale Trefferzahl.

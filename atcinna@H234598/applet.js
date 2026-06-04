@@ -70,6 +70,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("sender-filter", "senderFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("genre-filter", "genreFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("topic-filter", "topicFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("title-filter", "titleFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("theme-title-filter", "themeTitleFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("somewhere-filter", "somewhereFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("max-days-filter", "maxDaysFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("min-duration-filter", "minDurationFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("max-duration-filter", "maxDurationFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("only-bookmarks-filter", "onlyBookmarksFilter", this._onFilterSettingsChanged.bind(this));
+        this.settings.bind("hide-history-filter", "hideHistoryFilter", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("blacklist-mode", "blacklistMode", this._onFilterSettingsChanged.bind(this));
         this.settings.bind("max-hits", "maxHits", this._onMaxHitsChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
@@ -277,6 +285,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             senderFilter: this._toTrimmed(this.senderFilter),
             genreFilter: this._toTrimmed(this.genreFilter),
             topicFilter: this._toTrimmed(this.topicFilter),
+            titleFilter: this._toTrimmed(this.titleFilter),
+            themeTitleFilter: this._toTrimmed(this.themeTitleFilter),
+            somewhereFilter: this._toTrimmed(this.somewhereFilter),
+            maxDaysFilter: this._boundedInt(this.maxDaysFilter, 0, 0, 50),
+            minDurationFilter: this._boundedInt(this.minDurationFilter, 0, 0, 150),
+            maxDurationFilter: this._boundedInt(this.maxDurationFilter, 150, 0, 150),
+            onlyBookmarksFilter: Boolean(this.onlyBookmarksFilter),
+            hideHistoryFilter: Boolean(this.hideHistoryFilter),
             blacklistMode: this._getBlacklistMode(),
             maxHits: maxHits,
             hasHelper: hasHelper,
@@ -345,11 +361,25 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
     }
 
+    _boundedInt(value, fallback, minValue, maxValue) {
+        const parsed = Number(value);
+        const normalized = Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+        return Math.max(minValue, Math.min(normalized, maxValue));
+    }
+
     _getActiveFilters() {
         return {
             sender: this._toTrimmed(this.senderFilter),
             genre: this._toTrimmed(this.genreFilter),
-            topic: this._toTrimmed(this.topicFilter)
+            topic: this._toTrimmed(this.topicFilter),
+            title: this._toTrimmed(this.titleFilter),
+            themeTitle: this._toTrimmed(this.themeTitleFilter),
+            somewhere: this._toTrimmed(this.somewhereFilter),
+            maxDays: this._boundedInt(this.maxDaysFilter, 0, 0, 50),
+            minDuration: this._boundedInt(this.minDurationFilter, 0, 0, 150),
+            maxDuration: this._boundedInt(this.maxDurationFilter, 150, 0, 150),
+            onlyBookmarks: Boolean(this.onlyBookmarksFilter),
+            hideHistory: Boolean(this.hideHistoryFilter)
         };
     }
 
@@ -384,6 +414,30 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (filters.topic.length > 0) {
             active.push(`T:${this._shortFilterValue(filters.topic)}`);
         }
+        if (filters.title.length > 0) {
+            active.push(`Titel:${this._shortFilterValue(filters.title)}`);
+        }
+        if (filters.themeTitle.length > 0) {
+            active.push(`Thema/Titel:${this._shortFilterValue(filters.themeTitle)}`);
+        }
+        if (filters.somewhere.length > 0) {
+            active.push(`Irgendwo:${this._shortFilterValue(filters.somewhere)}`);
+        }
+        if (filters.maxDays > 0) {
+            active.push(`Tage:${filters.maxDays}`);
+        }
+        if (filters.minDuration > 0) {
+            active.push(`Min:${filters.minDuration}`);
+        }
+        if (filters.maxDuration < 150) {
+            active.push(`Max:${filters.maxDuration}`);
+        }
+        if (filters.onlyBookmarks) {
+            active.push("nur Favoriten");
+        }
+        if (filters.hideHistory) {
+            active.push("ohne Verlauf");
+        }
         const blacklistMode = this._getBlacklistMode();
         const modeText = blacklistMode === "hide" ? "BL: ausblenden" : blacklistMode === "only" ? "BL: nur" : "BL: aus";
         this._filterSummaryItem.label.text = active.length
@@ -403,6 +457,17 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         return Math.max(1, Math.min(Number(value) || 20, 100));
     }
 
+    _profileBool(value) {
+        if (typeof value === "boolean") {
+            return value;
+        }
+        if (typeof value === "number") {
+            return value !== 0;
+        }
+        const text = this._toTrimmed(value).toLowerCase();
+        return text === "1" || text === "true" || text === "yes" || text === "on";
+    }
+
     _currentFilterProfileArgs(name = "") {
         const filters = this._getActiveFilters();
         const args = [
@@ -411,9 +476,21 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             `--sender=${filters.sender}`,
             `--genre=${filters.genre}`,
             `--topic=${filters.topic}`,
+            `--title=${filters.title}`,
+            `--theme-title=${filters.themeTitle}`,
+            `--somewhere=${filters.somewhere}`,
             `--blacklist-mode=${this._getBlacklistMode()}`,
-            `--max-hits=${this._profileMaxHits(this.maxHits)}`
+            `--max-hits=${this._profileMaxHits(this.maxHits)}`,
+            `--max-days=${filters.maxDays}`,
+            `--min-duration=${filters.minDuration}`,
+            `--max-duration=${filters.maxDuration}`
         ];
+        if (filters.onlyBookmarks) {
+            args.push("--only-bookmarks");
+        }
+        if (filters.hideHistory) {
+            args.push("--hide-history");
+        }
         if (name) {
             args.push(`--name=${name}`);
         }
@@ -429,8 +506,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const nextSender = this._toTrimmed(profile.sender);
         const nextGenre = this._toTrimmed(profile.genre);
         const nextTopic = this._toTrimmed(profile.topic);
+        const nextTitle = this._toTrimmed(profile.title);
+        const nextThemeTitle = this._toTrimmed(profile.theme_title);
+        const nextSomewhere = this._toTrimmed(profile.somewhere);
         const nextBlacklistMode = this._profileBlacklistMode(profile.blacklist_mode);
         const nextMaxHits = this._profileMaxHits(profile.max_hits);
+        const nextMaxDays = this._boundedInt(profile.max_days, 0, 0, 50);
+        const nextMinDuration = this._boundedInt(profile.min_duration, 0, 0, 150);
+        const nextMaxDuration = this._boundedInt(profile.max_duration, 150, 0, 150);
+        const nextOnlyBookmarks = this._profileBool(profile.only_bookmarks);
+        const nextHideHistory = this._profileBool(profile.hide_history);
 
         this._isSyncingSearchQueryFromSettings = true;
         this._isSyncingFilterSettingsFromSettings = true;
@@ -440,14 +525,30 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.senderFilter = nextSender;
             this.genreFilter = nextGenre;
             this.topicFilter = nextTopic;
+            this.titleFilter = nextTitle;
+            this.themeTitleFilter = nextThemeTitle;
+            this.somewhereFilter = nextSomewhere;
             this.blacklistMode = nextBlacklistMode;
             this.maxHits = nextMaxHits;
+            this.maxDaysFilter = nextMaxDays;
+            this.minDurationFilter = nextMinDuration;
+            this.maxDurationFilter = nextMaxDuration;
+            this.onlyBookmarksFilter = nextOnlyBookmarks;
+            this.hideHistoryFilter = nextHideHistory;
             this.settings.setValue("search-query", nextSearchQuery);
             this.settings.setValue("sender-filter", nextSender);
             this.settings.setValue("genre-filter", nextGenre);
             this.settings.setValue("topic-filter", nextTopic);
+            this.settings.setValue("title-filter", nextTitle);
+            this.settings.setValue("theme-title-filter", nextThemeTitle);
+            this.settings.setValue("somewhere-filter", nextSomewhere);
             this.settings.setValue("blacklist-mode", nextBlacklistMode);
             this.settings.setValue("max-hits", nextMaxHits);
+            this.settings.setValue("max-days-filter", nextMaxDays);
+            this.settings.setValue("min-duration-filter", nextMinDuration);
+            this.settings.setValue("max-duration-filter", nextMaxDuration);
+            this.settings.setValue("only-bookmarks-filter", nextOnlyBookmarks);
+            this.settings.setValue("hide-history-filter", nextHideHistory);
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
             }
@@ -531,7 +632,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _clearFilters() {
         const filters = this._getActiveFilters();
-        if (!filters.sender && !filters.genre && !filters.topic) {
+        const hasAdvancedFilters = filters.title || filters.themeTitle || filters.somewhere ||
+            filters.maxDays > 0 || filters.minDuration > 0 || filters.maxDuration < 150 ||
+            filters.onlyBookmarks || filters.hideHistory;
+        if (!filters.sender && !filters.genre && !filters.topic && !hasAdvancedFilters) {
             this._refreshFilterSummary();
             this._runSearch();
             return;
@@ -542,9 +646,25 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.senderFilter = "";
             this.genreFilter = "";
             this.topicFilter = "";
+            this.titleFilter = "";
+            this.themeTitleFilter = "";
+            this.somewhereFilter = "";
+            this.maxDaysFilter = 0;
+            this.minDurationFilter = 0;
+            this.maxDurationFilter = 150;
+            this.onlyBookmarksFilter = false;
+            this.hideHistoryFilter = false;
             this.settings.setValue("sender-filter", "");
             this.settings.setValue("genre-filter", "");
             this.settings.setValue("topic-filter", "");
+            this.settings.setValue("title-filter", "");
+            this.settings.setValue("theme-title-filter", "");
+            this.settings.setValue("somewhere-filter", "");
+            this.settings.setValue("max-days-filter", 0);
+            this.settings.setValue("min-duration-filter", 0);
+            this.settings.setValue("max-duration-filter", 150);
+            this.settings.setValue("only-bookmarks-filter", false);
+            this.settings.setValue("hide-history-filter", false);
         } finally {
             this._isSyncingFilterSettingsFromSettings = false;
         }
@@ -582,6 +702,30 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (filters.topic.length > 0) {
             args.push(`--topic=${filters.topic}`);
+        }
+        if (filters.title.length > 0) {
+            args.push(`--title=${filters.title}`);
+        }
+        if (filters.themeTitle.length > 0) {
+            args.push(`--theme-title=${filters.themeTitle}`);
+        }
+        if (filters.somewhere.length > 0) {
+            args.push(`--somewhere=${filters.somewhere}`);
+        }
+        if (filters.maxDays > 0) {
+            args.push(`--max-days=${filters.maxDays}`);
+        }
+        if (filters.minDuration > 0) {
+            args.push(`--min-duration=${filters.minDuration}`);
+        }
+        if (filters.maxDuration < 150) {
+            args.push(`--max-duration=${filters.maxDuration}`);
+        }
+        if (filters.onlyBookmarks) {
+            args.push("--only-bookmarks");
+        }
+        if (filters.hideHistory) {
+            args.push("--hide-history");
         }
 
         this._runHelper(args, (status, stdout, stderr) => {
@@ -649,8 +793,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "sender-filter": "",
             "genre-filter": "",
             "topic-filter": "",
+            "title-filter": "",
+            "theme-title-filter": "",
+            "somewhere-filter": "",
             "blacklist-mode": "hide",
-            "max-hits": 20
+            "max-hits": 20,
+            "max-days-filter": 0,
+            "min-duration-filter": 0,
+            "max-duration-filter": 150,
+            "only-bookmarks-filter": false,
+            "hide-history-filter": false
         };
         const nextSearchQuery = defaults["search-query"];
 
@@ -661,15 +813,31 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.senderFilter = defaults["sender-filter"];
             this.genreFilter = defaults["genre-filter"];
             this.topicFilter = defaults["topic-filter"];
+            this.titleFilter = defaults["title-filter"];
+            this.themeTitleFilter = defaults["theme-title-filter"];
+            this.somewhereFilter = defaults["somewhere-filter"];
             this.blacklistMode = defaults["blacklist-mode"];
             this.maxHits = defaults["max-hits"];
+            this.maxDaysFilter = defaults["max-days-filter"];
+            this.minDurationFilter = defaults["min-duration-filter"];
+            this.maxDurationFilter = defaults["max-duration-filter"];
+            this.onlyBookmarksFilter = defaults["only-bookmarks-filter"];
+            this.hideHistoryFilter = defaults["hide-history-filter"];
 
             this.settings.setValue("search-query", defaults["search-query"]);
             this.settings.setValue("sender-filter", defaults["sender-filter"]);
             this.settings.setValue("genre-filter", defaults["genre-filter"]);
             this.settings.setValue("topic-filter", defaults["topic-filter"]);
+            this.settings.setValue("title-filter", defaults["title-filter"]);
+            this.settings.setValue("theme-title-filter", defaults["theme-title-filter"]);
+            this.settings.setValue("somewhere-filter", defaults["somewhere-filter"]);
             this.settings.setValue("blacklist-mode", defaults["blacklist-mode"]);
             this.settings.setValue("max-hits", defaults["max-hits"]);
+            this.settings.setValue("max-days-filter", defaults["max-days-filter"]);
+            this.settings.setValue("min-duration-filter", defaults["min-duration-filter"]);
+            this.settings.setValue("max-duration-filter", defaults["max-duration-filter"]);
+            this.settings.setValue("only-bookmarks-filter", defaults["only-bookmarks-filter"]);
+            this.settings.setValue("hide-history-filter", defaults["hide-history-filter"]);
 
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
@@ -688,8 +856,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["Sender-Filter", "leer"],
             ["Genre-Filter", "leer"],
             ["Thema-Filter", "leer"],
+            ["Titel-Filter", "leer"],
+            ["Thema/Titel-Filter", "leer"],
+            ["Irgendwo-Filter", "leer"],
             ["Blacklist-Modus", defaults["blacklist-mode"]],
-            ["Max-Treffer", `${defaults["max-hits"]}`]
+            ["Max-Treffer", `${defaults["max-hits"]}`],
+            ["Zeitraum", "alles"],
+            ["Dauer", "alles"],
+            ["Nur Favoriten", "nein"],
+            ["Verlauf ausblenden", "nein"]
         ]);
         this._runSearch();
     }
@@ -729,12 +904,41 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._setStatus("Suchdialog nicht verfügbar: Script fehlt");
             return;
         }
+        const filters = this._getActiveFilters();
+        const args = [
+            this._searchDialogPath,
+            `--download-folder=${this.downloadFolder || ""}`,
+            `--blacklist-mode=${this._getBlacklistMode()}`
+        ];
+        for (const [name, value] of [
+            ["sender", filters.sender],
+            ["genre", filters.genre],
+            ["topic", filters.topic],
+            ["title", filters.title],
+            ["theme-title", filters.themeTitle],
+            ["somewhere", filters.somewhere]
+        ]) {
+            if (value) {
+                args.push(`--${name}=${value}`);
+            }
+        }
+        if (filters.maxDays > 0) {
+            args.push(`--max-days=${filters.maxDays}`);
+        }
+        if (filters.minDuration > 0) {
+            args.push(`--min-duration=${filters.minDuration}`);
+        }
+        if (filters.maxDuration < 150) {
+            args.push(`--max-duration=${filters.maxDuration}`);
+        }
+        if (filters.onlyBookmarks) {
+            args.push("--only-bookmarks=true");
+        }
+        if (filters.hideHistory) {
+            args.push("--hide-history=true");
+        }
         try {
-            Util.spawn([
-                this._searchDialogPath,
-                `--download-folder=${this.downloadFolder || ""}`,
-                `--blacklist-mode=${this._getBlacklistMode()}`
-            ]);
+            Util.spawn(args);
         } catch (error) {
             this._setStatus(`Suchdialog konnte nicht gestartet werden: ${error}`);
         }
@@ -767,8 +971,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 `--sender=${filters.sender}`,
                 `--genre=${filters.genre}`,
                 `--topic=${filters.topic}`,
+                `--title=${filters.title}`,
+                `--theme-title=${filters.themeTitle}`,
+                `--somewhere=${filters.somewhere}`,
                 `--blacklist-mode=${this._getBlacklistMode()}`,
-                `--max-hits=${this._profileMaxHits(this.maxHits)}`
+                `--max-hits=${this._profileMaxHits(this.maxHits)}`,
+                `--max-days=${filters.maxDays}`,
+                `--min-duration=${filters.minDuration}`,
+                `--max-duration=${filters.maxDuration}`,
+                `--only-bookmarks=${filters.onlyBookmarks ? "true" : "false"}`,
+                `--hide-history=${filters.hideHistory ? "true" : "false"}`
             ]);
         } catch (error) {
             this._setStatus(`Filterprofil-Dialog konnte nicht gestartet werden: ${error}`);
@@ -1693,7 +1905,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         const titleFilterItem = new PopupMenu.PopupMenuItem("nach Titel filtern");
         titleFilterItem.connect("activate", () => {
-            this._applySearchQueryFilter(title, {
+            this._applyFilterSettings("title-filter", title, {
                 fallback: item.sender || item.topic || item.genre || ""
             });
         });
@@ -1713,7 +1925,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         senderTitleFilterItem.connect("activate", () => {
             this._applyFilterSettings("sender-filter", sender, {
                 fallback: item.topic || item.genre || ""
-            }, "search-query", title, {
+            }, "title-filter", title, {
                 fallback: item.sender || item.topic || item.genre || ""
             });
         });
@@ -1761,6 +1973,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 } else if (update.name === "topic-filter") {
                     this.topicFilter = update.value;
                     this.settings.setValue("topic-filter", update.value);
+                } else if (update.name === "title-filter") {
+                    this.titleFilter = update.value;
+                    this.settings.setValue("title-filter", update.value);
+                } else if (update.name === "theme-title-filter") {
+                    this.themeTitleFilter = update.value;
+                    this.settings.setValue("theme-title-filter", update.value);
+                } else if (update.name === "somewhere-filter") {
+                    this.somewhereFilter = update.value;
+                    this.settings.setValue("somewhere-filter", update.value);
                 } else if (update.name === "search-query") {
                     this.searchQuery = update.value;
                     this._activeSearchQuery = update.value;

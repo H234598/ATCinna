@@ -203,6 +203,14 @@ if ! rg -q -F "blacklist-mode\": \"hide\"" "$APPLET_JS"; then
     echo "ERROR: settings reset default for blacklist-mode is missing"
     STATUS=1
 fi
+if ! rg -q -F "title-filter\": \"\"" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for title-filter is missing"
+    STATUS=1
+fi
+if ! rg -q -F "max-duration-filter\": 150" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for max-duration-filter is missing"
+    STATUS=1
+fi
 if ! rg -q -F '"max-hits": 20' "$APPLET_JS"; then
     echo "ERROR: settings reset default for max-hits is missing"
     STATUS=1
@@ -263,6 +271,12 @@ if ! rg -q -F -- "--topic-exact" "$HELPER"; then
     echo "ERROR: blacklist-add action is missing --topic-exact"
     STATUS=1
 fi
+for helper_arg in "--title" "--theme-title" "--somewhere" "--max-days" "--min-duration" "--max-duration" "--only-bookmarks" "--hide-history"; do
+    if ! rg -q -F -- "$helper_arg" "$HELPER"; then
+        echo "ERROR: helper search/profile action is missing ${helper_arg}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F '"--blacklist-mode"' "$HELPER"; then
     echo "ERROR: helper search action is missing --blacklist-mode argument"
     STATUS=1
@@ -367,8 +381,8 @@ if ! rg -q -F '_applyFilterSettings("sender-filter", sender' "$APPLET_JS"; then
     echo "ERROR: applet filter wiring does not map sender to sender-filter"
     STATUS=1
 fi
-if ! rg -q -F '_applySearchQueryFilter(title' "$APPLET_JS"; then
-    echo "ERROR: applet filter wiring does not map title to search-query"
+if ! rg -q -F '_applyFilterSettings("title-filter", title' "$APPLET_JS"; then
+    echo "ERROR: applet filter wiring does not map title to title-filter"
     STATUS=1
 fi
 python3 - "$APPLET_JS" <<'PY' || STATUS=1
@@ -386,17 +400,23 @@ if not match or "sender:" not in match.group("body") or "genre:" not in match.gr
     raise SystemExit(1)
 
 match = re.search(
-    r'nach Sender, und Titel filtern[\s\S]*?_applyFilterSettings\("sender-filter",\s*sender[\s\S]*?"search-query",\s*title',
+    r'nach Sender, und Titel filtern[\s\S]*?_applyFilterSettings\("sender-filter",\s*sender[\s\S]*?"title-filter",\s*title',
     source,
 )
 if not match:
-    print("ERROR: Sender+Titel filter action must set sender-filter and search-query")
+    print("ERROR: Sender+Titel filter action must set sender-filter and title-filter")
     raise SystemExit(1)
 PY
 if ! rg -q -F '"blacklist-mode"' "$SETTINGS_SCHEMA"; then
     echo "ERROR: settings schema does not define blacklist-mode"
     STATUS=1
 fi
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-bookmarks-filter hide-history-filter; do
+    if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
+        echo "ERROR: settings schema does not define ${schema_key}"
+        STATUS=1
+    fi
+done
 if ! jq -e '.["blacklist-mode"] | has("type") and .default == "hide"' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
     echo "ERROR: settings schema blacklist-mode block malformed"
     STATUS=1
@@ -423,6 +443,12 @@ if ! rg -q -F -- '--blacklist-mode' "$SEARCH_DIALOG"; then
     echo "ERROR: search dialog does not accept/pass blacklist-mode"
     STATUS=1
 fi
+for search_arg in '--theme-title' '--somewhere' '--max-days' '--min-duration' '--max-duration' '--only-bookmarks' '--hide-history'; do
+    if ! rg -q -F -- "$search_arg" "$SEARCH_DIALOG"; then
+        echo "ERROR: search dialog does not accept/pass ${search_arg}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F 'filter-profile-save' "$FILTER_PROFILES_DIALOG"; then
     echo "ERROR: filter profiles dialog does not save profiles through helper"
     STATUS=1
@@ -457,11 +483,13 @@ fi
 
 export XDG_DATA_HOME="$TMP_DIR/data"
 
-cat > "$TMP_DIR/audios.jsonl" <<'JSONL'
-"Audios":["WDR","Genre","Thema","Kurzmeldung","2026-06-04","","","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
-"Audios":["","","","Zweite Kurzmeldung","2026-06-04","","","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
-"Audios":["","", "","Gefährlich","2026-06-04","","","","Unsichere URL","file://evil/audio.mp3","https://example.com/file"]
-"Audios":["","", "","Ungültige Website","2026-06-04","","","","Website ist kaputt","https://example.com/valid-audio","javascript://alert('x')"]
+TODAY="$(date +%F)"
+OLD_DATE="$(date -d '100 days ago' +%F)"
+cat > "$TMP_DIR/audios.jsonl" <<JSONL
+"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","","00:12:30","","Kurzbeschreibung","https://example.com/stream","https://example.com"]
+"Audios":["","","","Zweite Kurzmeldung","${TODAY}","","00:03:10","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page"]
+"Audios":["","", "","Gefährlich","${TODAY}","","00:01:00","","Unsichere URL","file://evil/audio.mp3","https://example.com/file"]
+"Audios":["","", "","Ungültige Website","${OLD_DATE}","","02:30:00","","Archiv Beschreibung","https://example.com/valid-audio","javascript://alert('x')"]
 JSONL
 
 export XDG_CACHE_HOME="$TMP_DIR"
@@ -573,6 +601,72 @@ if ! echo "$SEARCH_COMBINED" | jq -e '.status == "ok" and .count == 1 and .resul
     echo "$SEARCH_COMBINED"
     exit 1
 fi
+SEARCH_TITLE_FILTER="$(python3 "$HELPER" search --query "" --title "Zweite:Kurzmeldung")"
+if ! echo "$SEARCH_TITLE_FILTER" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung"' >/dev/null; then
+    echo "ERROR: title filter should support ATPlayer-style AND via colon"
+    echo "$SEARCH_TITLE_FILTER"
+    exit 1
+fi
+SEARCH_OR_FILTER="$(python3 "$HELPER" search --query "" --sender "NDR,WDR")"
+if ! echo "$SEARCH_OR_FILTER" | jq -e '.status == "ok" and .count == 3' >/dev/null; then
+    echo "ERROR: text filters should support ATPlayer-style OR via comma"
+    echo "$SEARCH_OR_FILTER"
+    exit 1
+fi
+SEARCH_THEME_TITLE="$(python3 "$HELPER" search --query "" --theme-title "Zweite")"
+if ! echo "$SEARCH_THEME_TITLE" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung"' >/dev/null; then
+    echo "ERROR: theme-title filter should match title when topic does not match"
+    echo "$SEARCH_THEME_TITLE"
+    exit 1
+fi
+SEARCH_SOMEWHERE="$(python3 "$HELPER" search --query "" --somewhere "Archiv")"
+if ! echo "$SEARCH_SOMEWHERE" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Ungültige Website"' >/dev/null; then
+    echo "ERROR: somewhere filter should match description/date/genre/topic/title fields"
+    echo "$SEARCH_SOMEWHERE"
+    exit 1
+fi
+SEARCH_MAX_DAYS="$(python3 "$HELPER" search --query "" --max-days 50)"
+if ! echo "$SEARCH_MAX_DAYS" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.title=="Ungültige Website")] | length) == 0' >/dev/null; then
+    echo "ERROR: max-days filter should hide old entries while keeping unknown dates permissive"
+    echo "$SEARCH_MAX_DAYS"
+    exit 1
+fi
+SEARCH_MIN_DURATION="$(python3 "$HELPER" search --query "" --min-duration 10)"
+if ! echo "$SEARCH_MIN_DURATION" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.title=="Kurzmeldung" or .title=="Ungültige Website")] | length) == 2' >/dev/null; then
+    echo "ERROR: min-duration filter should compare parsed duration minutes"
+    echo "$SEARCH_MIN_DURATION"
+    exit 1
+fi
+SEARCH_MAX_DURATION="$(python3 "$HELPER" search --query "" --max-duration 10)"
+if ! echo "$SEARCH_MAX_DURATION" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung"' >/dev/null; then
+    echo "ERROR: max-duration filter should compare parsed duration minutes"
+    echo "$SEARCH_MAX_DURATION"
+    exit 1
+fi
+python3 "$HELPER" bookmark-add --title "Zweite Kurzmeldung" --sender "WDR" --genre "Genre" --topic "Thema" --date "$TODAY" --duration "00:03:10" --url "https://example.com/second" --website "https://example.com/second-page" >/dev/null
+SEARCH_ONLY_BOOKMARKS="$(python3 "$HELPER" search --query "" --only-bookmarks)"
+if ! echo "$SEARCH_ONLY_BOOKMARKS" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/second"' >/dev/null; then
+    echo "ERROR: only-bookmarks filter should restrict to bookmark store URLs"
+    echo "$SEARCH_ONLY_BOOKMARKS"
+    exit 1
+fi
+python3 "$HELPER" bookmark-remove --url "https://example.com/second" >/dev/null
+python3 "$HELPER" history-add --title "Kurzmeldung" --sender "WDR" --genre "Genre" --topic "Thema" --date "$TODAY" --duration "00:12:30" --url "https://example.com/stream" --website "https://example.com" >/dev/null
+SEARCH_HIDE_HISTORY="$(python3 "$HELPER" search --query "" --hide-history)"
+if ! echo "$SEARCH_HIDE_HISTORY" | jq -e '.status == "ok" and .count == 2 and ([.results[] | select(.url=="https://example.com/stream")] | length) == 0' >/dev/null; then
+    echo "ERROR: hide-history filter should exclude history store URLs"
+    echo "$SEARCH_HIDE_HISTORY"
+    exit 1
+fi
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+(data_dir / "history.json").write_text("[]", encoding="utf-8")
+(data_dir / "bookmarks.json").write_text("[]", encoding="utf-8")
+PY
 
 FILTER_PROFILE_DEFAULTS="$(python3 "$HELPER" filter-profile-list)"
 if ! echo "$FILTER_PROFILE_DEFAULTS" | jq -e '.status == "ok" and .count >= 3 and ([.results[] | select(.name=="alles anzeigen")] | length) == 1' >/dev/null; then
@@ -580,14 +674,14 @@ if ! echo "$FILTER_PROFILE_DEFAULTS" | jq -e '.status == "ok" and .count >= 3 an
     echo "$FILTER_PROFILE_DEFAULTS"
     exit 1
 fi
-FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "WDR Kurz" --search-query "Kurz" --sender "WDR" --genre "Genre" --topic "Thema" --blacklist-mode only --max-hits 7)"
-if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.search_query == "Kurz" and .profile.sender == "WDR" and .profile.blacklist_mode == "only" and .profile.max_hits == 7' >/dev/null; then
+FILTER_PROFILE_SAVE="$(python3 "$HELPER" filter-profile-save --name "WDR Kurz" --search-query "Kurz" --sender "WDR" --genre "Genre" --topic "Thema" --title "Kurzmeldung" --theme-title "Thema" --somewhere "Kurzbeschreibung" --blacklist-mode only --max-hits 7 --max-days 10 --min-duration 3 --max-duration 20 --only-bookmarks --hide-history)"
+if ! echo "$FILTER_PROFILE_SAVE" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.search_query == "Kurz" and .profile.sender == "WDR" and .profile.title == "Kurzmeldung" and .profile.theme_title == "Thema" and .profile.somewhere == "Kurzbeschreibung" and .profile.blacklist_mode == "only" and .profile.max_hits == 7 and .profile.max_days == 10 and .profile.min_duration == 3 and .profile.max_duration == 20 and .profile.only_bookmarks == true and .profile.hide_history == true' >/dev/null; then
     echo "ERROR: filter-profile-save did not persist normalized profile fields"
     echo "$FILTER_PROFILE_SAVE"
     exit 1
 fi
 FILTER_PROFILE_GET="$(python3 "$HELPER" filter-profile-get --name "wdr kurz")"
-if ! echo "$FILTER_PROFILE_GET" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.topic == "Thema"' >/dev/null; then
+if ! echo "$FILTER_PROFILE_GET" | jq -e '.status == "ok" and .profile.name == "WDR Kurz" and .profile.topic == "Thema" and .profile.only_bookmarks == true' >/dev/null; then
     echo "ERROR: filter-profile-get should find profiles case-insensitively"
     echo "$FILTER_PROFILE_GET"
     exit 1

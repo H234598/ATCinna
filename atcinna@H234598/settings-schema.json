@@ -27,6 +27,63 @@
     "tooltip": "Optional: nur Treffer eines Themas anzeigen. Teiltreffer sind moeglich.",
     "default": ""
   },
+  "title-filter": {
+    "type": "entry",
+    "description": "Titel-Filter",
+    "tooltip": "Optional: nur Treffer mit passendem Titel anzeigen. Komma bedeutet Oder, Doppelpunkt bedeutet Und.",
+    "default": ""
+  },
+  "theme-title-filter": {
+    "type": "entry",
+    "description": "Thema-oder-Titel-Filter",
+    "tooltip": "Optional: Treffer anzeigen, wenn Thema oder Titel passt. Komma bedeutet Oder, Doppelpunkt bedeutet Und.",
+    "default": ""
+  },
+  "somewhere-filter": {
+    "type": "entry",
+    "description": "Irgendwo-Filter",
+    "tooltip": "Optional: sucht in Datum, Genre, Thema, Titel und Beschreibung. Komma bedeutet Oder, Doppelpunkt bedeutet Und.",
+    "default": ""
+  },
+  "max-days-filter": {
+    "type": "spinbutton",
+    "description": "Zeitraum in Tagen",
+    "tooltip": "Nur Treffer der letzten N Tage anzeigen. 0 bedeutet alles.",
+    "default": 0,
+    "min": 0,
+    "max": 50,
+    "step": 1
+  },
+  "min-duration-filter": {
+    "type": "spinbutton",
+    "description": "Mindestdauer",
+    "tooltip": "Nur Treffer ab dieser Dauer in Minuten anzeigen. 0 bedeutet aus.",
+    "default": 0,
+    "min": 0,
+    "max": 150,
+    "step": 1
+  },
+  "max-duration-filter": {
+    "type": "spinbutton",
+    "description": "Maximaldauer",
+    "tooltip": "Nur Treffer bis zu dieser Dauer in Minuten anzeigen. 150 bedeutet aus.",
+    "default": 150,
+    "min": 0,
+    "max": 150,
+    "step": 1
+  },
+  "only-bookmarks-filter": {
+    "type": "switch",
+    "description": "Nur Favoriten",
+    "tooltip": "Nur Treffer anzeigen, die in den Favoriten gespeichert sind.",
+    "default": false
+  },
+  "hide-history-filter": {
+    "type": "switch",
+    "description": "Verlauf ausblenden",
+    "tooltip": "Treffer ausblenden, die bereits im Verlauf gespeichert sind.",
+    "default": false
+  },
   "blacklist-mode": {
     "type": "combobox",
     "description": "Blacklist-Modus",

@@ -14,6 +14,13 @@ DBUS_OBJECT_PATH = "/org/Cinnamon/Applets/ATCinna"
 DBUS_INTERFACE_NAME = "org.Cinnamon.Applets.ATCinna"
 
 
+def _parse_bool_value(value):
+    if isinstance(value, bool):
+        return value
+    text = str(value or "").strip().lower()
+    return text in {"1", "true", "yes", "on"}
+
+
 def _run_helper(args):
     process = subprocess.run(
         [str(HELPER_PATH), *args],
@@ -40,11 +47,21 @@ def _current_save_args(args, name):
         f"--sender={args.sender or ''}",
         f"--genre={args.genre or ''}",
         f"--topic={args.topic or ''}",
+        f"--title={args.title or ''}",
+        f"--theme-title={args.theme_title or ''}",
+        f"--somewhere={args.somewhere or ''}",
         f"--blacklist-mode={args.blacklist_mode or 'hide'}",
         f"--max-hits={args.max_hits}",
+        f"--max-days={args.max_days}",
+        f"--min-duration={args.min_duration}",
+        f"--max-duration={args.max_duration}",
     ]
     if name:
         save_args.append(f"--name={name}")
+    if _parse_bool_value(args.only_bookmarks):
+        save_args.append("--only-bookmarks")
+    if _parse_bool_value(args.hide_history):
+        save_args.append("--hide-history")
     return save_args
 
 
@@ -93,8 +110,14 @@ def _profile_to_text(profile):
     sender = str(profile.get("sender") or "").strip()
     genre = str(profile.get("genre") or "").strip()
     topic = str(profile.get("topic") or "").strip()
+    title = str(profile.get("title") or "").strip()
+    theme_title = str(profile.get("theme_title") or "").strip()
+    somewhere = str(profile.get("somewhere") or "").strip()
     blacklist_mode = str(profile.get("blacklist_mode") or "hide").strip()
     max_hits = int(profile.get("max_hits") or 20)
+    max_days = int(profile.get("max_days") or 0)
+    min_duration = int(profile.get("min_duration") or 0)
+    max_duration = int(profile.get("max_duration") or 150)
     if search_query:
         parts.append(f"Suche: {search_query}")
     if sender:
@@ -103,6 +126,22 @@ def _profile_to_text(profile):
         parts.append(f"Genre: {genre}")
     if topic:
         parts.append(f"Thema: {topic}")
+    if title:
+        parts.append(f"Titel: {title}")
+    if theme_title:
+        parts.append(f"Thema/Titel: {theme_title}")
+    if somewhere:
+        parts.append(f"Irgendwo: {somewhere}")
+    if max_days:
+        parts.append(f"Tage: {max_days}")
+    if min_duration:
+        parts.append(f"Min: {min_duration}")
+    if max_duration < 150:
+        parts.append(f"Max: {max_duration}")
+    if profile.get("only_bookmarks"):
+        parts.append("nur Favoriten")
+    if profile.get("hide_history"):
+        parts.append("ohne Verlauf")
     parts.append(f"BL: {blacklist_mode}")
     parts.append(f"Max: {max_hits}")
     return " · ".join(parts)
@@ -388,8 +427,16 @@ def parse_args():
     parser.add_argument("--sender", default="", help="Current sender filter")
     parser.add_argument("--genre", default="", help="Current genre filter")
     parser.add_argument("--topic", default="", help="Current topic filter")
+    parser.add_argument("--title", default="", help="Current title filter")
+    parser.add_argument("--theme-title", dest="theme_title", default="", help="Current topic-or-title filter")
+    parser.add_argument("--somewhere", default="", help="Current somewhere filter")
     parser.add_argument("--blacklist-mode", default="hide", choices=("off", "hide", "only"), help="Current blacklist mode")
     parser.add_argument("--max-hits", type=int, default=20, help="Current maximum hit count")
+    parser.add_argument("--max-days", type=int, default=0, help="Current maximum age in days")
+    parser.add_argument("--min-duration", type=int, default=0, help="Current minimum duration in minutes")
+    parser.add_argument("--max-duration", type=int, default=150, help="Current maximum duration in minutes")
+    parser.add_argument("--only-bookmarks", default="false", help="Whether current profile only shows bookmarks")
+    parser.add_argument("--hide-history", default="false", help="Whether current profile hides history entries")
     return parser.parse_args()
 
 

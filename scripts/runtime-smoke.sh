@@ -199,7 +199,7 @@ PY
 }
 
 check_atcinna_dbus() {
-    local ping_output status_output ping_response status_json
+    local ping_output status_output ping_response status_json profile_json apply_output apply_json
 
     if ! ping_output="$(gdbus call --session --dest "$ATCINNA_DBUS_SERVICE" --object-path "$ATCINNA_DBUS_PATH" --method "${ATCINNA_DBUS_INTERFACE}.Ping")"; then
         echo "ERROR: DBus Ping call failed"
@@ -255,6 +255,38 @@ check_atcinna_dbus() {
     fi
     if ! jq -e '.hasHelper == true' <<<"$status_json" >/dev/null 2>&1; then
         echo "ERROR: GetStatus hasHelper field is not true"
+        return 1
+    fi
+    if ! profile_json="$(jq -c '{
+        name: "runtime-smoke-current",
+        search_query: (.activeSearchQuery // ""),
+        sender: (.senderFilter // ""),
+        genre: (.genreFilter // ""),
+        topic: (.topicFilter // ""),
+        title: (.titleFilter // ""),
+        theme_title: (.themeTitleFilter // ""),
+        somewhere: (.somewhereFilter // ""),
+        max_days: (.maxDaysFilter // 0),
+        min_duration: (.minDurationFilter // 0),
+        max_duration: (.maxDurationFilter // 150),
+        only_bookmarks: (.onlyBookmarksFilter // false),
+        hide_history: (.hideHistoryFilter // false),
+        blacklist_mode: (.blacklistMode // "hide"),
+        max_hits: (.maxHits // 20)
+    }' <<<"$status_json")"; then
+        echo "ERROR: failed to build ApplyFilterProfile smoke profile"
+        return 1
+    fi
+    if ! apply_output="$(gdbus call --session --dest "$ATCINNA_DBUS_SERVICE" --object-path "$ATCINNA_DBUS_PATH" --method "${ATCINNA_DBUS_INTERFACE}.ApplyFilterProfile" "$profile_json")"; then
+        echo "ERROR: DBus ApplyFilterProfile call failed"
+        return 1
+    fi
+    if ! apply_json="$(parse_gdbus_string_output "$apply_output")"; then
+        echo "ERROR: failed to parse DBus ApplyFilterProfile response: $apply_output"
+        return 1
+    fi
+    if ! jq -e '.status == "ok"' <<<"$apply_json" >/dev/null 2>&1; then
+        echo "ERROR: ApplyFilterProfile status field is not ok"
         return 1
     fi
     return 0

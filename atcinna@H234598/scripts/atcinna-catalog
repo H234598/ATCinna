@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import argparse
 import contextlib
+from datetime import date as date_cls
+from datetime import datetime, timedelta
 import fcntl
 import json
 import os
@@ -30,6 +32,9 @@ FILTER_PROFILE_MAX_ENTRIES = 100
 FILTER_PROFILE_NAME_MAX_LENGTH = 120
 FILTER_PROFILE_DEFAULT_BLACKLIST_MODE = "hide"
 FILTER_PROFILE_DEFAULT_MAX_HITS = 20
+FILTER_PROFILE_DEFAULT_MAX_DAYS = 0
+FILTER_PROFILE_DEFAULT_MIN_DURATION = 0
+FILTER_PROFILE_DEFAULT_MAX_DURATION = 150
 
 
 def die(message, exit_code=1):
@@ -192,6 +197,26 @@ def _normalize_max_hits(value, default=FILTER_PROFILE_DEFAULT_MAX_HITS):
     return max(1, min(parsed, 100))
 
 
+def _normalize_int_range(value, default, minimum, maximum):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(parsed, maximum))
+
+
+def _normalize_filter_max_days(value):
+    return _normalize_int_range(value, FILTER_PROFILE_DEFAULT_MAX_DAYS, 0, 50)
+
+
+def _normalize_min_duration(value):
+    return _normalize_int_range(value, FILTER_PROFILE_DEFAULT_MIN_DURATION, 0, FILTER_PROFILE_DEFAULT_MAX_DURATION)
+
+
+def _normalize_max_duration(value):
+    return _normalize_int_range(value, FILTER_PROFILE_DEFAULT_MAX_DURATION, 0, FILTER_PROFILE_DEFAULT_MAX_DURATION)
+
+
 def _normalize_filter_profile(profile):
     if not isinstance(profile, dict):
         return None
@@ -204,8 +229,16 @@ def _normalize_filter_profile(profile):
         "sender": _normalize_entry_value(profile.get("sender")),
         "genre": _normalize_entry_value(profile.get("genre")),
         "topic": _normalize_entry_value(profile.get("topic")),
+        "title": _normalize_entry_value(profile.get("title")),
+        "theme_title": _normalize_entry_value(profile.get("theme_title")),
+        "somewhere": _normalize_entry_value(profile.get("somewhere")),
         "blacklist_mode": _normalize_blacklist_mode(profile.get("blacklist_mode")),
         "max_hits": _normalize_max_hits(profile.get("max_hits")),
+        "max_days": _normalize_filter_max_days(profile.get("max_days")),
+        "min_duration": _normalize_min_duration(profile.get("min_duration")),
+        "max_duration": _normalize_max_duration(profile.get("max_duration")),
+        "only_bookmarks": _normalize_bool_value(profile.get("only_bookmarks"), False),
+        "hide_history": _normalize_bool_value(profile.get("hide_history"), False),
         "timestamp": _normalize_timestamp(profile.get("timestamp"), int(time.time())),
     }
 
@@ -219,8 +252,16 @@ def _default_filter_profiles():
             "sender": "",
             "genre": "",
             "topic": "",
+            "title": "",
+            "theme_title": "",
+            "somewhere": "",
             "blacklist_mode": FILTER_PROFILE_DEFAULT_BLACKLIST_MODE,
             "max_hits": FILTER_PROFILE_DEFAULT_MAX_HITS,
+            "max_days": FILTER_PROFILE_DEFAULT_MAX_DAYS,
+            "min_duration": FILTER_PROFILE_DEFAULT_MIN_DURATION,
+            "max_duration": FILTER_PROFILE_DEFAULT_MAX_DURATION,
+            "only_bookmarks": False,
+            "hide_history": False,
             "timestamp": timestamp,
         },
         {
@@ -229,8 +270,16 @@ def _default_filter_profiles():
             "sender": "",
             "genre": "",
             "topic": "",
+            "title": "",
+            "theme_title": "Nachrichten",
+            "somewhere": "",
             "blacklist_mode": FILTER_PROFILE_DEFAULT_BLACKLIST_MODE,
             "max_hits": FILTER_PROFILE_DEFAULT_MAX_HITS,
+            "max_days": 10,
+            "min_duration": FILTER_PROFILE_DEFAULT_MIN_DURATION,
+            "max_duration": FILTER_PROFILE_DEFAULT_MAX_DURATION,
+            "only_bookmarks": False,
+            "hide_history": False,
             "timestamp": timestamp,
         },
         {
@@ -239,8 +288,16 @@ def _default_filter_profiles():
             "sender": "ARD",
             "genre": "",
             "topic": "",
+            "title": "",
+            "theme_title": "",
+            "somewhere": "",
             "blacklist_mode": FILTER_PROFILE_DEFAULT_BLACKLIST_MODE,
             "max_hits": FILTER_PROFILE_DEFAULT_MAX_HITS,
+            "max_days": FILTER_PROFILE_DEFAULT_MAX_DAYS,
+            "min_duration": FILTER_PROFILE_DEFAULT_MIN_DURATION,
+            "max_duration": FILTER_PROFILE_DEFAULT_MAX_DURATION,
+            "only_bookmarks": False,
+            "hide_history": False,
             "timestamp": timestamp,
         },
     ]
@@ -310,8 +367,16 @@ def _profile_from_args(args, profiles):
         "sender": getattr(args, "sender", ""),
         "genre": getattr(args, "genre", ""),
         "topic": getattr(args, "topic", ""),
+        "title": getattr(args, "title", ""),
+        "theme_title": getattr(args, "theme_title", ""),
+        "somewhere": getattr(args, "somewhere", ""),
         "blacklist_mode": getattr(args, "blacklist_mode", FILTER_PROFILE_DEFAULT_BLACKLIST_MODE),
         "max_hits": getattr(args, "max_hits", FILTER_PROFILE_DEFAULT_MAX_HITS),
+        "max_days": getattr(args, "max_days", FILTER_PROFILE_DEFAULT_MAX_DAYS),
+        "min_duration": getattr(args, "min_duration", FILTER_PROFILE_DEFAULT_MIN_DURATION),
+        "max_duration": getattr(args, "max_duration", FILTER_PROFILE_DEFAULT_MAX_DURATION),
+        "only_bookmarks": getattr(args, "only_bookmarks", False),
+        "hide_history": getattr(args, "hide_history", False),
         "timestamp": int(time.time()),
     })
 
@@ -693,7 +758,89 @@ def _rule_matches_result(rule, item):
 
 
 def _matches_filter(value, needle):
-    return not needle or needle in value.lower()
+    text = _normalize_entry_value(value).lower()
+    expression = _normalize_entry_value(needle).lower()
+    if not expression:
+        return True
+    groups = [group.strip() for group in expression.split(",") if group.strip()]
+    if not groups:
+        return True
+    for group in groups:
+        terms = [term.strip() for term in group.split(":") if term.strip()]
+        if terms and all(term in text for term in terms):
+            return True
+    return False
+
+
+def _matches_any_filter(values, needle):
+    expression = _normalize_entry_value(needle).lower()
+    if not expression:
+        return True
+    return any(_matches_filter(value, expression) for value in values)
+
+
+def _store_url_set(filename):
+    path = data_dir() / filename
+    return {
+        _normalize_entry_value(entry.get("url"))
+        for entry in _load_list(path)
+        if _normalize_entry_value(entry.get("url"))
+    }
+
+
+def _parse_date_value(value):
+    text = _normalize_entry_value(value)
+    if not text:
+        return None
+    head = text.split()[0]
+    formats = ("%Y-%m-%d", "%d.%m.%Y", "%Y%m%d")
+    for fmt in formats:
+        try:
+            return datetime.strptime(head, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _date_matches_max_days(value, max_days):
+    if max_days <= 0:
+        return True
+    parsed = _parse_date_value(value)
+    if parsed is None:
+        return True
+    cutoff = date_cls.today() - timedelta(days=max_days)
+    return parsed >= cutoff
+
+
+def _parse_duration_minutes(value):
+    text = _normalize_entry_value(value)
+    if not text:
+        return 0
+    parts = [int(part) for part in re.findall(r"\d+", text)]
+    if not parts:
+        return 0
+    if ":" in text:
+        if len(parts) >= 3:
+            seconds = parts[-3] * 3600 + parts[-2] * 60 + parts[-1]
+        elif len(parts) == 2:
+            seconds = parts[0] * 60 + parts[1]
+        else:
+            seconds = parts[0] * 60
+        return (seconds + 59) // 60 if seconds > 0 else 0
+    value_int = parts[0]
+    if value_int > FILTER_PROFILE_DEFAULT_MAX_DURATION * 2:
+        return (value_int + 59) // 60
+    return value_int
+
+
+def _duration_matches(duration_minutes, min_duration, max_duration):
+    if duration_minutes == 0:
+        return True
+    if min_duration > 0 and duration_minutes < min_duration:
+        return False
+    if max_duration < FILTER_PROFILE_DEFAULT_MAX_DURATION and duration_minutes > max_duration:
+        return False
+    return True
 
 
 def action_history_add(args):
@@ -1351,6 +1498,16 @@ def _iter_results(query, max_hits, filters):
     filter_sender = _normalize_entry_value(filters.sender).lower()
     filter_genre = _normalize_entry_value(filters.genre).lower()
     filter_topic = _normalize_entry_value(filters.topic).lower()
+    filter_title = _normalize_entry_value(getattr(filters, "title", "")).lower()
+    filter_theme_title = _normalize_entry_value(getattr(filters, "theme_title", "")).lower()
+    filter_somewhere = _normalize_entry_value(getattr(filters, "somewhere", "")).lower()
+    filter_max_days = _normalize_filter_max_days(getattr(filters, "max_days", FILTER_PROFILE_DEFAULT_MAX_DAYS))
+    filter_min_duration = _normalize_min_duration(getattr(filters, "min_duration", FILTER_PROFILE_DEFAULT_MIN_DURATION))
+    filter_max_duration = _normalize_max_duration(getattr(filters, "max_duration", FILTER_PROFILE_DEFAULT_MAX_DURATION))
+    only_bookmarks = _normalize_bool_value(getattr(filters, "only_bookmarks", False), False)
+    hide_history = _normalize_bool_value(getattr(filters, "hide_history", False), False)
+    bookmark_urls = _store_url_set("bookmarks.json") if only_bookmarks else set()
+    history_urls = _store_url_set("history.json") if hide_history else set()
     hits = []
     last_sender = ""
     last_genre = ""
@@ -1389,6 +1546,21 @@ def _iter_results(query, max_hits, filters):
         if not _matches_filter(genre, filter_genre):
             continue
         if not _matches_filter(topic, filter_topic):
+            continue
+        if not _matches_filter(title, filter_title):
+            continue
+        if filter_theme_title and not _matches_any_filter((topic, title), filter_theme_title):
+            continue
+        if filter_somewhere and not _matches_any_filter((date, genre, topic, title, description), filter_somewhere):
+            continue
+        if not _date_matches_max_days(date, filter_max_days):
+            continue
+        duration_minutes = _parse_duration_minutes(duration)
+        if not _duration_matches(duration_minutes, filter_min_duration, filter_max_duration):
+            continue
+        if only_bookmarks and url not in bookmark_urls:
+            continue
+        if hide_history and url in history_urls:
             continue
 
         result_item = {
@@ -1455,6 +1627,14 @@ def parse_args():
     search.add_argument("--sender", default="", help="Filter by sender")
     search.add_argument("--genre", default="", help="Filter by genre")
     search.add_argument("--topic", default="", help="Filter by topic")
+    search.add_argument("--title", default="", help="Filter by title")
+    search.add_argument("--theme-title", dest="theme_title", default="", help="Filter by topic or title")
+    search.add_argument("--somewhere", default="", help="Filter by date, genre, topic, title, or description")
+    search.add_argument("--max-days", default=FILTER_PROFILE_DEFAULT_MAX_DAYS, help="Only show entries from the last N days; 0 disables")
+    search.add_argument("--min-duration", default=FILTER_PROFILE_DEFAULT_MIN_DURATION, help="Minimum duration in minutes; 0 disables")
+    search.add_argument("--max-duration", default=FILTER_PROFILE_DEFAULT_MAX_DURATION, help="Maximum duration in minutes; 150 disables")
+    search.add_argument("--only-bookmarks", action="store_true", default=False, help="Only show bookmarked entries")
+    search.add_argument("--hide-history", action="store_true", default=False, help="Hide entries already present in history")
     search.add_argument("--blacklist-mode", dest="blacklist_mode", default="off", help="Blacklist filter mode", choices=tuple(sorted(BLACKLIST_MODES)))
     search.add_argument("--max", type=int, default=20, dest="max", help="Max results")
 
@@ -1493,8 +1673,16 @@ def parse_args():
     filter_profile_save.add_argument("--sender", default="", help="Saved sender filter")
     filter_profile_save.add_argument("--genre", default="", help="Saved genre filter")
     filter_profile_save.add_argument("--topic", default="", help="Saved topic filter")
+    filter_profile_save.add_argument("--title", default="", help="Saved title filter")
+    filter_profile_save.add_argument("--theme-title", dest="theme_title", default="", help="Saved topic-or-title filter")
+    filter_profile_save.add_argument("--somewhere", default="", help="Saved somewhere filter")
     filter_profile_save.add_argument("--blacklist-mode", default=FILTER_PROFILE_DEFAULT_BLACKLIST_MODE, help="Saved blacklist mode")
     filter_profile_save.add_argument("--max-hits", default=FILTER_PROFILE_DEFAULT_MAX_HITS, help="Saved maximum hit count")
+    filter_profile_save.add_argument("--max-days", default=FILTER_PROFILE_DEFAULT_MAX_DAYS, help="Saved maximum age in days")
+    filter_profile_save.add_argument("--min-duration", default=FILTER_PROFILE_DEFAULT_MIN_DURATION, help="Saved minimum duration in minutes")
+    filter_profile_save.add_argument("--max-duration", default=FILTER_PROFILE_DEFAULT_MAX_DURATION, help="Saved maximum duration in minutes")
+    filter_profile_save.add_argument("--only-bookmarks", action="store_true", default=False, help="Saved only-bookmarks filter")
+    filter_profile_save.add_argument("--hide-history", action="store_true", default=False, help="Saved hide-history filter")
 
     filter_profile_rename = sub.add_parser("filter-profile-rename", help="Rename a filter profile")
     filter_profile_rename.add_argument("--name", required=True, help="Existing filter profile name")
