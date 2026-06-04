@@ -1,6 +1,6 @@
 # ATCinna Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic Arbeitsbienen:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build ATCinna as a Java-free Cinnamon applet that searches, plays, opens, and downloads entries from the ATPlayer-compatible audio catalog.
 
@@ -12,11 +12,31 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.6`.
+- `VERSION` is `0.3.7`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, `download`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog` provides the optional external GTK search dialog used by the "Suche öffnen" popup action; the primary in-popup search remains active when it works locally.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
+
+### Quick Follow-up
+
+- [x] **Task 8: Add settings launcher in applet menu**
+  - Add a menu item **Einstellungen** in `atcinna@H234598/applet.js`.
+  - Keep `on_applet_clicked()` as menu toggle.
+  - Add static `scripts/check.sh` checks for click/menu invariants (`on_applet_clicked`, `this.menu.toggle()`, Einstellungen item, `configureApplet()` wiring).
+
+### ATPlayer Parity Audit
+
+ATCinna is not yet feature-complete against ATPlayer. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic filters, play/open/download handoff, history, favorites, optional GTK search dialog, D-Bus status, local install/package checks, and runtime smoke checks.
+
+Known parity gaps from `/home/teladi/ATPlayer`:
+
+- Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna only supports immediate single-entry downloads.
+- Blacklist management and filter profiles: ATPlayer has blacklist/filter configuration surfaces; ATCinna only has simple text filters.
+- Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
+- Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
+
+Next parity implementation priority: add a small Java-free download queue model and UI, then add blacklist/filter-profile management.
 
 ### URL-Trust-Boundary-Härtung
 

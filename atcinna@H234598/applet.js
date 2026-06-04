@@ -113,6 +113,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
         this.menu.addMenuItem(this._openSearchDialogItem);
 
+        this._openSettingsItem = new PopupMenu.PopupMenuItem("Einstellungen");
+        this._openSettingsItem.connect("activate", () => {
+            this._openAppletSettings();
+        });
+        this.menu.addMenuItem(this._openSettingsItem);
+
         this._refreshItem = new PopupMenu.PopupMenuItem("Jetzt aktualisieren");
         this._refreshItem.connect("activate", () => this._runRefresh());
         this.menu.addMenuItem(this._refreshItem);
@@ -355,6 +361,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         this._activeSearchQuery = query;
         this._runSearch(query);
+    }
+
+    _openAppletSettings() {
+        if (typeof this.configureApplet === "function") {
+            this.configureApplet();
+            this.menu.close();
+            return;
+        }
+        this._setStatus("Einstellungen nicht verfügbar");
     }
 
     _launchSearchDialog() {

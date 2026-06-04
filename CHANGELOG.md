@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.7
+
+- Linksklick bleibt unverändert und toggelt weiterhin das Applet-Menü.
+- Im Popup-Menü wurde „Einstellungen“ ergänzt, das direkt
+  `configureApplet()` öffnet.
+- `scripts/check.sh` enthält neue statische Prüfungen für Klick-Verhalten und
+  vorhandenen Einstellungen-Menüpunkt im Applet-UI.
+
 ## 0.3.6
 
 - Alternative Task A ergänzt: „Suche öffnen“-Popup-Aktion im Applet, die ein optionales externes

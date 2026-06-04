@@ -104,6 +104,27 @@ for forbidden_pattern in \
     fi
 done
 
+if ! rg -q -F 'on_applet_clicked()' "$APPLET_JS"; then
+    echo "ERROR: on_applet_clicked handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'this.menu.toggle();' "$APPLET_JS"; then
+    echo "ERROR: applet click handler does not toggle menu"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Einstellungen")' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain Einstellungen item"
+    STATUS=1
+fi
+if ! rg -q -F '_openAppletSettings()' "$APPLET_JS"; then
+    echo "ERROR: Einstellungen action is not wired to handler"
+    STATUS=1
+fi
+if ! rg -q -F 'configureApplet()' "$APPLET_JS"; then
+    echo "ERROR: Einstellungen action does not call configureApplet()"
+    STATUS=1
+fi
+
 node --check "$APPLET_JS" >/dev/null
 
 if ! python3 -m py_compile "$HELPER"; then
