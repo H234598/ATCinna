@@ -154,6 +154,28 @@ for queue_label in "Download stoppen" "Audio (URL) abspielen" "Download (URL) ko
         STATUS=1
     fi
 done
+for info_label in "Audioinformation anzeigen" "Titel in die Zwischenablage kopieren" "Genre in die Zwischenablage kopieren" "Thema in die Zwischenablage kopieren"; do
+    if ! rg -q -F "${info_label}" "$APPLET_JS"; then
+        echo "ERROR: applet metadata action label is missing: ${info_label}"
+        STATUS=1
+    fi
+done
+if ! rg -q -F "_addInfoAction" "$APPLET_JS"; then
+    echo "ERROR: applet metadata action builder is missing"
+    STATUS=1
+fi
+if ! rg -q -F "_setInfoSection(item)" "$APPLET_JS"; then
+    echo "ERROR: applet metadata info section handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F "_renderInfoSection(fields = [])" "$APPLET_JS"; then
+    echo "ERROR: applet metadata info section renderer is missing"
+    STATUS=1
+fi
+if ! rg -q -F "_copyToClipboard" "$APPLET_JS"; then
+    echo "ERROR: applet clipboard helper is missing"
+    STATUS=1
+fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Downloads stoppen")' "$APPLET_JS"; then
     echo "ERROR: applet menu does not contain queue stop-all item"
     STATUS=1
@@ -190,6 +212,12 @@ if ! rg -q -F '"--queued-only"' "$HELPER"; then
     echo "ERROR: helper queued-only cancel option is missing"
     STATUS=1
 fi
+for helper_arg in "--date" "--time" "--duration" "--description"; do
+    if ! rg -q -e "${helper_arg}" "$HELPER"; then
+        echo "ERROR: helper metadata parser flag is missing: ${helper_arg}"
+        STATUS=1
+    fi
+done
 
 node --check "$APPLET_JS" >/dev/null
 
@@ -316,6 +344,18 @@ if ! echo "$HISTORY_LIST" | jq -e '.status == "ok" and .count == 1 and .results[
     echo "$HISTORY_LIST"
     exit 1
 fi
+HISTORY_METADATA_ADD="$(python3 "$HELPER" history-add --title "Meta" --sender "S" --genre "G" --topic "T" --date "2026-06-04" --time "12:34" --duration "01:00" --description "Testbeschreibung" --url "https://example.com/history/meta")"
+if ! echo "$HISTORY_METADATA_ADD" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: history-add with metadata failed"
+    echo "$HISTORY_METADATA_ADD"
+    exit 1
+fi
+HISTORY_LIST="$(python3 "$HELPER" history-list)"
+if ! echo "$HISTORY_LIST" | jq -e '.results[0].date == "2026-06-04" and .results[0].time == "12:34" and .results[0].duration == "01:00" and .results[0].description == "Testbeschreibung"' >/dev/null; then
+    echo "ERROR: history metadata fields not persisted"
+    echo "$HISTORY_LIST"
+    exit 1
+fi
 
 python3 - <<'PY'
 import json
@@ -366,6 +406,18 @@ BOOKMARK_ADD_2="$(python3 "$HELPER" bookmark-add --title "B2" --url "https://exa
 if ! echo "$BOOKMARK_ADD_2" | jq -e '.status == "ok"' >/dev/null; then
     echo "ERROR: bookmark-add failed"
     echo "$BOOKMARK_ADD_2"
+    exit 1
+fi
+BOOKMARK_METADATA_ADD="$(python3 "$HELPER" bookmark-add --title "Meta" --sender "S" --genre "G" --topic "T" --date "2026-06-04" --time "10:00" --duration "00:15" --description "Kurz" --url "https://example.com/bookmark/meta" --website "https://example.com")"
+if ! echo "$BOOKMARK_METADATA_ADD" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: bookmark-add with metadata failed"
+    echo "$BOOKMARK_METADATA_ADD"
+    exit 1
+fi
+BOOKMARK_LIST="$(python3 "$HELPER" bookmark-list)"
+if ! echo "$BOOKMARK_LIST" | jq -e '.results[0].date == "2026-06-04" and .results[0].time == "10:00" and .results[0].duration == "00:15" and .results[0].description == "Kurz" and .results[0].title == "Meta"' >/dev/null; then
+    echo "ERROR: bookmark metadata fields not persisted"
+    echo "$BOOKMARK_LIST"
     exit 1
 fi
 python3 - <<'PY'
@@ -545,9 +597,20 @@ if ! echo "$QUEUE_ADD_ONE_AGAIN" | jq -e '.status == "ok"' >/dev/null; then
     echo "$QUEUE_ADD_ONE_AGAIN"
     exit 1
 fi
+QUEUE_ADD_META="$(python3 "$HELPER" download-enqueue --title "Queue Meta" --sender "S" --genre "G" --topic "T" --date "2026-06-04" --time "08:00" --duration "00:30" --description "Queue beschreibung" --url "$QUEUE_URL_TWO" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_ADD_META" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: download-enqueue with metadata failed"
+    echo "$QUEUE_ADD_META"
+    exit 1
+fi
 QUEUE_LIST="$(python3 "$HELPER" download-list)"
-if ! echo "$QUEUE_LIST" | jq -e --arg one "$QUEUE_URL_ONE" --arg two "$QUEUE_URL_TWO" '.status == "ok" and .count == 2 and .results[0].url == $two and .results[1].url == $one and .results[1].title == "Queue One Updated"' >/dev/null; then
+if ! echo "$QUEUE_LIST" | jq -e --arg one "$QUEUE_URL_ONE" --arg two "$QUEUE_URL_TWO" '.status == "ok" and .count == 2 and (.results | map(.url) | index($one) != null) and (.results | map(.url) | index($two) != null) and ([.results[] | select(.url == $one and .title == "Queue One Updated")] | length) == 1' >/dev/null; then
     echo "ERROR: download-list/dedupe/FIFO order unexpected"
+    echo "$QUEUE_LIST"
+    exit 1
+fi
+if ! echo "$QUEUE_LIST" | jq -e --arg q "$QUEUE_URL_TWO" '.results | map(select(.url==$q and .date=="2026-06-04" and .time=="08:00" and .duration=="00:30" and .description=="Queue beschreibung")) | length > 0' >/dev/null; then
+    echo "ERROR: queue metadata fields not persisted"
     echo "$QUEUE_LIST"
     exit 1
 fi

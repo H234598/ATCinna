@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.10`.
+- `VERSION` is `0.3.11`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, direct `download`, `download-*` queue actions, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog` provides the optional external GTK search dialog used by the "Suche öffnen" popup action; the primary in-popup search remains active when it works locally.
@@ -65,6 +65,20 @@ Next parity implementation priority: expand the download queue with edit/delete/
   - [x] Expand per-entry queue submenu with:
     `Download stoppen`, `Audio (URL) abspielen`, `Download (URL) kopieren`, `Gespeichertes Audio (Datei) abspielen`, `Zielordner öffnen`.
   - [x] Add applet/static checks for new labels and new handlers (`_runQueueRunAll`, `_runQueueCancelItem`, `_runQueueCancelQueued`, `_openQueueFile`), plus helper coverage for `download-cancel --queued-only`.
+
+### Task 11: Add Audio-Metadaten und Clipboard-Infos (0.3.11)
+
+- [x] **Helper erweitern**
+  - `history-add`, `bookmark-add`, `download-enqueue` akzeptieren optionale `--date`, `--time`, `--duration`, `--description`.
+  - Normalisierte Queue/History/Bookmark-Einträge speichern diese Felder und lesen ältere Einträge kompatibel weiter ein.
+
+- [x] **Applet-Aktionen ergänzen**
+  - Untermenüs von Treffer/Verlauf/Favoriten/Queue enthalten `Audioinformation anzeigen`.
+  - Neue Clipboard-Aktionen: `Titel in die Zwischenablage kopieren`, `Genre in die Zwischenablage kopieren`, `Thema in die Zwischenablage kopieren`.
+
+- [x] **Infos-Panel und Tests**
+  - Kompakter, nichtreaktiver Info-Bereich im Popup (`this._infoSection`) mit Titel, Sender, Genre, Thema, Datum/Uhrzeit/Dauer, Beschreibung, URL, Website, Pfad.
+  - `scripts/check.sh` ergänzt um Label-/Methoden-Checks und funktionale Persistenzprüfungen für `date/time/duration/description` in History/Bookmark/Queue.
 
 ### URL-Trust-Boundary-Härtung
 

@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.11
+
+- History/Favorites/Queue- und Suchergebnis-Einträge um neue Metadaten-Felder ergänzt: `date`, `time`, `duration`, `description`.
+- Applet-Menüs erhalten die Aktion **„Audioinformation anzeigen“** in Treffer-, Verlauf-, Favoriten- und Queue-Untermenüs mit kompakter Anzeige in einem neuen Popup-Infobereich.
+- Applet-Menüs erhalten Kopieraktionen für **Titel**, **Genre** und **Thema** als gemeinsame sichere Clipboard-Helferfunktion.
+- Helper-Funktionen für `history-add`, `bookmark-add` und `download-enqueue` akzeptieren jetzt optionale `--date`, `--time`, `--duration`, `--description` und persistieren diese Felder rückwärtskompatibel.
+- `scripts/check.sh` erweitert um statische Prüfungen und funktionale Helfertests für die neuen Metadaten-Felder.
+
 ## 0.3.10
 
 - Queue-Parität im Applet-Menü erweitert: Globaler Durchlauf „Alle Downloads starten/stoppen“, „Nächsten Download starten“ bleibt erhalten, ergänzt um „Alle wartenden Downloads stoppen“ als eigener Warteschlangen-Pfad.

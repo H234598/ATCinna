@@ -43,6 +43,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._filterSection = null;
         this._queueSection = null;
         this._queueListSection = null;
+        this._infoSection = null;
         this._filterSummaryItem = null;
         this._clearFiltersItem = null;
         this._dbusImpl = null;
@@ -130,6 +131,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._historySection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._historySection);
+
+        this._infoSection = new PopupMenu.PopupMenuSection();
+        this._renderInfoSection();
+        this.menu.addMenuItem(this._infoSection);
 
         this._favoritesSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._favoritesSection);
@@ -251,6 +256,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _toTrimmed(value) {
         return (value || "").trim();
+    }
+
+    _shortText(value, maxLength = 140) {
+        const text = this._toTrimmed(value);
+        if (text.length <= maxLength) {
+            return text;
+        }
+        return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
     }
 
     _getActiveFilters() {
@@ -433,6 +446,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             entry.menu.addMenuItem(play);
 
             this._addWebsiteAction(entry.menu, item);
+            this._addInfoAction(entry.menu, item);
+            this._addMetadataCopyActions(entry.menu, item);
 
             const download = new PopupMenu.PopupMenuItem("Herunterladen");
             download.connect("activate", () => this._runDownload(item));
@@ -740,6 +755,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             cancel.connect("activate", () => this._runQueueCancelItem(item));
             row.menu.addMenuItem(cancel);
 
+            this._addInfoAction(row.menu, item);
+            this._addMetadataCopyActions(row.menu, item);
+
             const play = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");
             play.connect("activate", () => this._playItem(item));
             row.menu.addMenuItem(play);
@@ -899,24 +917,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     _copyQueueUrl(item) {
         const url = this._normalizeQueueItemUrl(item);
         if (!url) {
-            this._setStatus("URL kopieren fehlgeschlagen: keine URL");
+            this._setStatus("Download (URL) kopieren: kein Wert");
             return;
         }
 
-        try {
-            if (!St.Clipboard || !St.ClipboardType || typeof St.Clipboard.get_default !== "function") {
-                throw new Error("Clipboard-API nicht verfügbar");
-            }
-            const clipboard = St.Clipboard.get_default();
-            if (!clipboard || typeof clipboard.set_text !== "function") {
-                throw new Error("Clipboard-Objekt nicht verfügbar");
-            }
-            clipboard.set_text(St.ClipboardType.CLIPBOARD, url);
-            this._setStatus("URL in Zwischenablage kopiert");
-            return;
-        } catch (error) {
-            this._setStatus(`URL kopieren nicht verfügbar: ${error.message}`);
-        }
+        this._copyToClipboard(url, "Download (URL) kopieren");
     }
 
     _normalizeQueueItemUrl(item) {
@@ -1114,6 +1119,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         row.menu.addMenuItem(play);
 
         this._addWebsiteAction(row.menu, item);
+        this._addInfoAction(row.menu, item);
+        this._addMetadataCopyActions(row.menu, item);
 
         if (withRemoveAction) {
             const remove = new PopupMenu.PopupMenuItem("Entfernen");
@@ -1130,9 +1137,103 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             `--sender=${item.sender || ""}`,
             `--genre=${item.genre || ""}`,
             `--topic=${item.topic || ""}`,
+            `--date=${item.date || ""}`,
+            `--time=${item.time || ""}`,
+            `--duration=${item.duration || ""}`,
+            `--description=${item.description || ""}`,
             `--url=${item.url || ""}`,
             `--website=${item.website || ""}`
         ];
+    }
+
+    _addInfoAction(menu, item) {
+        const action = new PopupMenu.PopupMenuItem("Audioinformation anzeigen");
+        action.connect("activate", () => this._setInfoSection(item));
+        menu.addMenuItem(action);
+    }
+
+    _addMetadataCopyActions(menu, item) {
+        this._addCopyFieldAction(menu, "Titel in die Zwischenablage kopieren", item.title);
+        this._addCopyFieldAction(menu, "Genre in die Zwischenablage kopieren", item.genre);
+        this._addCopyFieldAction(menu, "Thema in die Zwischenablage kopieren", item.topic);
+    }
+
+    _addCopyFieldAction(menu, label, value) {
+        const item = new PopupMenu.PopupMenuItem(label);
+        item.connect("activate", () => this._copyToClipboard(value, label));
+        menu.addMenuItem(item);
+    }
+
+    _copyToClipboard(value, actionLabel) {
+        const text = this._toTrimmed(value);
+        if (!text) {
+            this._setStatus(`${actionLabel}: kein Wert`);
+            return;
+        }
+
+        try {
+            if (!St.Clipboard || !St.ClipboardType || typeof St.Clipboard.get_default !== "function") {
+                throw new Error("Clipboard-API nicht verfügbar");
+            }
+            const clipboard = St.Clipboard.get_default();
+            if (!clipboard || typeof clipboard.set_text !== "function") {
+                throw new Error("Clipboard-Objekt nicht verfügbar");
+            }
+            clipboard.set_text(St.ClipboardType.CLIPBOARD, text);
+            this._setStatus(`${actionLabel}: kopiert`);
+        } catch (error) {
+            this._setStatus(`Clipboard-Fehler: ${actionLabel}: ${error.message}`);
+        }
+    }
+
+    _setInfoSection(item) {
+        if (!this._infoSection) {
+            return;
+        }
+
+        const safeItem = item || {};
+        const fields = [
+            ["Titel", safeItem.title],
+            ["Sender", safeItem.sender],
+            ["Genre", safeItem.genre],
+            ["Thema", safeItem.topic],
+            ["Datum/Uhrzeit/Dauer", `${safeItem.date || ""} ${safeItem.time || ""} ${safeItem.duration || ""}`.trim().replace(/\s+/g, " ")],
+            ["Beschreibung", safeItem.description],
+            ["URL", safeItem.url],
+            ["Website", safeItem.website],
+            ["Pfad", safeItem.path]
+        ];
+
+        this._renderInfoSection(fields);
+    }
+
+    _renderInfoSection(fields = []) {
+        if (!this._infoSection) {
+            return;
+        }
+
+        this._infoSection.removeAll();
+        const header = new PopupMenu.PopupMenuItem("Audioinformation");
+        header.actor.reactive = false;
+        header.actor.add_style_class_name("atcinna-section-title");
+        this._infoSection.addMenuItem(header);
+
+        let hasField = false;
+        for (const [label, value] of fields) {
+            if (!value) {
+                continue;
+            }
+            hasField = true;
+            const itemRow = new PopupMenu.PopupMenuItem(`${label}: ${this._shortText(value)}`);
+            itemRow.actor.reactive = false;
+            this._infoSection.addMenuItem(itemRow);
+        }
+
+        if (!hasField) {
+            const empty = new PopupMenu.PopupMenuItem("Keine Audioinformation verfügbar");
+            empty.actor.reactive = false;
+            this._infoSection.addMenuItem(empty);
+        }
     }
 
     _addWebsiteAction(menu, item) {

@@ -116,6 +116,10 @@ def _entry_from_args(args):
         "sender": _normalize_entry_value(args.sender),
         "genre": _normalize_entry_value(args.genre),
         "topic": _normalize_entry_value(args.topic),
+        "date": _normalize_entry_value(getattr(args, "date", "")),
+        "time": _normalize_entry_value(getattr(args, "time", "")),
+        "duration": _normalize_entry_value(getattr(args, "duration", "")),
+        "description": _normalize_entry_value(getattr(args, "description", "")),
         "url": _normalize_entry_value(args.url),
         "website": _normalize_entry_value(args.website),
         "timestamp": int(time.time()),
@@ -211,6 +215,10 @@ def _normalize_queue_entry(entry):
         "sender": _normalize_entry_value(entry.get("sender")),
         "genre": _normalize_entry_value(entry.get("genre")),
         "topic": _normalize_entry_value(entry.get("topic")),
+        "date": _normalize_entry_value(entry.get("date")),
+        "time": _normalize_entry_value(entry.get("time")),
+        "duration": _normalize_entry_value(entry.get("duration")),
+        "description": _normalize_entry_value(entry.get("description")),
         "url": _normalize_entry_value(entry.get("url")),
         "website": _normalize_entry_value(entry.get("website")),
         "folder": _normalize_entry_value(entry.get("folder")),
@@ -712,6 +720,10 @@ def parse_args():
     history_add.add_argument("--sender", default="", help="Optional sender")
     history_add.add_argument("--genre", default="", help="Optional genre")
     history_add.add_argument("--topic", default="", help="Optional topic")
+    history_add.add_argument("--date", default="", help="Optional date")
+    history_add.add_argument("--time", default="", help="Optional time")
+    history_add.add_argument("--duration", default="", help="Optional duration")
+    history_add.add_argument("--description", default="", help="Optional description")
     history_add.add_argument("--url", required=True, help="Content URL")
     history_add.add_argument("--website", default="", help="Optional website URL")
 
@@ -722,6 +734,10 @@ def parse_args():
     bookmark_add.add_argument("--sender", default="", help="Optional sender")
     bookmark_add.add_argument("--genre", default="", help="Optional genre")
     bookmark_add.add_argument("--topic", default="", help="Optional topic")
+    bookmark_add.add_argument("--date", default="", help="Optional date")
+    bookmark_add.add_argument("--time", default="", help="Optional time")
+    bookmark_add.add_argument("--duration", default="", help="Optional duration")
+    bookmark_add.add_argument("--description", default="", help="Optional description")
     bookmark_add.add_argument("--url", required=True, help="Content URL")
     bookmark_add.add_argument("--website", default="", help="Optional website URL")
 
@@ -740,6 +756,10 @@ def parse_args():
     download_enqueue.add_argument("--sender", default="", help="Optional sender")
     download_enqueue.add_argument("--genre", default="", help="Optional genre")
     download_enqueue.add_argument("--topic", default="", help="Optional topic")
+    download_enqueue.add_argument("--date", default="", help="Optional date")
+    download_enqueue.add_argument("--time", default="", help="Optional time")
+    download_enqueue.add_argument("--duration", default="", help="Optional duration")
+    download_enqueue.add_argument("--description", default="", help="Optional description")
     download_enqueue.add_argument("--url", required=True, help="Media URL")
     download_enqueue.add_argument("--website", default="", help="Optional website URL")
     download_enqueue.add_argument("--folder", default="", help="Download folder")
