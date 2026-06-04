@@ -3,13 +3,29 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APPLET_DIR="$SCRIPT_DIR/../atcinna@H234598"
+APPLET_UUID="atcinna@H234598"
 HELPER="$APPLET_DIR/scripts/atcinna-catalog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
+VERSION_FILE="$SCRIPT_DIR/../VERSION"
 TMP_DIR="$(mktemp -d)"
 STATUS=0
+SKIP_SELF_INSTALL=0
 export PYTHONPYCACHEPREFIX="$TMP_DIR/pycache"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-self-install)
+            SKIP_SELF_INSTALL=1
+            shift
+            ;;
+        *)
+            echo "Usage: $(basename "$0") [--skip-self-install]"
+            exit 1
+            ;;
+    esac
+done
 
 require_command() {
     local cmd="$1"
@@ -30,6 +46,8 @@ require_command shellcheck || exit 1
 require_command xz || exit 1
 require_command rg || exit 1
 require_command node || exit 1
+require_command rsync || exit 1
+require_command tar || exit 1
 
 if [ ! -x "$HELPER" ]; then
     echo "ERROR: helper is not executable: $HELPER"
@@ -40,6 +58,10 @@ if [ ! -f "$APPLET_JS" ] || [ ! -f "$SETTINGS_SCHEMA" ] || [ ! -f "$METADATA_JSO
     echo "ERROR: expected applet files missing"
     exit 1
 fi
+if [ ! -f "$VERSION_FILE" ]; then
+    echo "ERROR: VERSION file missing"
+    exit 1
+fi
 
 jq empty "$SETTINGS_SCHEMA" >/dev/null
 jq empty "$METADATA_JSON" >/dev/null
@@ -48,6 +70,17 @@ if ! shellcheck "$SCRIPT_DIR/check.sh"; then
     echo "ERROR: shellcheck failed"
     STATUS=1
 fi
+
+for script_file in \
+    "$SCRIPT_DIR/install-local.sh" \
+    "$SCRIPT_DIR/package.sh"; do
+    if [ -f "$script_file" ]; then
+        if ! shellcheck "$script_file"; then
+            echo "ERROR: shellcheck failed for ${script_file}"
+            STATUS=1
+        fi
+    fi
+done
 
 for forbidden_pattern in \
     'ExtensionUtils' \
@@ -326,6 +359,38 @@ if ! jq -e '.status == "error" and .message == "invalid URL scheme"' "$TMP_DIR/d
     echo "ERROR: invalid URL download did not return expected error JSON"
     cat "$TMP_DIR/download-invalid.out"
     exit 1
+fi
+
+if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
+    if ! "$SCRIPT_DIR/install-local.sh" --target-dir "$TMP_DIR"; then
+        echo "ERROR: install-local --target-dir \"$TMP_DIR\" failed during self-test"
+        exit 1
+    fi
+    if [ ! -x "$TMP_DIR/$APPLET_UUID/scripts/atcinna-catalog" ]; then
+        echo "ERROR: install-local did not place executable helper"
+        exit 1
+    fi
+    PACKAGE_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+    PACKAGE_DIST="$TMP_DIR/dist"
+    if ! "$SCRIPT_DIR/package.sh" --skip-check --dist-dir "$PACKAGE_DIST"; then
+        echo "ERROR: package.sh failed during self-test"
+        exit 1
+    fi
+    PACKAGE_FILE="$PACKAGE_DIST/$APPLET_UUID-$PACKAGE_VERSION.tar.gz"
+    if [ ! -f "$PACKAGE_FILE" ]; then
+        echo "ERROR: package artifact missing: $PACKAGE_FILE"
+        exit 1
+    fi
+    PACKAGE_LIST="$(tar -tzf "$PACKAGE_FILE")"
+    if ! grep -qx "$APPLET_UUID/metadata.json" <<<"$PACKAGE_LIST"; then
+        echo "ERROR: package artifact missing metadata.json"
+        exit 1
+    fi
+    if grep -Eq '(^|/)(\\.git|dist|__pycache__)(/|$)|\\.pyc$|~$' <<<"$PACKAGE_LIST"; then
+        echo "ERROR: package artifact contains excluded paths"
+        echo "$PACKAGE_LIST"
+        exit 1
+    fi
 fi
 
 if [ "$STATUS" -ne 0 ]; then

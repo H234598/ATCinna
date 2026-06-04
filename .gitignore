@@ -3,3 +3,4 @@
 .cinnamon
 node_modules/
 __pycache__/
+dist/

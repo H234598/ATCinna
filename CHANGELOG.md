@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1
+
+- Reproduzierbare lokale Installation ergänzt: `./scripts/install-local.sh`
+  mit `--dry-run` und `--target-dir`, sichere Zwischenkopie und atomarem Austausch
+  nach `~/.local/share/cinnamon/applets/atcinna@H234598` (oder angegebenem Ziel).
+- Paketierung ergänzt: `./scripts/package.sh` erstellt
+  `dist/atcinna@H234598-<version>.tar.gz` nach erfolgreichem Check.
+- `scripts/check.sh` validiert zusätzlich Install- und Package-Skripte (ShellCheck) und
+  führt im Testlauf eine temporäre lokale Installation mit `--target-dir`.
+
 ## 0.3.0
 
 - Neue Einstellungen für Filter (`sender-filter`, `genre-filter`, `topic-filter`) hinzugefügt.
