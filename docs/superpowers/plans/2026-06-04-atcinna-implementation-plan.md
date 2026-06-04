@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.15`.
+- `VERSION` is `0.3.17`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog` and `atcinna@H234598/scripts/atcinna-queue-edit-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -35,6 +35,20 @@ Known parity gaps from `/home/teladi/ATPlayer`:
 - Blacklist management and filter profiles: ATPlayer has deeper blacklist/filter configuration surfaces; ATCinna now has direct context-menu Blacklist adds and search modes, but not the full Blacklist editor, whitelist/undo/exact toggles, filter profiles, or legacy migration.
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
+
+### Task 17: Add ATPlayer-Style Program/Help Submenu (0.3.17)
+
+- [x] **Hilfe-/Programmmenü auf Top-Level ergänzen**
+  - Untermenü **Hilfe** mit `Hilfedialog`, `Alle Programmeinstellungen zurücksetzen`, `Gibt's ein Update?`, `Über dieses Programm`.
+- [x] **Hilfedialog und Über-Infos ins bestehende Info-Panel lenken**
+  - Aktionen nutzen die vorhandene Info-Section und den Statusbereich, um Inhalte anzuzeigen.
+- [x] **Lokale Update-Information**
+  - `Gibt's ein Update?` zeigt lokale Versions- und Pfadinformationen ohne externen Netzwerkzugriff oder Shell-Navigation.
+- [x] **Reset der Anwendungseinstellungen**
+  - `Alle Programmeinstellungen zurücksetzen` setzt `search-query`, `sender-filter`, `genre-filter`, `topic-filter`, `blacklist-mode`, `max-hits` auf Standardwerte.
+  - Popup-Suchfeld, Filterstatus und Trefferansicht werden nach dem Reset aktualisiert.
+- [x] **Statische Checks ergänzen**
+  - `scripts/check.sh` prüft Hilfemenü-Labels, Handler-Namen und Reset-Wiring auf Applet-Ebene.
 
 ### Task 16: Add ATPlayer-Style Filter Submenu (0.3.16)
 

@@ -124,6 +124,34 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
         this.menu.addMenuItem(this._openSettingsItem);
 
+        this._helpMenu = new PopupMenu.PopupSubMenuMenuItem("Hilfe");
+
+        this._helpDialogItem = new PopupMenu.PopupMenuItem("Hilfedialog");
+        this._helpDialogItem.connect("activate", () => {
+            this._showHelpDialog();
+        });
+        this._helpMenu.menu.addMenuItem(this._helpDialogItem);
+
+        this._helpResetItem = new PopupMenu.PopupMenuItem("Alle Programmeinstellungen zurücksetzen");
+        this._helpResetItem.connect("activate", () => {
+            this._resetAppletSettings();
+        });
+        this._helpMenu.menu.addMenuItem(this._helpResetItem);
+
+        this._helpUpdateItem = new PopupMenu.PopupMenuItem("Gibt's ein Update?");
+        this._helpUpdateItem.connect("activate", () => {
+            this._showUpdateInfo();
+        });
+        this._helpMenu.menu.addMenuItem(this._helpUpdateItem);
+
+        this._helpAboutItem = new PopupMenu.PopupMenuItem("Über dieses Programm");
+        this._helpAboutItem.connect("activate", () => {
+            this._showAboutProgram();
+        });
+        this._helpMenu.menu.addMenuItem(this._helpAboutItem);
+
+        this.menu.addMenuItem(this._helpMenu);
+
         this._refreshItem = new PopupMenu.PopupMenuItem("Jetzt aktualisieren");
         this._refreshItem.connect("activate", () => this._runRefresh());
         this.menu.addMenuItem(this._refreshItem);
@@ -410,6 +438,106 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             return;
         }
         this._setStatus("Einstellungen nicht verfügbar");
+    }
+
+    _showHelpDialog() {
+        this._setStatus("Hilfedialog geöffnet");
+        const version = this.metadata && this.metadata.version ? this.metadata.version : "unbekannt";
+        this._renderInfoSection([
+            ["Bereich", "ATCinna-Applet Hilfeseiten"],
+            ["Version", version],
+            ["Suche", "Oben im Popup ein Schlüsselwort eintragen und Enter drücken."],
+            ["Filter", "Unter Filter können bestehende Treffer-Listen per Sender, Genre, Thema, Titel eingegrenzt werden."],
+            ["Blacklist", "Im Kontextmenü pro Eintrag sind Blacklist-Aktionen verfügbar."],
+            ["Downloads", "Einträge können in die Download-Warteschlange gelegt oder direkt heruntergeladen werden."],
+            ["Tastatur", "Popup kann mit Maus geöffnet und per Enter im Suchfeld ausgelöst werden."]
+        ]);
+    }
+
+    _resetAppletSettings() {
+        if (!this.settings) {
+            this._setStatus("Einstellungen zurücksetzen nicht möglich: Konfiguration nicht verfügbar");
+            return;
+        }
+
+        const defaults = {
+            "search-query": "",
+            "sender-filter": "",
+            "genre-filter": "",
+            "topic-filter": "",
+            "blacklist-mode": "hide",
+            "max-hits": 20
+        };
+        const nextSearchQuery = defaults["search-query"];
+
+        this._isSyncingFilterSettingsFromSettings = true;
+        this._isSyncingSearchQueryFromSettings = true;
+        try {
+            this.searchQuery = nextSearchQuery;
+            this.senderFilter = defaults["sender-filter"];
+            this.genreFilter = defaults["genre-filter"];
+            this.topicFilter = defaults["topic-filter"];
+            this.blacklistMode = defaults["blacklist-mode"];
+            this.maxHits = defaults["max-hits"];
+
+            this.settings.setValue("search-query", defaults["search-query"]);
+            this.settings.setValue("sender-filter", defaults["sender-filter"]);
+            this.settings.setValue("genre-filter", defaults["genre-filter"]);
+            this.settings.setValue("topic-filter", defaults["topic-filter"]);
+            this.settings.setValue("blacklist-mode", defaults["blacklist-mode"]);
+            this.settings.setValue("max-hits", defaults["max-hits"]);
+
+            if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
+                this._searchEntry.set_text(nextSearchQuery);
+            }
+            this._activeSearchQuery = nextSearchQuery;
+        } finally {
+            this._isSyncingSearchQueryFromSettings = false;
+            this._isSyncingFilterSettingsFromSettings = false;
+        }
+
+        this._refreshFilterSummary();
+        this._setStatus("Alle Programmeinstellungen auf Standard zurückgesetzt");
+        this._renderInfoSection([
+            ["Status", "Programmweite Sucheinstellungen wurden auf Standard zurückgesetzt."],
+            ["Aktive Suche", this._activeSearchQuery || "leer"],
+            ["Sender-Filter", "leer"],
+            ["Genre-Filter", "leer"],
+            ["Thema-Filter", "leer"],
+            ["Blacklist-Modus", defaults["blacklist-mode"]],
+            ["Max-Treffer", `${defaults["max-hits"]}`]
+        ]);
+        this._runSearch();
+    }
+
+    _showUpdateInfo() {
+        const status = this._buildDbusStatus();
+        const version = this.metadata && this.metadata.version ? this.metadata.version : "unbekannt";
+        const info = status.version ? `installiert: ${status.version}` : "Version nicht ermittelbar";
+        this._setStatus(`Update-Check: ${info}`);
+        this._renderInfoSection([
+            ["Version", version],
+            ["Katalog-Pfad", this._helperPath],
+            ["Refresh-Mirror", this.refreshMirror || ""],
+            ["Letzter Status", info],
+            ["Hinweis", "Automatische Onlineprüfung wird aus Sicherheitsgründen nicht gestartet."]
+        ]);
+    }
+
+    _showAboutProgram() {
+        const version = this.metadata && this.metadata.version ? this.metadata.version : "unbekannt";
+        this._setStatus("Über dieses Programm");
+        const iconPath = this.metadata && this.metadata.icon ? this.metadata.icon : "";
+        this._renderInfoSection([
+            ["Programm", "ATCinna"],
+            ["Version", version],
+            ["Architektur", "Java-freies Cinnamon-Applet (GJS + Python-Helper)"],
+            ["Ziel", "ATPlayer-kompatiblen Audiokatalog schnell durchsuchen, filtern und laden"],
+            ["UUID", UUID],
+            ["Icon", iconPath],
+            ["Datenzugriff", "Katalogcache lokal, Downloads über sicheren Helper"],
+            ["Java", "Keine Java-Abhängigkeit im Applet"]
+        ]);
     }
 
     _launchSearchDialog() {

@@ -121,6 +121,54 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Einstellungen")' "$APPLET_JS"; then
     echo "ERROR: applet menu does not contain Einstellungen item"
     STATUS=1
 fi
+if ! rg -q -F 'new PopupMenu.PopupSubMenuMenuItem("Hilfe")' "$APPLET_JS"; then
+    echo "ERROR: applet help submenu is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_showHelpDialog' "$APPLET_JS"; then
+    echo "ERROR: applet help dialog action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_resetAppletSettings' "$APPLET_JS"; then
+    echo "ERROR: applet settings reset handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_showUpdateInfo' "$APPLET_JS"; then
+    echo "ERROR: applet update info action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_showAboutProgram' "$APPLET_JS"; then
+    echo "ERROR: applet about action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Hilfedialog")' "$APPLET_JS"; then
+    echo "ERROR: applet help dialog menu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Programmeinstellungen zurücksetzen")' "$APPLET_JS"; then
+    echo "ERROR: applet settings reset menu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F "new PopupMenu.PopupMenuItem(\"Gibt's ein Update?\")" "$APPLET_JS"; then
+    echo "ERROR: applet update menu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F "new PopupMenu.PopupMenuItem(\"Über dieses Programm\")" "$APPLET_JS"; then
+    echo "ERROR: applet about menu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F "search-query\": \"\"" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for search-query is missing"
+    STATUS=1
+fi
+if ! rg -q -F "blacklist-mode\": \"hide\"" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for blacklist-mode is missing"
+    STATUS=1
+fi
+if ! rg -q -F '"max-hits": 20' "$APPLET_JS"; then
+    echo "ERROR: settings reset default for max-hits is missing"
+    STATUS=1
+fi
 if ! rg -q -F '_openAppletSettings()' "$APPLET_JS"; then
     echo "ERROR: Einstellungen action is not wired to handler"
     STATUS=1

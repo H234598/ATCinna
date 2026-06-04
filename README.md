@@ -10,6 +10,11 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Popup-Menü mit Statuszeile, In-Popup-Suchfeld, Refresh-Knopf und Ergebnisliste.
 - Popup-Aktion „Suche öffnen“ für den optionalen externen GTK-Suchdialog.
 - Menüeintrag „Einstellungen“ für direktes Öffnen der Applet-Einstellungen.
+- Hilfe-/Programm-Untermenü mit ATPlayer-nahen Aktionen:
+  - Hilfedialog (Infos im Popup-Infobereich)
+  - Alle Programmeinstellungen zurücksetzen
+  - Gibt's ein Update?
+  - Über dieses Programm
 - Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
 - Erweiterte Teiltreffer-Filter (`sender-filter`, `genre-filter`, `topic-filter`) im Popup mit kompaktem Status (`Filter: ...`) und Schnellaktion „Filter löschen“.

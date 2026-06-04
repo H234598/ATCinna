@@ -1,4 +1,18 @@
 # Changelog
+## 0.3.17
+
+- ATPlayer-ähnliches Hilfemenü ergänzt (unter "Hilfe") mit Aktionen:
+  - Hilfedialog
+  - Alle Programmeinstellungen zurücksetzen
+  - Gibt's ein Update?
+  - Über dieses Programm
+- Der Reset setzt ATCinna-spezifische Einstellungen wieder auf Standardwerte:
+  - `search-query`, `sender-filter`, `genre-filter`, `topic-filter`, `blacklist-mode`, `max-hits`
+  - Sucheingabefeld im Popup wird ebenfalls auf Standard zurückgesetzt.
+- "Hilfedialog" und "Über dieses Programm" nutzen den vorhandenen Info-Bereich im Popup zur Anzeige.
+- "Gibt's ein Update?" zeigt sichere lokale Versions-/Pfadinformationen ohne Netzwerkzugriff.
+- Lokale Checks ergänzt für das neue Hilfemenü, Reset-Handler und Update-/About-Wiring.
+
 ## 0.3.16
 
 - Kontextmenü im Treffer-, Verlauf-, Favoriten- und Warteschlangenbereich um ein ATPlayer-artiges Untermenü **Filter** ergänzt.
