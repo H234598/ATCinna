@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.34
+
+- ATPlayer-nahe Bookmark-Batch-Aktionen für markierte Treffer ergänzt: **Markierte als Bookmarks anlegen** und **Markierte Bookmarks löschen**.
+- Die Aktionen nutzen die bestehenden atomaren Helper `bookmark-add` und `bookmark-remove`; nach Abschluss werden Favoriten/Abschnitte aktualisiert.
+- Source- und Installationschecks schützen neue Labels und Handler.
+- Versionssprung auf `0.3.34`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.33
 
 - Audio-Kontextmenüs näher an ATPlayer geführt: Einträge zeigen jetzt **Abspielen** und **Speichern** als direkte Aktionen; **Speichern** nutzt Java-frei die bestehende Download-Warteschlange.

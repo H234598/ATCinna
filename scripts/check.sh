@@ -327,13 +327,13 @@ for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen"
         STATUS=1
     fi
 done
-for result_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Auswahl umschalten"; do
+for result_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Markierte als Bookmarks anlegen" "Markierte Bookmarks löschen" "Auswahl umschalten"; do
     if ! rg -q -F "${result_label}" "$APPLET_JS"; then
         echo "ERROR: applet result selection label is missing: ${result_label}"
         STATUS=1
     fi
 done
-for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_setupResultActions" "_runResultSelectAll" "_runResultInvertSelection" "_runResultResetSelection" "_runResultToggleSelection" "_runResultPlaySelected" "_runResultSaveSelected" "_runResultBatchAction" "_getSelectedResultItems" "_resultItemKey" "_pruneResultSelection" "_updateResultSelectionActionState"; do
+for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_setupResultActions" "_runResultSelectAll" "_runResultInvertSelection" "_runResultResetSelection" "_runResultToggleSelection" "_runResultPlaySelected" "_runResultSaveSelected" "_runResultBookmarkSelected" "_runResultRemoveBookmarksSelected" "_runResultBatchAction" "_getSelectedResultItems" "_resultItemKey" "_pruneResultSelection" "_updateResultSelectionActionState"; do
     if ! rg -q -F "${result_selection_handler}" "$APPLET_JS"; then
         echo "ERROR: applet result selection handler is missing: ${result_selection_handler}"
         STATUS=1

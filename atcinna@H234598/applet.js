@@ -1287,11 +1287,21 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         saveSelected.connect("activate", () => this._runResultSaveSelected());
         this._resultsSection.addMenuItem(saveSelected);
 
+        const bookmarkSelected = new PopupMenu.PopupMenuItem("Markierte als Bookmarks anlegen");
+        bookmarkSelected.connect("activate", () => this._runResultBookmarkSelected());
+        this._resultsSection.addMenuItem(bookmarkSelected);
+
+        const removeBookmarksSelected = new PopupMenu.PopupMenuItem("Markierte Bookmarks löschen");
+        removeBookmarksSelected.connect("activate", () => this._runResultRemoveBookmarksSelected());
+        this._resultsSection.addMenuItem(removeBookmarksSelected);
+
         this._resultActionSelectAll = selectAll;
         this._resultActionInvertSelection = invertSelection;
         this._resultActionResetSelection = resetSelection;
         this._resultActionPlaySelected = playSelected;
         this._resultActionSaveSelected = saveSelected;
+        this._resultActionBookmarkSelected = bookmarkSelected;
+        this._resultActionRemoveBookmarksSelected = removeBookmarksSelected;
     }
 
     _runResultSelectAll() {
@@ -1361,7 +1371,27 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         );
     }
 
-    _runResultBatchAction(label, items, action, refreshQueue) {
+    _runResultBookmarkSelected() {
+        this._runResultBatchAction(
+            "Markierte als Bookmarks anlegen",
+            this._getSelectedResultItems(),
+            (item, callback) => this._runBookmarkAdd(item, callback),
+            false,
+            () => this._loadSections()
+        );
+    }
+
+    _runResultRemoveBookmarksSelected() {
+        this._runResultBatchAction(
+            "Markierte Bookmarks löschen",
+            this._getSelectedResultItems(),
+            (item, callback) => this._runBookmarkRemove(item, callback),
+            false,
+            () => this._loadBookmarks()
+        );
+    }
+
+    _runResultBatchAction(label, items, action, refreshQueue, afterDone = null) {
         if (!Array.isArray(items) || !items.length) {
             this._setStatus(`${label}: keine Auswahl`);
             return;
@@ -1373,6 +1403,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             if (!items.length) {
                 if (refreshQueue) {
                     this._runQueueList();
+                }
+                if (afterDone) {
+                    afterDone();
                 }
                 if (changed > 0) {
                     this._setStatus(`${label}: ${changed}`);
@@ -1449,6 +1482,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._resultActionSaveSelected) {
             this._resultActionSaveSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionBookmarkSelected) {
+            this._resultActionBookmarkSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionRemoveBookmarksSelected) {
+            this._resultActionRemoveBookmarksSelected.setSensitive(hasSelection);
         }
     }
 
@@ -3034,24 +3073,37 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
-    _runBookmarkAdd(item) {
+    _runBookmarkAdd(item, callback = null) {
         this._runHelper([
             "bookmark-add",
             ...this._entryArgs(item)
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`bookmark-add fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse((stdout || "{}"));
                 if (payload.status !== "ok") {
                     this._setStatus("bookmark-add: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
                 }
-                this._loadSections();
+                if (callback) {
+                    callback(true, 1);
+                } else {
+                    this._loadSections();
+                }
             } catch (error) {
                 this._setStatus(`bookmark-add ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
@@ -3073,10 +3125,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
-    _runBookmarkRemove(item) {
+    _runBookmarkRemove(item, callback = null) {
         const url = item.url || "";
         if (!url) {
             this._setStatus("bookmark-remove fehlgeschlagen: keine URL");
+            if (callback) {
+                callback(false, 0);
+            }
             return;
         }
         this._runHelper([
@@ -3085,17 +3140,30 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`bookmark-remove fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse((stdout || "{}"));
                 if (payload.status !== "ok") {
                     this._setStatus("bookmark-remove: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
                 }
-                this._loadBookmarks();
+                if (callback) {
+                    callback(true, payload.removed ? 1 : 0);
+                } else {
+                    this._loadBookmarks();
+                }
             } catch (error) {
                 this._setStatus(`bookmark-remove ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
