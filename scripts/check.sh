@@ -74,6 +74,7 @@ fi
 for script_file in \
     "$SCRIPT_DIR/install-local.sh" \
     "$SCRIPT_DIR/package.sh" \
+    "$SCRIPT_DIR/runtime-smoke.sh" \
     "$SCRIPT_DIR/validate-installed.sh"; do
     if [ -f "$script_file" ]; then
         if ! shellcheck "$script_file"; then

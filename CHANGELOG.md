@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4
+
+- Neues Runtime-Smoke-Skript hinzugefügt: `scripts/runtime-smoke.sh`
+  - Default-Modus non-mutierend: prüft notwendige Commands, DBus-Erreichbarkeit, installierte Applet-Version via `validate-installed.sh`, aktuelle UUID-Laufzeitliste und (falls aktiv) AppletManager-Instanzen.
+  - Optionaler temporärer Modus mit sicherem `enabled-applets`/`next-applet-id`-Backup und automatischem Restore per Trap.
+  - `--timeout` konfigurierbar; keine automatischen mutierenden Prüfpfade in `check.sh`.
+
 ## 0.3.3
 
 - Suchergebnisse im Helper filtern auf vertrauenswürdige `http`/`https`-Audio-URLs.

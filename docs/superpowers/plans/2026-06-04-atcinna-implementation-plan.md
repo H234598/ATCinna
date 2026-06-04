@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.3`.
+- `VERSION` is `0.3.4`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, `download`, `history-*`, and `bookmark-*`.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
@@ -228,6 +228,33 @@ Call `validate-installed.sh` in `scripts/check.sh` after temporary `install-loca
 - [x] **Step 3: Optionally validate real install in install-local**
 
 Add optional validation step in `scripts/install-local.sh` after successful install (`--skip-validate-installed` to disable).
+
+### Task 6: Runtime-Smoke Runtime Check
+
+**Files:**
+- Create: `scripts/runtime-smoke.sh`
+- Modify: `scripts/check.sh`
+- Modify: `README.md`
+- Modify: `CHANGELOG.md`
+- Modify: `VERSION`
+- Modify: `atcinna@H234598/metadata.json`
+- Modify: `docs/superpowers/plans/2026-06-04-atcinna-implementation-plan.md`
+
+- [x] **Step 1: Add runtime smoke script**
+
+Create a non-mutating runtime smoke path in `scripts/runtime-smoke.sh` that checks required commands, Cinnamon DBus reachability, `validate-installed.sh`, running UUIDs, and AppletManager instances when ATCinna is active.
+
+- [x] **Step 2: Add temporary activation workflow**
+
+Add `--activate-temporarily` mode that saves `enabled-applets` and `next-applet-id`, activates/reloads ATCinna as needed, waits up to configurable timeout, validates state, and restores via `trap` in all exit/error paths.
+
+- [x] **Step 3: Static validation integration**
+
+Wire runtime script into `scripts/check.sh` shellcheck scope only (not as an executed runtime mutation check).
+
+- [x] **Step 4: Version bump and docs**
+
+Update `VERSION`, `atcinna@H234598/metadata.json`, `CHANGELOG.md`, and `README.md` to reflect runtime-smoke addition and set baseline to `0.3.4`.
 
 ## Alternative Plan
 
