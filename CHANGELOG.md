@@ -1,4 +1,13 @@
 # Changelog
+## 0.3.24
+
+- ATPlayer-kompatible Blacklist-Exklusion ergänzt: `!:` wirkt jetzt als Negationspräfix auf den Regelwerten (`sender`, `genre`, `topic`, `title`, `theme_title`) und wird pro Feld mit AND-Logik mit bestehenden gesetzten Feldern kombiniert.
+- `topic`-Semantik bleibt: `topic_exact=true` erzwingt exakte Übereinstimmung, `topic_exact=false` Substring; bei `!:` wird das Match-Ergebnis invertiert.
+- Regex-Prefixes `#:` (und die Kombination `!:#`) werden bei `blacklist-add` hart abgelehnt und liefern JSON-Fehler.
+- Applet/Schema-Label für `blacklist-mode=only` wurde auf Whitelist/Invers-Wording umgestellt (`BL: Whitelist`).
+- Hilfedialog ergänzt einen kurzen Hinweis zu `!:`/`#:`; `scripts/check.sh` und `scripts/validate-installed.sh` testen Negationsfelder für `genre/title/topic/theme_title` sowie Regex-Rejection.
+- Versionssprung auf `0.3.24`; `metadata.json` und Dokumentation angepasst.
+
 ## 0.3.23
 
 - Blacklist-Erweiterung um `theme_title` abgeschlossen: `atcinna-catalog` und Dialog speichern, listen, deduplizieren, `undo/clean/clear/remove` und Matching unterstützen jetzt das neue Feld.

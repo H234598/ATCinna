@@ -104,12 +104,12 @@
   "blacklist-mode": {
     "type": "combobox",
     "description": "Blacklist-Modus",
-    "tooltip": "Steuert den Umgang mit gespeicherten Blacklist-Regeln bei der Suche.",
+    "tooltip": "Steuert den Umgang mit gespeicherten Blacklist-Regeln bei der Suche. \"only\" wirkt als Whitelist/Invers und zeigt nur von Regeln erfasste Treffer.",
     "default": "hide",
     "options": {
       "Aus": "off",
       "Blacklist ausblenden": "hide",
-      "Nur Blacklist": "only"
+      "Whitelist/Invers": "only"
     }
   },
   "max-hits": {

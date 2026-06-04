@@ -429,6 +429,14 @@ if ! rg -q -F '"blacklist-mode"' "$SETTINGS_SCHEMA"; then
     echo "ERROR: settings schema does not define blacklist-mode"
     STATUS=1
 fi
+if ! rg -q -F 'Whitelist/Invers' "$SETTINGS_SCHEMA"; then
+    echo "ERROR: settings schema does not expose whitelist/inverse option label"
+    STATUS=1
+fi
+if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
+    echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
+    STATUS=1
+fi
 for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
@@ -1009,6 +1017,142 @@ if ! echo "$BLACKLIST_THEME_TITLE_LIST" | jq -e '.status == "ok" and .count == 0
     echo "$BLACKLIST_THEME_TITLE_LIST"
     exit 1
 fi
+
+BLACKLIST_EXCLUDE_GENRE="$(python3 "$HELPER" blacklist-add --genre "!:genre")"
+if ! echo "$BLACKLIST_EXCLUDE_GENRE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add for negated genre failed"
+    echo "$BLACKLIST_EXCLUDE_GENRE"
+    exit 1
+fi
+SEARCH_BLACKLIST_EXCLUDE_GENRE="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_EXCLUDE_GENRE" | jq -e '.status == "ok" and .count == 3' >/dev/null; then
+    echo "ERROR: negated genre should exclude matching entries and keep others"
+    echo "$SEARCH_BLACKLIST_EXCLUDE_GENRE"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: blacklist-clear failed after exclude genre test"
+    exit 1
+fi
+
+BLACKLIST_EXCLUDE_TITLE="$(python3 "$HELPER" blacklist-add --title "!:Kurz")"
+if ! echo "$BLACKLIST_EXCLUDE_TITLE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add for negated title failed"
+    echo "$BLACKLIST_EXCLUDE_TITLE"
+    exit 1
+fi
+SEARCH_BLACKLIST_EXCLUDE_TITLE="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_EXCLUDE_TITLE" | jq -e '.status == "ok" and .count == 2 and all(.results[]; (.title | test("Kurz")))' >/dev/null; then
+    echo "ERROR: negated title should keep matching title entries when mode is hide"
+    echo "$SEARCH_BLACKLIST_EXCLUDE_TITLE"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: blacklist-clear failed after exclude title test"
+    exit 1
+fi
+
+BLACKLIST_EXCLUDE_THEME_TITLE="$(python3 "$HELPER" blacklist-add --theme-title "!:kurz")"
+if ! echo "$BLACKLIST_EXCLUDE_THEME_TITLE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add for negated theme-title failed"
+    echo "$BLACKLIST_EXCLUDE_THEME_TITLE"
+    exit 1
+fi
+SEARCH_BLACKLIST_EXCLUDE_THEME_TITLE="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_EXCLUDE_THEME_TITLE" | jq -e '.status == "ok" and .count == 2 and all(.results[]; (.title | test("Kurz")))' >/dev/null; then
+    echo "ERROR: negated theme-title should invert match results"
+    echo "$SEARCH_BLACKLIST_EXCLUDE_THEME_TITLE"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: blacklist-clear failed after exclude theme-title test"
+    exit 1
+fi
+
+BLACKLIST_EXCLUDE_TOPIC_EXACT="$(python3 "$HELPER" blacklist-add --topic "!:Thema" --topic-exact true)"
+if ! echo "$BLACKLIST_EXCLUDE_TOPIC_EXACT" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add for negated exact topic failed"
+    echo "$BLACKLIST_EXCLUDE_TOPIC_EXACT"
+    exit 1
+fi
+SEARCH_BLACKLIST_EXCLUDE_TOPIC_EXACT="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_EXCLUDE_TOPIC_EXACT" | jq -e '.status == "ok" and .count == 3' >/dev/null; then
+    echo "ERROR: negated exact topic should keep entries with non-matching topic"
+    echo "$SEARCH_BLACKLIST_EXCLUDE_TOPIC_EXACT"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: blacklist-clear failed after exclude topic exact test"
+    exit 1
+fi
+
+BLACKLIST_EXCLUDE_TOPIC_PARTIAL="$(python3 "$HELPER" blacklist-add --topic "!:the" --topic-exact false)"
+if ! echo "$BLACKLIST_EXCLUDE_TOPIC_PARTIAL" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: blacklist-add for negated partial topic failed"
+    echo "$BLACKLIST_EXCLUDE_TOPIC_PARTIAL"
+    exit 1
+fi
+SEARCH_BLACKLIST_EXCLUDE_TOPIC_PARTIAL="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_EXCLUDE_TOPIC_PARTIAL" | jq -e '.status == "ok" and .count == 0 and (.results | length) == 0' >/dev/null; then
+    echo "ERROR: negated partial topic with topic-exact=false should only match expected entries"
+    echo "$SEARCH_BLACKLIST_EXCLUDE_TOPIC_PARTIAL"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: blacklist-clear failed after exclude topic partial test"
+    exit 1
+fi
+
+BLACKLIST_REJECT_REGEX="$(python3 "$HELPER" blacklist-add --sender "#:wdr" 2>&1 || true)"
+if ! echo "$BLACKLIST_REJECT_REGEX" | jq -e '.status == "error" and (.message | test("not supported"))' >/dev/null; then
+    echo "ERROR: blacklist-add should reject regex prefix '#:' with JSON error"
+    echo "$BLACKLIST_REJECT_REGEX"
+    exit 1
+fi
+
+BLACKLIST_REJECT_COMBINED_REGEX="$(python3 "$HELPER" blacklist-add --genre "!:#wdr" 2>&1 || true)"
+if ! echo "$BLACKLIST_REJECT_COMBINED_REGEX" | jq -e '.status == "error" and (.message | test("not supported"))' >/dev/null; then
+    echo "ERROR: blacklist-add should reject combined regex prefix '!:#' with JSON error"
+    echo "$BLACKLIST_REJECT_COMBINED_REGEX"
+    exit 1
+fi
+
+BLACKLIST_EMPTY_NEGATED_TITLE="$(python3 "$HELPER" blacklist-add --title "!:" 2>&1 || true)"
+if ! echo "$BLACKLIST_EMPTY_NEGATED_TITLE" | jq -e '.status == "error" and .message == "at least one blacklist field is required"' >/dev/null; then
+    echo "ERROR: blacklist-add should reject empty negated title value"
+    echo "$BLACKLIST_EMPTY_NEGATED_TITLE"
+    exit 1
+fi
+BLACKLIST_REMOVE_EMPTY_NEGATED_TITLE="$(python3 "$HELPER" blacklist-remove --title "!:" 2>&1 || true)"
+if ! echo "$BLACKLIST_REMOVE_EMPTY_NEGATED_TITLE" | jq -e '.status == "error" and .message == "at least one blacklist field is required"' >/dev/null; then
+    echo "ERROR: blacklist-remove should reject empty negated title value"
+    echo "$BLACKLIST_REMOVE_EMPTY_NEGATED_TITLE"
+    exit 1
+fi
+
+BLACKLIST_HIDE_ONLY_TITLE="$(python3 "$HELPER" blacklist-add --title "!:Zweite")"
+if ! echo "$BLACKLIST_HIDE_ONLY_TITLE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: whitelist/only-mode setup for title negation failed"
+    echo "$BLACKLIST_HIDE_ONLY_TITLE"
+    exit 1
+fi
+SEARCH_BLACKLIST_ONLY_TITLE="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_ONLY_TITLE" | jq -e '.status == "ok" and .count == 2 and all(.results[]; .title != "Zweite Kurzmeldung")' >/dev/null; then
+    echo "ERROR: blacklist-only mode should return non-negated title matches"
+    echo "$SEARCH_BLACKLIST_ONLY_TITLE"
+    exit 1
+fi
+SEARCH_BLACKLIST_HIDE_TITLE="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_HIDE_TITLE" | jq -e '.status == "ok" and .count == 1 and any(.results[]; .title == "Zweite Kurzmeldung")' >/dev/null; then
+    echo "ERROR: blacklist-hide mode should hide negated-match results"
+    echo "$SEARCH_BLACKLIST_HIDE_TITLE"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: blacklist-clear failed after hide/only topic validation"
+    exit 1
+fi
+
 if python3 "$HELPER" blacklist-add >/dev/null 2>&1; then
     echo "ERROR: blacklist-add without fields should fail"
     exit 1

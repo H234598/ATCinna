@@ -458,7 +458,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             active.push("Podcast:keine");
         }
         const blacklistMode = this._getBlacklistMode();
-        const modeText = blacklistMode === "hide" ? "BL: ausblenden" : blacklistMode === "only" ? "BL: nur" : "BL: aus";
+        const modeText = blacklistMode === "hide" ? "BL: ausblenden" : blacklistMode === "only" ? "BL: Whitelist" : "BL: aus";
         this._filterSummaryItem.label.text = active.length
             ? `Filter: ${active.join(" · ")} · ${modeText}`
             : `Filter: keine · ${modeText}`;

@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.22`.
+- `VERSION` is `0.3.24`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -60,6 +60,21 @@
 - [x] **Verification**
   - Extend `scripts/check.sh` and `scripts/validate-installed.sh` for `blacklist-add/remove/clean/undo` with `--theme-title` and matching assertions.
 
+### Task 24: Add Blacklist Negation (`!:`) and Security Guardrails (0.3.24)
+
+- [x] **Negierte Feldwerte**
+  - Enable `!:` as per-field negation in blacklist matching for `sender`, `genre`, `topic`, `title`, and `theme_title`.
+  - Keep conjunction semantics across all set fields.
+- [x] **`topic_exact` + Negation**
+  - Keep exact/Substring matching for `topic`, and invert the match result for negated expressions.
+- [x] **Regex-Sicherheit**
+  - Reject `#:...` and `!:#...` directly at `blacklist-add` with JSON-`status: error`.
+  - Keep existing runtime behavior otherwise; no regex execution path for blacklist.
+- [x] **UX/Docs/Validation**
+  - Update blacklist dialog hint for `!:` and unsupported regex prefix.
+  - Update applet/schema wording from `only` to Whitelist/Invers.
+  - Extend `scripts/check.sh` and `scripts/validate-installed.sh` for negation-path tests and regex rejection.
+
 ### ATPlayer Parity Audit
 
 ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, a durable download queue with several ATPlayer-style actions including `Download ändern`, history, favorites, optional GTK dialogs, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
@@ -67,7 +82,7 @@ ATCinna is not yet feature-complete against ATPlayer. It must not be treated as 
 Known parity gaps from `/home/teladi/ATPlayer`:
 
 - Download queue management: ATPlayer has durable queue concepts and UI actions for start/stop/edit/delete/reorder/cleanup; ATCinna now has enqueue/list/run-next/run-all/cancel/clear/update/remove/undo/prefer/put-back/open-directory/copy-url/open-file/trash-file workflows, but not yet the table-style selection/reset workflows.
-- Blacklist management and filter profiles: ATCinna now has direct context-menu Blacklist adds, search modes, a first Blacklist editor, exact/active toggles, undo/clean/clear, and first Filterprofile management, but still lacks Whitelist wording parity, exclude-rule semantics, or legacy migration.
+- Blacklist management and filter profiles: ATCinna now has direct context-menu Blacklist adds, search modes, Whitelist/Invers wording for `only`, a first Blacklist editor, exact/active toggles, `theme_title`, `!:` exclude-rule semantics, undo/clean/clear, and first Filterprofile management, but still lacks legacy migration and deeper ATPlayer table workflows.
 - Rich audio-list actions: ATPlayer has table/context-menu workflows such as metadata/info dialogs and broader audio actions; ATCinna exposes only compact popup actions.
 - Full settings/config migration: ATPlayer has a multi-pane configuration model and legacy config data; ATCinna only uses Cinnamon applet settings and has no legacy import path.
 

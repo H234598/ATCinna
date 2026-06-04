@@ -367,6 +367,67 @@ if ! python3 "$HELPER" blacklist-remove --theme-title "ZWEITE KURZ" >/dev/null; 
     exit 1
 fi
 
+BLACKLIST_EXCLUDE_GENRE_INSTALL="$(python3 "$HELPER" blacklist-add --genre "!:Genre")"
+if ! echo "$BLACKLIST_EXCLUDE_GENRE_INSTALL" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: installed helper blacklist-add with negated genre failed"
+    echo "$BLACKLIST_EXCLUDE_GENRE_INSTALL"
+    exit 1
+fi
+SEARCH_BLACKLIST_EXCLUDE_GENRE_INSTALL="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_EXCLUDE_GENRE_INSTALL" | jq -e '.status == "ok" and .count == 3' >/dev/null; then
+    echo "ERROR: installed helper negated genre blacklist matching failed"
+    echo "$SEARCH_BLACKLIST_EXCLUDE_GENRE_INSTALL"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: installed helper blacklist-clear failed after negated genre validation"
+    exit 1
+fi
+
+BLACKLIST_REJECT_REGEX_INSTALL="$(python3 "$HELPER" blacklist-add --sender "#:wdr" 2>&1 || true)"
+if ! echo "$BLACKLIST_REJECT_REGEX_INSTALL" | jq -e '.status == "error" and (.message | test("not supported"))' >/dev/null; then
+    echo "ERROR: installed helper blacklist-add should reject regex prefix '#:'"
+    echo "$BLACKLIST_REJECT_REGEX_INSTALL"
+    exit 1
+fi
+
+BLACKLIST_REJECT_COMBINED_REGEX_INSTALL="$(python3 "$HELPER" blacklist-add --genre "!:#wdr" 2>&1 || true)"
+if ! echo "$BLACKLIST_REJECT_COMBINED_REGEX_INSTALL" | jq -e '.status == "error" and (.message | test("not supported"))' >/dev/null; then
+    echo "ERROR: installed helper blacklist-add should reject regex prefix '!:#'"
+    echo "$BLACKLIST_REJECT_COMBINED_REGEX_INSTALL"
+    exit 1
+fi
+
+BLACKLIST_EMPTY_NEGATED_INSTALL="$(python3 "$HELPER" blacklist-add --genre "!:" 2>&1 || true)"
+if ! echo "$BLACKLIST_EMPTY_NEGATED_INSTALL" | jq -e '.status == "error" and .message == "at least one blacklist field is required"' >/dev/null; then
+    echo "ERROR: installed helper blacklist-add should reject empty negated value"
+    echo "$BLACKLIST_EMPTY_NEGATED_INSTALL"
+    exit 1
+fi
+
+BLACKLIST_MODE_HIDE_ONLY_INSTALL="$(python3 "$HELPER" blacklist-add --title "!:Zweite Kurz")"
+if ! echo "$BLACKLIST_MODE_HIDE_ONLY_INSTALL" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: installed helper blacklist negation setup for hide/only failed"
+    echo "$BLACKLIST_MODE_HIDE_ONLY_INSTALL"
+    exit 1
+fi
+SEARCH_BLACKLIST_ONLY_INSTALL="$(python3 "$HELPER" search --query "" --blacklist-mode only)"
+if ! echo "$SEARCH_BLACKLIST_ONLY_INSTALL" | jq -e '.status == "ok" and .count == 2 and all(.results[]; .title != "Zweite Kurzmeldung")' >/dev/null; then
+    echo "ERROR: installed helper blacklist mode only failed for negated title rule"
+    echo "$SEARCH_BLACKLIST_ONLY_INSTALL"
+    exit 1
+fi
+SEARCH_BLACKLIST_HIDE_INSTALL="$(python3 "$HELPER" search --query "" --blacklist-mode hide)"
+if ! echo "$SEARCH_BLACKLIST_HIDE_INSTALL" | jq -e '.status == "ok" and .count == 1 and any(.results[]; .title == "Zweite Kurzmeldung")' >/dev/null; then
+    echo "ERROR: installed helper blacklist mode hide failed for negated title rule"
+    echo "$SEARCH_BLACKLIST_HIDE_INSTALL"
+    exit 1
+fi
+if ! python3 "$HELPER" blacklist-clear >/dev/null; then
+    echo "ERROR: installed helper blacklist-clear failed after hide/only validation"
+    exit 1
+fi
+
 SEARCH_DIALOG_SELF_TEST="$(python3 "$SEARCH_DIALOG" --self-test)"
 if ! echo "$SEARCH_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean")' >/dev/null; then
     echo "ERROR: installed search dialog self-test failed"

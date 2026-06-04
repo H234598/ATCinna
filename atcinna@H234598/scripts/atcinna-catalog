@@ -138,6 +138,23 @@ def _normalize_blacklist_field(value):
     return _normalize_entry_value(value).lower()
 
 
+def _strip_blacklist_negation(value):
+    normalized = _normalize_entry_value(value).strip().lower()
+    if normalized.startswith("!:"):
+        return normalized[2:].strip(), True
+    return normalized, False
+
+
+def _blacklist_expression_has_value(value):
+    expression, _ = _strip_blacklist_negation(value)
+    return bool(expression)
+
+
+def _is_unsupported_blacklist_regex(value):
+    normalized = _normalize_entry_value(value).strip().lower()
+    return normalized.startswith("#:") or normalized.startswith("!:#")
+
+
 def _normalize_rule(rule):
     if hasattr(rule, "get"):
         getter = lambda key, default="": rule.get(key, default)
@@ -466,7 +483,21 @@ def _list_store(path):
 def action_blacklist_add(args):
     # pylint: disable=too-many-locals
     rule = _normalize_rule(args)
-    if not (rule["sender"] or rule["genre"] or rule["topic"] or rule["title"] or rule["theme_title"]):
+    if (
+        _is_unsupported_blacklist_regex(rule["sender"]) or
+        _is_unsupported_blacklist_regex(rule["genre"]) or
+        _is_unsupported_blacklist_regex(rule["topic"]) or
+        _is_unsupported_blacklist_regex(rule["title"]) or
+        _is_unsupported_blacklist_regex(rule["theme_title"])
+    ):
+        die("blacklist regex prefix '#:' is not supported")
+    if not (
+        _blacklist_expression_has_value(rule["sender"]) or
+        _blacklist_expression_has_value(rule["genre"]) or
+        _blacklist_expression_has_value(rule["topic"]) or
+        _blacklist_expression_has_value(rule["title"]) or
+        _blacklist_expression_has_value(rule["theme_title"])
+    ):
         die("at least one blacklist field is required")
 
     active = _parse_bool_arg(args.active, "active") if args.active is not None else True
@@ -507,7 +538,13 @@ def action_blacklist_remove(args):
     target_theme_title = target_rule["theme_title"]
     target_active = _parse_bool_arg(args.active, "active") if args.active is not None else None
     target_topic_exact = _parse_bool_arg(args.topic_exact, "topic-exact") if args.topic_exact is not None else None
-    if not (target_sender or target_genre or target_topic or target_title or target_theme_title):
+    if not (
+        _blacklist_expression_has_value(target_sender) or
+        _blacklist_expression_has_value(target_genre) or
+        _blacklist_expression_has_value(target_topic) or
+        _blacklist_expression_has_value(target_title) or
+        _blacklist_expression_has_value(target_theme_title)
+    ):
         die("at least one blacklist field is required")
 
     path = _blacklist_path()
@@ -731,11 +768,11 @@ def _normalize_blacklist_entry(entry):
 
 def _blacklist_rule_is_empty(rule):
     return not (
-        _normalize_blacklist_field(rule.get("sender"))
-        or _normalize_blacklist_field(rule.get("genre"))
-        or _normalize_blacklist_field(rule.get("topic"))
-        or _normalize_blacklist_field(rule.get("title"))
-        or _normalize_blacklist_field(rule.get("theme_title"))
+        _blacklist_expression_has_value(rule.get("sender"))
+        or _blacklist_expression_has_value(rule.get("genre"))
+        or _blacklist_expression_has_value(rule.get("topic"))
+        or _blacklist_expression_has_value(rule.get("title"))
+        or _blacklist_expression_has_value(rule.get("theme_title"))
     )
 
 
@@ -762,24 +799,30 @@ def _rule_matches_result(rule, item):
         "title": _normalize_blacklist_field(item.get("title")),
         "theme_title": "",
     }
-    for key, rule_value in rule.items():
-        if key == "timestamp":
-            continue
-        if key not in fields:
-            continue
+    topic_exact = _normalize_bool_value(rule.get("topic_exact"), True)
+    for key in ("sender", "genre", "topic", "title", "theme_title"):
+        rule_value = _normalize_blacklist_field(rule.get(key, ""))
         if not rule_value:
             continue
+
+        rule_expression, is_negated = _strip_blacklist_negation(rule_value)
+        if not rule_expression:
+            continue
+
         item_value = fields.get(key, "")
-        if key == "topic" and _normalize_bool_value(rule.get("topic_exact"), True):
-            matches = item_value == rule_value
-        elif key == "topic":
-            matches = rule_value in item_value
+        if key == "topic":
+            if topic_exact:
+                matches = item_value == rule_expression
+            else:
+                matches = rule_expression in item_value
         elif key == "theme_title":
             topic_text = fields.get("topic", "")
             title_text = fields.get("title", "")
-            matches = rule_value in topic_text or rule_value in title_text
+            matches = rule_expression in topic_text or rule_expression in title_text
         else:
-            matches = rule_value in item_value
+            matches = rule_expression in item_value
+        if is_negated:
+            matches = not matches
         if not matches:
             return False
     return True

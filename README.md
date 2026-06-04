@@ -23,7 +23,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - ATPlayer-nahe Filtererweiterung: zusätzliche Felder `title`, `theme_title`, `somewhere`, `max_days`, `min_duration`, `max_duration`, `only_new`, `only_bookmarks`, `hide_history` und dreistufiges `podcast_mode` (`all`, `only`, `none`).
 - ATPlayer-nahe Filterprofile: Applet-Menü **Filterprofile** mit Speichern/Laden sowie GTK-Verwaltung fuer Neu, Überschreiben, Umbenennen, Löschen, Sortieren und Standardprofile.
 - ATPlayer-Parität ist noch nicht vollständig; diese Filter- und Profil-Erweiterungen decken nur einen Teil der kompletten ATPlayer-Funktionalität ab.
-- Blacklist-Modus (`blacklist-mode`) fuer Suche: aus, passende Treffer ausblenden oder nur Blacklist-Treffer anzeigen.
+- Blacklist-Modus (`blacklist-mode`) fuer Suche: aus, passende Treffer ausblenden oder nur Whitelist/Invers-Treffer anzeigen.
 - Play-Aktion über `xdg-open`.
 - Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert.
 - Website-Aktion (falls vorhanden).
@@ -37,6 +37,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen besitzen zusätzlich das Untermenü **Filter** mit filtern- und kombinierten Filteraktionen im ATPlayer-Stil:
   Sender, Genre, Thema, Titel, Sender+Thema sowie Sender+Titel.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen bieten ATPlayer-ähnliche Blacklist-Aktionen für Audio, Sender/Genre/Thema, Sender/Thema, Thema, Titel sowie das neue `theme_title`-Konstrukt „Thema oder Titel“.
+- Blacklist-Regeln unterstützen das Negationspräfix `!:` (Ausschluss auf Feldebene). Das Regex-Präfix `#:` ist aus Sicherheitsgründen ausgeschlossen.
 - Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
 - Das Script `atcinna@H234598/scripts/atcinna-blacklist-dialog` nutzt `atcinna-catalog` als Backend. Es listet Regeln inkl. `active`/`topic_exact`/`theme_title`, erlaubt neue Regeln anzulegen und bietet sichere Aktionen für markierte Regel-Entfernung, Undo, Putzen leerer/doppelter Regeln und Komplett-Löschung mit GTK-Bestätigung.
 - Das Script `atcinna@H234598/scripts/atcinna-queue-edit-dialog` bietet einen optionalen GTK-Dialog fuer **Download ändern** und nutzt `download-update` im Helper.
@@ -49,7 +50,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.23`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.24`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

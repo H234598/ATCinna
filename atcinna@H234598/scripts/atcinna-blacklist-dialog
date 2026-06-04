@@ -211,6 +211,13 @@ def run_dialog():
     status_label.get_style_context().add_class("dim-label")
     root.pack_start(status_label, False, False, 0)
 
+    hint_label = Gtk.Label(label="Hinweis: `!:` vor dem Suchwert bedeutet Ausschluss (z. B. `!:wdr`). Prefix `#:` wird bewusst nicht unterstützt.")
+    hint_label.set_xalign(0)
+    hint_label.set_line_wrap(True)
+    hint_label.set_line_wrap_mode(Gtk.WrapMode.WORD)
+    hint_label.get_style_context().add_class("dim-label")
+    root.pack_start(hint_label, False, False, 0)
+
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     remove_button = Gtk.Button(label="Markierte Regeln entfernen")
     undo_button = Gtk.Button(label="Undo")
