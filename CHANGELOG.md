@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.31
+
+- Trefferliste um ATPlayer-nahe Auswahl erweitert: **Alle Treffer auswählen**, **Treffer-Auswahl umkehren**, **Treffer-Auswahl zurücksetzen** und pro Treffer **Auswahl umschalten**.
+- Batch-Aktionen ergänzt: **Alle markierten Audios abspielen** und **Markierte Audios speichern**; Speichern legt die markierten Audios Java-frei in die bestehende Download-Warteschlange.
+- Source- und Installationschecks schützen Labels und Handler für die neue Treffer-Auswahl.
+- Versionssprung auf `0.3.31`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.30
 
 - ATPlayer-nahe Filteraktion **Bookmarks anzeigen** ergänzt.

@@ -321,6 +321,18 @@ for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen"
         STATUS=1
     fi
 done
+for result_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Auswahl umschalten"; do
+    if ! rg -q -F "${result_label}" "$APPLET_JS"; then
+        echo "ERROR: applet result selection label is missing: ${result_label}"
+        STATUS=1
+    fi
+done
+for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_setupResultActions" "_runResultSelectAll" "_runResultInvertSelection" "_runResultResetSelection" "_runResultToggleSelection" "_runResultPlaySelected" "_runResultSaveSelected" "_runResultBatchAction" "_getSelectedResultItems" "_resultItemKey" "_pruneResultSelection" "_updateResultSelectionActionState"; do
+    if ! rg -q -F "${result_selection_handler}" "$APPLET_JS"; then
+        echo "ERROR: applet result selection handler is missing: ${result_selection_handler}"
+        STATUS=1
+    fi
+done
 for queue_selection_handler in "_queueSelectionItems" "_queueItemsCache" "_runQueueSelectAll" "_runQueueInvertSelection" "_runQueueResetSelection" "_runQueueToggleSelection" "_runQueueCancelSelected" "_runQueueRemoveSelected" "_runQueueBatchAction" "_getSelectedQueueItems" "_queueItemKey" "_updateQueueSelectionActionState"; do
     if ! rg -q -F "${queue_selection_handler}" "$APPLET_JS"; then
         echo "ERROR: applet queue selection handler is missing: ${queue_selection_handler}"

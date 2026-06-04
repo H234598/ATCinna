@@ -222,6 +222,12 @@ for applet_label in "Als gesehen markieren" "Als ungesehen markieren"; do
         exit 1
     fi
 done
+for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
 
 if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
     echo "ERROR: helper --help failed"

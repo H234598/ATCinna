@@ -50,6 +50,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._filterSection = null;
         this._filterProfilesMenu = null;
         this._filterProfilesListSection = null;
+        this._resultSelectionItems = new Set();
+        this._resultItemsCache = [];
+        this._resultActionSelectAll = null;
+        this._resultActionInvertSelection = null;
+        this._resultActionResetSelection = null;
+        this._resultActionPlaySelected = null;
+        this._resultActionSaveSelected = null;
         this._queueSection = null;
         this._queueListSection = null;
         this._queueSelectionItems = new Set();
@@ -1188,8 +1195,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
-    _renderResults(results) {
-        this._clearResults();
+    _renderResults(results, clearRelatedSections = true) {
+        if (clearRelatedSections) {
+            this._clearResults();
+        } else {
+            this._resultsSection.removeAll();
+        }
+        this._resultItemsCache = Array.isArray(results) ? results.slice(0) : [];
+        this._pruneResultSelection();
         if (!results.length) {
             const empty = new PopupMenu.PopupMenuItem("keine Treffer");
             empty.actor.reactive = false;
@@ -1197,13 +1210,20 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             return;
         }
 
+        this._setupResultActions();
         for (const item of results) {
             const title = item.title || "";
             const sender = item.sender || "";
             const genre = item.genre || "";
             const topic = item.topic || "";
             const subtitle = [sender, genre, topic].filter(Boolean).join(" · ");
-            const entry = new PopupMenu.PopupSubMenuMenuItem(`${title}${subtitle ? ` — ${subtitle}` : ""}`);
+            const key = this._resultItemKey(item);
+            const selectionMark = key && this._resultSelectionItems.has(key) ? "[x]" : "[ ]";
+            const entry = new PopupMenu.PopupSubMenuMenuItem(`${selectionMark} ${title}${subtitle ? ` — ${subtitle}` : ""}`);
+
+            const toggleSelection = new PopupMenu.PopupMenuItem("Auswahl umschalten");
+            toggleSelection.connect("activate", () => this._runResultToggleSelection(item));
+            entry.menu.addMenuItem(toggleSelection);
 
             const play = new PopupMenu.PopupMenuItem("Abspielen (xdg-open)");
             play.connect("activate", () => this._playItem(item));
@@ -1233,6 +1253,198 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             entry.menu.addMenuItem(removeBookmark);
 
             this._resultsSection.addMenuItem(entry);
+        }
+        this._updateResultSelectionActionState();
+    }
+
+    _setupResultActions() {
+        const heading = new PopupMenu.PopupMenuItem("Treffer");
+        heading.actor.reactive = false;
+        heading.actor.add_style_class_name("atcinna-section-title");
+        this._resultsSection.addMenuItem(heading);
+
+        const selectAll = new PopupMenu.PopupMenuItem("Alle Treffer auswählen");
+        selectAll.connect("activate", () => this._runResultSelectAll());
+        this._resultsSection.addMenuItem(selectAll);
+
+        const invertSelection = new PopupMenu.PopupMenuItem("Treffer-Auswahl umkehren");
+        invertSelection.connect("activate", () => this._runResultInvertSelection());
+        this._resultsSection.addMenuItem(invertSelection);
+
+        const resetSelection = new PopupMenu.PopupMenuItem("Treffer-Auswahl zurücksetzen");
+        resetSelection.connect("activate", () => this._runResultResetSelection());
+        this._resultsSection.addMenuItem(resetSelection);
+
+        const playSelected = new PopupMenu.PopupMenuItem("Alle markierten Audios abspielen");
+        playSelected.connect("activate", () => this._runResultPlaySelected());
+        this._resultsSection.addMenuItem(playSelected);
+
+        const saveSelected = new PopupMenu.PopupMenuItem("Markierte Audios speichern");
+        saveSelected.connect("activate", () => this._runResultSaveSelected());
+        this._resultsSection.addMenuItem(saveSelected);
+
+        this._resultActionSelectAll = selectAll;
+        this._resultActionInvertSelection = invertSelection;
+        this._resultActionResetSelection = resetSelection;
+        this._resultActionPlaySelected = playSelected;
+        this._resultActionSaveSelected = saveSelected;
+    }
+
+    _runResultSelectAll() {
+        for (const item of this._resultItemsCache) {
+            const key = this._resultItemKey(item);
+            if (key) {
+                this._resultSelectionItems.add(key);
+            }
+        }
+        this._renderResults(this._resultItemsCache, false);
+        this._setStatus(`Treffer ausgewählt: ${this._getSelectedResultItems().length}`);
+    }
+
+    _runResultInvertSelection() {
+        const nextSelection = new Set();
+        for (const item of this._resultItemsCache) {
+            const key = this._resultItemKey(item);
+            if (key && !this._resultSelectionItems.has(key)) {
+                nextSelection.add(key);
+            }
+        }
+        this._resultSelectionItems = nextSelection;
+        this._renderResults(this._resultItemsCache, false);
+        this._setStatus(`Treffer ausgewählt: ${this._getSelectedResultItems().length}`);
+    }
+
+    _runResultResetSelection() {
+        this._resultSelectionItems.clear();
+        this._renderResults(this._resultItemsCache, false);
+        this._setStatus("Treffer-Auswahl zurückgesetzt");
+    }
+
+    _runResultToggleSelection(item) {
+        const key = this._resultItemKey(item);
+        if (!key) {
+            this._setStatus("Auswahl umschalten fehlgeschlagen: keine URL");
+            return;
+        }
+        if (this._resultSelectionItems.has(key)) {
+            this._resultSelectionItems.delete(key);
+        } else {
+            this._resultSelectionItems.add(key);
+        }
+        this._renderResults(this._resultItemsCache, false);
+    }
+
+    _runResultPlaySelected() {
+        this._runResultBatchAction(
+            "Alle markierten Audios abspielen",
+            this._getSelectedResultItems(),
+            (item, callback) => {
+                this._runHistoryAdd(item, () => {
+                    this._xdgOpen(item.url || "");
+                    callback(true, 1);
+                });
+            },
+            false
+        );
+    }
+
+    _runResultSaveSelected() {
+        this._runResultBatchAction(
+            "Markierte Audios speichern",
+            this._getSelectedResultItems(),
+            (item, callback) => this._runDownloadEnqueue(item, callback),
+            true
+        );
+    }
+
+    _runResultBatchAction(label, items, action, refreshQueue) {
+        if (!Array.isArray(items) || !items.length) {
+            this._setStatus(`${label}: keine Auswahl`);
+            return;
+        }
+
+        let changed = 0;
+        let failed = 0;
+        const runNext = () => {
+            if (!items.length) {
+                if (refreshQueue) {
+                    this._runQueueList();
+                }
+                if (changed > 0) {
+                    this._setStatus(`${label}: ${changed}`);
+                } else if (failed > 0) {
+                    this._setStatus(`${label}: ${failed} fehlgeschlagen`);
+                } else {
+                    this._setStatus(`${label}: keine Änderung`);
+                }
+                return;
+            }
+
+            const item = items.shift();
+            action(item, (result, value) => {
+                if (result) {
+                    const numericValue = Number(value);
+                    changed += (Number.isFinite(numericValue) ? numericValue : 0);
+                } else {
+                    failed += 1;
+                }
+                runNext();
+            });
+        };
+
+        this._setStatus(`${label}: ${items.length}`);
+        runNext();
+    }
+
+    _getSelectedResultItems() {
+        if (!this._resultItemsCache.length) {
+            return [];
+        }
+        return this._resultItemsCache
+            .filter((item) => {
+                const key = this._resultItemKey(item);
+                return key && this._resultSelectionItems.has(key);
+            })
+            .slice(0, 20);
+    }
+
+    _resultItemKey(item) {
+        const url = this._toTrimmed(item && item.url ? item.url : "");
+        if (url) {
+            return `url:${url}`;
+        }
+        return "";
+    }
+
+    _pruneResultSelection() {
+        const visibleKeys = new Set();
+        for (const item of this._resultItemsCache) {
+            const key = this._resultItemKey(item);
+            if (key) {
+                visibleKeys.add(key);
+            }
+        }
+        this._resultSelectionItems = new Set([...this._resultSelectionItems].filter((key) => visibleKeys.has(key)));
+    }
+
+    _updateResultSelectionActionState() {
+        const selectableCount = this._resultItemsCache.filter((item) => this._resultItemKey(item)).length;
+        const visibleSelectionCount = this._getSelectedResultItems().length;
+        const hasSelection = visibleSelectionCount > 0;
+        if (this._resultActionSelectAll) {
+            this._resultActionSelectAll.setSensitive(selectableCount > 0);
+        }
+        if (this._resultActionInvertSelection) {
+            this._resultActionInvertSelection.setSensitive(selectableCount > 0);
+        }
+        if (this._resultActionResetSelection) {
+            this._resultActionResetSelection.setSensitive(hasSelection);
+        }
+        if (this._resultActionPlaySelected) {
+            this._resultActionPlaySelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionSaveSelected) {
+            this._resultActionSaveSelected.setSensitive(hasSelection);
         }
     }
 
@@ -1308,7 +1520,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._updateQueueSelectionActionState();
     }
 
-    _runDownloadEnqueue(item) {
+    _runDownloadEnqueue(item, callback = null) {
         const folder = this.downloadFolder || "";
         this._setStatus(`in Warteschlange: ${item.title || "Eintrag"}`);
         this._runHelper([
@@ -1318,18 +1530,31 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`queue-enqueue fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse(stdout || "{}");
                 if (payload.status !== "ok") {
                     this._setStatus("queue-enqueue: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
                 }
-                this._setStatus("in Warteschlange gespeichert");
-                this._runQueueList();
+                if (callback) {
+                    callback(true, 1);
+                } else {
+                    this._setStatus("in Warteschlange gespeichert");
+                    this._runQueueList();
+                }
             } catch (error) {
                 this._setStatus(`queue-enqueue ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
@@ -2859,6 +3084,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _clearResults() {
         this._resultsSection.removeAll();
+        this._resultItemsCache = [];
+        this._resultSelectionItems.clear();
         this._clearHistoryAndFavorites();
     }
 
