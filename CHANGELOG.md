@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.28
+
+- ATPlayer-nahe Bookmark-Aktionen ergänzt: Einträge bieten jetzt **Bookmarks löschen** zusätzlich zum Favoriten-Hinzufügen.
+- Favoritenbereich erhält **Alle angelegten Bookmarks löschen** und der Helper die neue atomare Aktion `bookmark-clear`.
+- Source- und Installationschecks prüfen neue Labels, Handler und `bookmark-clear` funktional.
+- Versionssprung auf `0.3.28`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.27
 
 - Audiokontext-Menüs um ATPlayer-nahe Aktion **Audio-URL kopieren** ergänzt.

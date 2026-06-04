@@ -1099,6 +1099,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             addBookmark.connect("activate", () => this._runBookmarkAdd(item));
             entry.menu.addMenuItem(addBookmark);
 
+            const removeBookmark = new PopupMenu.PopupMenuItem("Bookmarks löschen");
+            removeBookmark.connect("activate", () => this._runBookmarkRemove(item));
+            entry.menu.addMenuItem(removeBookmark);
+
             this._resultsSection.addMenuItem(entry);
         }
     }
@@ -2084,6 +2088,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             return;
         }
 
+        const clearBookmarks = new PopupMenu.PopupMenuItem("Alle angelegten Bookmarks löschen");
+        clearBookmarks.connect("activate", () => this._runBookmarkClear());
+        this._favoritesSection.addMenuItem(clearBookmarks);
+
         for (const item of entries.slice(0, 5)) {
             this._favoritesSection.addMenuItem(this._buildPlayableSubItem(item, true));
         }
@@ -2108,9 +2116,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._addBlacklistActions(row.menu, item);
 
         if (withRemoveAction) {
-            const remove = new PopupMenu.PopupMenuItem("Entfernen");
+            const remove = new PopupMenu.PopupMenuItem("Bookmarks löschen");
             remove.connect("activate", () => this._runBookmarkRemove(item));
             row.menu.addMenuItem(remove);
+        } else {
+            const removeBookmark = new PopupMenu.PopupMenuItem("Bookmarks löschen");
+            removeBookmark.connect("activate", () => this._runBookmarkRemove(item));
+            row.menu.addMenuItem(removeBookmark);
         }
 
         return row;
@@ -2589,6 +2601,28 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 this._loadBookmarks();
             } catch (error) {
                 this._setStatus(`bookmark-remove ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runBookmarkClear() {
+        this._runHelper([
+            "bookmark-clear"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`bookmark-clear fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse((stdout || "{}"));
+                if (payload.status !== "ok") {
+                    this._setStatus("bookmark-clear: unerwartete Antwort");
+                    return;
+                }
+                this._setStatus(`Bookmarks gelöscht: ${payload.removed || 0}`);
+                this._loadBookmarks();
+            } catch (error) {
+                this._setStatus(`bookmark-clear ungültige Antwort: ${error.message}`);
             }
         });
     }

@@ -271,6 +271,12 @@ for helper_action in filter-profile-list filter-profile-get filter-profile-next-
         STATUS=1
     fi
 done
+for helper_action in bookmark-add bookmark-remove bookmark-clear bookmark-list; do
+    if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
+        echo "ERROR: helper bookmark action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F -- "--active" "$HELPER"; then
     echo "ERROR: blacklist-add action is missing --active"
     STATUS=1
@@ -318,6 +324,12 @@ fi
 for info_label in "Audioinformation anzeigen" "Audio-URL kopieren" "Titel in die Zwischenablage kopieren" "Genre in die Zwischenablage kopieren" "Thema in die Zwischenablage kopieren"; do
     if ! rg -q -F "${info_label}" "$APPLET_JS"; then
         echo "ERROR: applet metadata action label is missing: ${info_label}"
+        STATUS=1
+    fi
+done
+for bookmark_label in "Zu Favoriten hinzufügen" "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; do
+    if ! rg -q -F "${bookmark_label}" "$APPLET_JS"; then
+        echo "ERROR: applet bookmark action label is missing: ${bookmark_label}"
         STATUS=1
     fi
 done
@@ -421,6 +433,10 @@ if ! rg -q -F '_runQueueTrashFile(item)' "$APPLET_JS"; then
 fi
 if ! rg -q -F '_runBlacklistAdd' "$APPLET_JS"; then
     echo "ERROR: applet blacklist action handler is missing"
+    STATUS=1
+fi
+if ! rg -q -F '_runBookmarkClear' "$APPLET_JS"; then
+    echo "ERROR: applet bookmark clear handler is missing"
     STATUS=1
 fi
 BLACKLIST_ACTION_CALLS="$(rg -c -F '_addBlacklistActions' "$APPLET_JS" || true)"
@@ -1371,6 +1387,17 @@ BOOKMARK_REMOVE_FALSE="$(python3 "$HELPER" bookmark-remove --url "https://exampl
 if ! echo "$BOOKMARK_REMOVE_FALSE" | jq -e '.status == "ok" and .removed == false' >/dev/null; then
     echo "ERROR: bookmark-remove should not report removed for missing URL"
     echo "$BOOKMARK_REMOVE_FALSE"
+    exit 1
+fi
+
+BOOKMARK_CLEAR="$(python3 "$HELPER" bookmark-clear)"
+if ! echo "$BOOKMARK_CLEAR" | jq -e '.status == "ok" and .removed >= 1' >/dev/null; then
+    echo "ERROR: bookmark-clear should remove existing bookmarks"
+    echo "$BOOKMARK_CLEAR"
+    exit 1
+fi
+if ! jq -e '.status == "ok" and .count == 0 and (.results | length) == 0' <<<"$(python3 "$HELPER" bookmark-list)" >/dev/null; then
+    echo "ERROR: bookmark-clear should leave bookmark list empty"
     exit 1
 fi
 

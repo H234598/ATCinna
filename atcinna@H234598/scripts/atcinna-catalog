@@ -949,6 +949,16 @@ def action_bookmark_remove(args):
     print(json.dumps({"status": "ok", "removed": bool(removed)}))
 
 
+def action_bookmark_clear(args):
+    path = data_dir() / "bookmarks.json"
+    with _store_lock(path):
+        entries = _load_list(path)
+        removed = len(entries)
+        if removed:
+            _store_list(path, [])
+    print(json.dumps({"status": "ok", "removed": removed}))
+
+
 def action_bookmark_list(args):
     _list_store(data_dir() / "bookmarks.json")
 
@@ -1818,6 +1828,8 @@ def parse_args():
     bookmark_remove = sub.add_parser("bookmark-remove", help="Remove bookmark by URL")
     bookmark_remove.add_argument("--url", required=True, help="Content URL")
 
+    sub.add_parser("bookmark-clear", help="Remove all bookmarks")
+
     bookmark_list = sub.add_parser("bookmark-list", help="List bookmark entries")
 
     download = sub.add_parser("download")
@@ -1944,6 +1956,8 @@ def main():
         action_bookmark_add(args)
     elif args.action == "bookmark-remove":
         action_bookmark_remove(args)
+    elif args.action == "bookmark-clear":
+        action_bookmark_clear(args)
     elif args.action == "bookmark-list":
         action_bookmark_list(args)
     else:

@@ -206,6 +206,12 @@ if ! rg -q -F "Audio-URL kopieren" "$APPLET_JS"; then
     echo "ERROR: installed applet label is missing: Audio-URL kopieren"
     exit 1
 fi
+for applet_label in "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
 
 if ! python3 "$HELPER" --help >"$TMP_DIR/help.out" 2>&1; then
     echo "ERROR: helper --help failed"
@@ -324,6 +330,20 @@ if ! echo "$SEARCH_ONLY_BOOKMARKS" | jq -e '.status == "ok" and .count == 1 and 
     echo "$SEARCH_ONLY_BOOKMARKS"
     exit 1
 fi
+
+BOOKMARK_CLEAR_INSTALL="$(python3 "$HELPER" bookmark-clear)"
+if ! echo "$BOOKMARK_CLEAR_INSTALL" | jq -e '.status == "ok" and .removed == 1' >/dev/null; then
+    echo "ERROR: installed helper bookmark-clear validation failed"
+    echo "$BOOKMARK_CLEAR_INSTALL"
+    exit 1
+fi
+if ! python3 "$HELPER" bookmark-list | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: installed helper bookmark list should be empty after bookmark-clear"
+    exit 1
+fi
+cat > "$XDG_DATA_HOME/atcinna@H234598/bookmarks.json" <<'JSON'
+[{"url":"https://example.com/stream"}]
+JSON
 
 SEARCH_HIDE_HISTORY="$(python3 "$HELPER" search --query "Kurz" --hide-history --max 2)"
 if ! echo "$SEARCH_HIDE_HISTORY" | jq -e '.status == "ok" and .count == 1 and .results[0].url == "https://example.com/stream"' >/dev/null; then
