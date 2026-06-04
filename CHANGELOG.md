@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.6
+
+- Alternative Task A ergänzt: „Suche öffnen“-Popup-Aktion im Applet, die ein optionales externes
+  GTK3-Dialogskript startet.
+- Neues Skript `atcinna@H234598/scripts/atcinna-search-dialog` mit
+  `--self-test`-Modus, Suchoberfläche, sowie Play/Webseite/Download-Aktionen über
+  sichere Argumentlisten.
+- Check- und Installvalidierung prüfen den Dialog, ohne GTK3 zur Pflichtabhängigkeit
+  des Applets zu machen.
+- Versionssprung auf 0.3.6 für die GTK-Suchdialog-Variante.
+
 ## 0.3.5
 
 - Kleine read-only D-Bus-Schnittstelle hinzugefügt: `org.Cinnamon.Applets.ATCinna` unter dem Objektpfad `/org/Cinnamon/Applets/ATCinna` mit den Methoden `Ping()` und `GetStatus()`.

@@ -8,6 +8,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 
 - Panel-Anzeige mit Icon/Label.
 - Popup-Menü mit Statuszeile, In-Popup-Suchfeld, Refresh-Knopf und Ergebnisliste.
+- Popup-Aktion „Suche öffnen“ für den optionalen externen GTK-Suchdialog.
 - Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
 - Erweiterte Teiltreffer-Filter (`sender-filter`, `genre-filter`, `topic-filter`) im Popup mit kompaktem Status (`Filter: ...`) und Schnellaktion „Filter löschen“.
@@ -17,6 +18,8 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Favoriten: Einträge können pro Treffer als Favorit gespeichert, in der Liste angezeigt und wieder entfernt werden.
 - Unterhalb der Treffer werden zusätzlich die letzten Einträge aus dem Verlauf sowie Favoriten (je max. 5) als kompakte Untermenüs gezeigt.
 - Download per sicherem Helper mit `curl` in konfigurierbaren Zielordner.
+- Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
+- Headless-Selbsttest für den Dialog: `python3 atcinna@H234598/scripts/atcinna-search-dialog --self-test` meldet `gtk3: true/false`; das Applet bleibt auch ohne GTK3 über die interne Popup-Suche nutzbar.
 
 ## Installation (lokal)
 
@@ -25,7 +28,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.4`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.6`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

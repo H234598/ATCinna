@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APPLET_DIR="$SCRIPT_DIR/../atcinna@H234598"
 APPLET_UUID="atcinna@H234598"
 HELPER="$APPLET_DIR/scripts/atcinna-catalog"
+SEARCH_DIALOG="$APPLET_DIR/scripts/atcinna-search-dialog"
 APPLET_JS="$APPLET_DIR/applet.js"
 SETTINGS_SCHEMA="$APPLET_DIR/settings-schema.json"
 METADATA_JSON="$APPLET_DIR/metadata.json"
@@ -51,6 +52,10 @@ require_command tar || exit 1
 
 if [ ! -x "$HELPER" ]; then
     echo "ERROR: helper is not executable: $HELPER"
+    exit 1
+fi
+if [ ! -x "$SEARCH_DIALOG" ]; then
+    echo "ERROR: search dialog is not executable: $SEARCH_DIALOG"
     exit 1
 fi
 
@@ -105,6 +110,10 @@ if ! python3 -m py_compile "$HELPER"; then
     echo "ERROR: py_compile failed for helper"
     exit 1
 fi
+if ! python3 -m py_compile "$SEARCH_DIALOG"; then
+    echo "ERROR: py_compile failed for search dialog"
+    exit 1
+fi
 
 export XDG_DATA_HOME="$TMP_DIR/data"
 
@@ -124,6 +133,13 @@ SEARCH_JSON="$(python3 "$HELPER" search --query "Kurz" --max 1)"
 if ! echo "$SEARCH_JSON" | jq -e '.status == "ok" and .count >= 1' >/dev/null; then
     echo "ERROR: search validation failed for fixture"
     echo "$SEARCH_JSON"
+    exit 1
+fi
+
+SEARCH_DIALOG_SELF_TEST="$(python3 "$SEARCH_DIALOG" --self-test)"
+if ! echo "$SEARCH_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean")' >/dev/null; then
+    echo "ERROR: search dialog self-test failed"
+    echo "$SEARCH_DIALOG_SELF_TEST"
     exit 1
 fi
 
@@ -396,6 +412,10 @@ if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
         echo "ERROR: install-local did not place executable helper"
         exit 1
     fi
+    if [ ! -x "$TMP_DIR/$APPLET_UUID/scripts/atcinna-search-dialog" ]; then
+        echo "ERROR: install-local did not place executable search dialog"
+        exit 1
+    fi
     PACKAGE_DIST="$TMP_DIR/dist"
     if ! "$SCRIPT_DIR/package.sh" --skip-check --dist-dir "$PACKAGE_DIST"; then
         echo "ERROR: package.sh failed during self-test"
@@ -409,6 +429,10 @@ if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
     PACKAGE_LIST="$(tar -tzf "$PACKAGE_FILE")"
     if ! grep -qx "$APPLET_UUID/metadata.json" <<<"$PACKAGE_LIST"; then
         echo "ERROR: package artifact missing metadata.json"
+        exit 1
+    fi
+    if ! grep -qx "$APPLET_UUID/scripts/atcinna-search-dialog" <<<"$PACKAGE_LIST"; then
+        echo "ERROR: package artifact missing search dialog"
         exit 1
     fi
     if grep -Eq '(^|/)(\\.git|dist|__pycache__)(/|$)|\\.pyc$|~$' <<<"$PACKAGE_LIST"; then

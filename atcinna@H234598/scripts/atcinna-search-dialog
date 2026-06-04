@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from urllib.parse import urlparse
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+HELPER_PATH = SCRIPT_DIR / "atcinna-catalog"
+
+
+def _run_helper(args):
+    proc = subprocess.run(
+        [str(HELPER_PATH), *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def _is_http_url(value):
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
+def _run_search(query, max_hits):
+    status, stdout, stderr = _run_helper(["search", f"--query={query}", f"--max={max_hits}"])
+    if status != 0:
+        raise RuntimeError(stderr or "helper failed")
+
+    payload = json.loads(stdout or "{}")
+    if payload.get("status") != "ok":
+        raise RuntimeError(payload.get("message") or "helper returned error")
+    return payload.get("results", [])
+
+
+def _xdg_open(uri):
+    if not _is_http_url(uri):
+        raise ValueError("unzulässiges URL-Schema")
+    proc = subprocess.run(
+        ["xdg-open", uri],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError((proc.stderr or proc.stdout or "xdg-open failed").strip())
+
+
+def _download(url, folder, title):
+    if not _is_http_url(url):
+        raise ValueError("unzulässiges URL-Schema")
+    status, stdout, stderr = _run_helper([
+        "download",
+        f"--url={url}",
+        f"--folder={folder}",
+        f"--title={title}",
+    ])
+    if status != 0:
+        raise RuntimeError(stderr or "download failed")
+    return json.loads(stdout or "{}")
+
+
+def _self_test():
+    gtk_available = True
+    gtk_error = ""
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        gtk_available = False
+        gtk_error = str(exc)
+
+    payload = {
+        "status": "ok",
+        "helper": str(HELPER_PATH),
+        "gtk3": gtk_available,
+        "python": sys.executable,
+    }
+    if gtk_error:
+        payload["gtk_error"] = gtk_error
+
+    if not HELPER_PATH.is_file() or not os.access(HELPER_PATH, os.X_OK):
+        payload["status"] = "error"
+        payload["message"] = "helper not executable"
+        print(json.dumps(payload, ensure_ascii=False))
+        return 1
+
+    try:
+        _run_search("", 1)
+    except Exception as exc:
+        payload["status"] = "error"
+        payload["message"] = str(exc)
+        print(json.dumps(payload, ensure_ascii=False))
+        return 1
+
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
+def _build_row(item, download_folder, gtk_module, status_label):
+    Gtk = gtk_module
+    row = Gtk.ListBoxRow()
+    root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    row.add(root)
+
+    text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    title = item.get("title") or "Unbekannter Titel"
+    details = " · ".join(
+        value for value in [item.get("sender", ""), item.get("genre", ""), item.get("topic", "")]
+        if value
+    )
+
+    title_label = Gtk.Label(label=title, xalign=0)
+    text_box.pack_start(title_label, False, False, 0)
+    if details:
+        detail_label = Gtk.Label(label=details, xalign=0)
+        detail_label.get_style_context().add_class("dim-label")
+        text_box.pack_start(detail_label, False, False, 0)
+    root.pack_start(text_box, True, True, 0)
+
+    url = item.get("url") or ""
+    website = item.get("website") or ""
+
+    def run_action(action, success_message):
+        try:
+            result = action()
+        except Exception as exc:
+            status_label.set_text(str(exc))
+            return
+
+        if isinstance(result, dict) and result.get("path"):
+            status_label.set_text(f"gespeichert: {result['path']}")
+        else:
+            status_label.set_text(success_message)
+
+    play = Gtk.Button(label="Abspielen")
+    play.connect("clicked", lambda _btn: run_action(lambda: _xdg_open(url), "Abspielen gestartet"))
+    root.pack_start(play, False, False, 0)
+
+    if website:
+        web = Gtk.Button(label="Webseite")
+        web.connect("clicked", lambda _btn: run_action(lambda: _xdg_open(website), "Webseite geöffnet"))
+        root.pack_start(web, False, False, 0)
+
+    download = Gtk.Button(label="Download")
+    download.connect(
+        "clicked",
+        lambda _btn: run_action(
+            lambda: _download(url, download_folder, item.get("title", "")),
+            "Download abgeschlossen",
+        ),
+    )
+    root.pack_start(download, False, False, 0)
+    return row
+
+
+def run_dialog(download_folder):
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        raise RuntimeError(f"GTK 3 not available: {exc}") from exc
+
+    if not HELPER_PATH.is_file():
+        raise RuntimeError("helper missing")
+
+    if not os.access(HELPER_PATH, os.X_OK):
+        raise RuntimeError("helper not executable")
+
+    window = Gtk.Window(title="ATCinna Suche")
+    window.set_default_size(900, 560)
+    window.set_border_width(8)
+    window.connect("destroy", Gtk.main_quit)
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    window.add(root)
+
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    root.pack_start(header, False, False, 0)
+
+    entry = Gtk.Entry()
+    entry.set_placeholder_text("Suchbegriff...")
+    header.pack_start(entry, True, True, 0)
+
+    button = Gtk.Button(label="Suchen")
+    header.pack_start(button, False, False, 0)
+
+    status = Gtk.Label(label="Bereit", xalign=0)
+    root.pack_start(status, False, False, 0)
+
+    scroller = Gtk.ScrolledWindow(vexpand=True)
+    list_box = Gtk.ListBox()
+    list_box.set_selection_mode(Gtk.SelectionMode.NONE)
+    scroller.add(list_box)
+    root.pack_start(scroller, True, True, 0)
+
+    def render_results(results):
+        for row in list_box.get_children():
+            list_box.remove(row)
+
+        if not results:
+            empty = Gtk.ListBoxRow()
+            label = Gtk.Label(label="Keine Treffer", xalign=0)
+            empty.add(label)
+            list_box.add(empty)
+            list_box.show_all()
+            return
+
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            if not _is_http_url(item.get("url", "")):
+                continue
+            row = _build_row(item, download_folder, Gtk, status)
+            list_box.add(row)
+        list_box.show_all()
+
+    def do_search():
+        query = entry.get_text()
+        try:
+            results = _run_search(query, 20)
+        except Exception as exc:
+            status.set_text(f"Suche fehlgeschlagen: {exc}")
+            render_results([])
+            return
+        status.set_text(f"{len(results)} Treffer")
+        render_results(results)
+
+    button.connect("clicked", lambda _btn: do_search())
+    entry.connect("activate", lambda _entry: do_search())
+
+    do_search()
+    window.show_all()
+    Gtk.main()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ATCinna GTK search dialog")
+    parser.add_argument("--self-test", action="store_true", help="Validate runtime dependencies headless")
+    parser.add_argument("--download-folder", default="", help="Default download folder")
+    args = parser.parse_args()
+    if args.self_test:
+        return _self_test()
+    run_dialog(args.download_folder or "")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -12,9 +12,10 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.5`.
+- `VERSION` is `0.3.6`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, `download`, `history-*`, and `bookmark-*`.
+- `atcinna@H234598/scripts/atcinna-search-dialog` provides the optional external GTK search dialog used by the "Suche öffnen" popup action; the primary in-popup search remains active when it works locally.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
 
 ### URL-Trust-Boundary-Härtung
@@ -288,7 +289,7 @@ Bump version and update changelog/runtime docs for the new read-only interface.
 
 ## Alternative Plan
 
-If Cinnamon menu input proves too fragile across local Cinnamon versions, keep the applet popup read-only and build a small external GTK search dialog launched from the applet. The applet still remains Java-free: Cinnamon JavaScript launches a Python GTK dialog, and the existing `atcinna-catalog` helper remains the catalog backend.
+If Cinnamon menu input proves too fragile across local Cinnamon versions, the applet can use a small external GTK search dialog launched from the applet. The current implementation keeps the working in-popup search and adds this dialog as an optional fallback/expanded search surface. The applet still remains Java-free: Cinnamon JavaScript launches a Python GTK dialog, and the existing `atcinna-catalog` helper remains the catalog backend.
 
 ### Alternative Task A: Keep Popup As Launcher
 
@@ -297,7 +298,7 @@ If Cinnamon menu input proves too fragile across local Cinnamon versions, keep t
 - Create: `atcinna@H234598/scripts/atcinna-search-dialog`
 - Modify: `README.md`
 
-- [ ] **Step 1: Add a popup action**
+- [x] **Step 1: Add a popup action**
 
 Add "Suche öffnen" to the applet menu and launch:
 
@@ -305,11 +306,11 @@ Add "Suche öffnen" to the applet menu and launch:
 Util.spawn([dialogPath]);
 ```
 
-- [ ] **Step 2: Implement dialog with Python GTK**
+- [x] **Step 2: Implement dialog with Python GTK**
 
-Use Python plus GI GTK bindings only if available locally. If GTK bindings are missing, keep this alternative inactive and continue with the primary plan.
+Use Python plus GI GTK bindings only if available locally. If GTK bindings are missing, keep this alternative inactive and continue with the primary in-popup search.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run:
 
