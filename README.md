@@ -24,7 +24,8 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - `./scripts/install-local.sh` (Standardziel: `~/.local/share/cinnamon/applets/atcinna@H234598`)
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
-- Paketierung (`0.3.1`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+  - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
+- Paketierung (`0.3.2`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 
 - Für manuelle Entwicklung kann das Applet auch direkt nach `~/.local/share/cinnamon/applets/atcinna@H234598` kopiert werden.
 - Cinnamon Applets-Neuladen oder Neu-Anmeldung.

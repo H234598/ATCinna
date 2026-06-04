@@ -73,7 +73,8 @@ fi
 
 for script_file in \
     "$SCRIPT_DIR/install-local.sh" \
-    "$SCRIPT_DIR/package.sh"; do
+    "$SCRIPT_DIR/package.sh" \
+    "$SCRIPT_DIR/validate-installed.sh"; do
     if [ -f "$script_file" ]; then
         if ! shellcheck "$script_file"; then
             echo "ERROR: shellcheck failed for ${script_file}"
@@ -362,15 +363,23 @@ if ! jq -e '.status == "error" and .message == "invalid URL scheme"' "$TMP_DIR/d
 fi
 
 if [ "$STATUS" -eq 0 ] && [ "$SKIP_SELF_INSTALL" -eq 0 ]; then
+    PACKAGE_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+    if [[ -z "$PACKAGE_VERSION" ]]; then
+        echo "ERROR: VERSION is empty"
+        exit 1
+    fi
     if ! "$SCRIPT_DIR/install-local.sh" --target-dir "$TMP_DIR"; then
         echo "ERROR: install-local --target-dir \"$TMP_DIR\" failed during self-test"
+        exit 1
+    fi
+    if ! "$SCRIPT_DIR/validate-installed.sh" --target-dir "$TMP_DIR" --version "$PACKAGE_VERSION"; then
+        echo "ERROR: validate-installed.sh failed for temporary installation"
         exit 1
     fi
     if [ ! -x "$TMP_DIR/$APPLET_UUID/scripts/atcinna-catalog" ]; then
         echo "ERROR: install-local did not place executable helper"
         exit 1
     fi
-    PACKAGE_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
     PACKAGE_DIST="$TMP_DIR/dist"
     if ! "$SCRIPT_DIR/package.sh" --skip-check --dist-dir "$PACKAGE_DIST"; then
         echo "ERROR: package.sh failed during self-test"

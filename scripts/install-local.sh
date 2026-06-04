@@ -4,17 +4,19 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APPLET_DIR="$SCRIPT_DIR/../atcinna@H234598"
 APPLET_ID="atcinna@H234598"
+VERSION_FILE="$SCRIPT_DIR/../VERSION"
 DEFAULT_TARGET_DIR="${HOME}/.local/share/cinnamon/applets"
 
 usage() {
     cat <<'EOF'
 Usage:
-  ./scripts/install-local.sh [--dry-run] [--target-dir DIR]
+  ./scripts/install-local.sh [--dry-run] [--target-dir DIR] [--skip-validate-installed]
 EOF
 }
 
 TARGET_DIR="$DEFAULT_TARGET_DIR"
 DRY_RUN=0
+RUN_VALIDATION=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -30,6 +32,10 @@ while [[ $# -gt 0 ]]; do
             fi
             TARGET_DIR="$2"
             shift 2
+            ;;
+        --skip-validate-installed)
+            RUN_VALIDATION=0
+            shift
             ;;
         -h|--help)
             usage
@@ -115,6 +121,22 @@ fi
 if [[ ! -x "$INSTALL_ROOT/scripts/atcinna-catalog" ]]; then
     echo "ERROR: installed helper is not executable: $INSTALL_ROOT/scripts/atcinna-catalog"
     exit 1
+fi
+
+if [[ "$RUN_VALIDATION" -eq 1 ]]; then
+    if [[ ! -f "$VERSION_FILE" ]]; then
+        echo "ERROR: VERSION file not found: $VERSION_FILE"
+        exit 1
+    fi
+    VERSION_VALUE="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
+    if [[ -z "$VERSION_VALUE" ]]; then
+        echo "ERROR: VERSION is empty"
+        exit 1
+    fi
+    if ! "$SCRIPT_DIR/validate-installed.sh" --target-dir "$TARGET_DIR" --version "$VERSION_VALUE"; then
+        echo "ERROR: validate-installed.sh failed for installation target"
+        exit 1
+    fi
 fi
 
 echo "Installed ATCinna to $INSTALL_ROOT"

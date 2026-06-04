@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.2
+
+- `scripts/validate-installed.sh` eingeführt: neue nicht-mutierende Validierung für installierte Applets mit Prüfung auf
+  - zwingende Applet-Dateien unter `<target-dir>/atcinna@H234598`
+  - korrekte `metadata.json` (`uuid`, `version`)
+  - parsebare `metadata.json` und `settings-schema.json`
+  - JS-Syntaxcheck (`node --check`) von `applet.js`
+  - Ausführbarkeit und `--help`-Funktion des Helpers
+  - Suchfunktion gegen lokale `audios.xz`-Fixture in isoliertem `XDG_CACHE_HOME`
+- `scripts/check.sh` nutzt die installierte Applet-Validierung als Selftest direkt nach temporärer Installation.
+- `scripts/install-local.sh` validiert die reale Zielinstallation optional standardmäßig nach dem Kopiervorgang.
+- Version auf `0.3.2` angehoben.
+
 ## 0.3.1
 
 - Reproduzierbare lokale Installation ergänzt: `./scripts/install-local.sh`

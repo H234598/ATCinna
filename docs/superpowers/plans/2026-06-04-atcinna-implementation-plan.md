@@ -12,10 +12,10 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.0`.
+- `VERSION` is `0.3.2`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, `download`, `history-*`, and `bookmark-*`.
-- `scripts/check.sh` is the local quality gate.
+- `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
 
 ## Primary Plan
 
@@ -197,6 +197,31 @@ Expected: fixture search validates filter matching and clear-filters leaves broa
 git add atcinna@H234598 README.md CHANGELOG.md
 git commit -m "feat: add catalog filters"
 ```
+
+### Task 5: Non-Mutating Installed Applet Validation
+
+**Files:**
+- Create: `scripts/validate-installed.sh`
+- Modify: `scripts/check.sh`
+- Modify: `scripts/install-local.sh`
+- Modify: `README.md`
+- Modify: `CHANGELOG.md`
+- Modify: `VERSION`
+- Modify: `atcinna@H234598/metadata.json`
+- Modify: `docs/superpowers/plans/2026-06-04-atcinna-implementation-plan.md`
+
+- [x] **Step 1: Add validator for installed applet tree**
+
+Create `scripts/validate-installed.sh` with `--target-dir DIR` (default `~/.local/share/cinnamon/applets`) and optional `--version VERSION`.
+Validate mandatory files, `metadata.json` (`uuid`, `version`), JSON parseability of metadata/settings, JS syntax, helper executable + help output, and helper search against isolated `XDG_CACHE_HOME` fixture.
+
+- [x] **Step 2: Wire validator into quality gate**
+
+Call `validate-installed.sh` in `scripts/check.sh` after temporary `install-local.sh` self-install.
+
+- [x] **Step 3: Optionally validate real install in install-local**
+
+Add optional validation step in `scripts/install-local.sh` after successful install (`--skip-validate-installed` to disable).
 
 ## Alternative Plan
 
