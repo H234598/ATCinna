@@ -227,6 +227,18 @@ if ! rg -q -F -- "--theme-title" "$HELPER"; then
     echo "ERROR: installed helper does not define --theme-title in help output"
     exit 1
 fi
+for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Gelöschte wieder anlegen"; do
+    if ! rg -q -F "${blacklist_dialog_label}" "$BLACKLIST_DIALOG"; then
+        echo "ERROR: installed blacklist dialog label is missing: ${blacklist_dialog_label}"
+        exit 1
+    fi
+done
+for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "invert_rule_selection" "reset_table_selection" "load_rule_into_form" '"row-activated"'; do
+    if ! rg -q -F "${blacklist_dialog_handler}" "$BLACKLIST_DIALOG"; then
+        echo "ERROR: installed blacklist dialog selection handler is missing: ${blacklist_dialog_handler}"
+        exit 1
+    fi
+done
 
 QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
 if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then

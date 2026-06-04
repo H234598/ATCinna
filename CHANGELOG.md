@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.26
+
+- Blacklist-Dialog näher an ATPlayer-Tabellenbedienung gebracht: **Alles auswählen**, **Auswahl umkehren**, **Tabelle zurücksetzen** und **Gelöschte wieder anlegen** sind jetzt sichtbar.
+- Aktivierte Blacklist-Regeln können per Zeilenaktivierung in das Formular übernommen und dort als neue/aktualisierte Regel gespeichert werden.
+- `scripts/check.sh` und `scripts/validate-installed.sh` schützen Labels und Handler für die neuen Blacklist-Dialog-Workflows.
+- Versionssprung auf `0.3.26`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.25
 
 - Warteschlangen-Menü um ATPlayer-nahe Auswahlaktionen ergänzt: **Alles auswählen**, **Auswahl umkehren**, **Tabelle zurücksetzen**, **Ausgewählte Downloads stoppen** und **Ausgewählte aus Liste entfernen**.

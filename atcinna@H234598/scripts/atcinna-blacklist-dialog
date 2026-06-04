@@ -211,6 +211,15 @@ def run_dialog():
     status_label.get_style_context().add_class("dim-label")
     root.pack_start(status_label, False, False, 0)
 
+    selection_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    select_all_button = Gtk.Button(label="Alles auswählen")
+    invert_selection_button = Gtk.Button(label="Auswahl umkehren")
+    reset_table_button = Gtk.Button(label="Tabelle zurücksetzen")
+    selection_actions.pack_start(select_all_button, False, False, 0)
+    selection_actions.pack_start(invert_selection_button, False, False, 0)
+    selection_actions.pack_start(reset_table_button, False, False, 0)
+    root.pack_start(selection_actions, False, False, 0)
+
     hint_label = Gtk.Label(label="Hinweis: `!:` vor dem Suchwert bedeutet Ausschluss (z. B. `!:wdr`). Prefix `#:` wird bewusst nicht unterstützt.")
     hint_label.set_xalign(0)
     hint_label.set_line_wrap(True)
@@ -220,7 +229,7 @@ def run_dialog():
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     remove_button = Gtk.Button(label="Markierte Regeln entfernen")
-    undo_button = Gtk.Button(label="Undo")
+    undo_button = Gtk.Button(label="Gelöschte wieder anlegen")
     clean_button = Gtk.Button(label="Putzen")
     clear_button = Gtk.Button(label="Alle entfernen")
     close_button = Gtk.Button(label="Schließen")
@@ -258,6 +267,51 @@ def run_dialog():
             list_box.add(empty)
 
         list_box.show_all()
+
+    def _set_all_rule_checks(active):
+        changed = 0
+        for row in rows:
+            check = row.get_data("check")
+            if not check:
+                continue
+            if check.get_active() != active:
+                changed += 1
+            check.set_active(active)
+        return changed
+
+    def select_all_rules(_btn):
+        changed = _set_all_rule_checks(True)
+        _set_status(status_label, f"Alles auswählen: {len(rows)} Regel(n), {changed} geändert")
+
+    def invert_rule_selection(_btn):
+        changed = 0
+        selected = 0
+        for row in rows:
+            check = row.get_data("check")
+            if not check:
+                continue
+            next_state = not check.get_active()
+            check.set_active(next_state)
+            changed += 1
+            if next_state:
+                selected += 1
+        _set_status(status_label, f"Auswahl umkehren: {selected} Regel(n) ausgewählt, {changed} geändert")
+
+    def reset_table_selection(_btn):
+        changed = _set_all_rule_checks(False)
+        _set_status(status_label, f"Tabelle zurückgesetzt: {changed} Auswahl(en) entfernt")
+
+    def load_rule_into_form(row):
+        if not row or not row.get_data("check"):
+            return
+        sender_entry.set_text(str(row.get_data("sender") or ""))
+        genre_entry.set_text(str(row.get_data("genre") or ""))
+        topic_entry.set_text(str(row.get_data("topic") or ""))
+        title_entry.set_text(str(row.get_data("title") or ""))
+        theme_title_entry.set_text(str(row.get_data("theme_title") or ""))
+        active_check.set_active(bool(row.get_data("active")))
+        topic_exact_check.set_active(bool(row.get_data("topic_exact")))
+        _set_status(status_label, "Regel ins Formular übernommen")
 
     def _collect_selected_rules():
         selected = []
@@ -381,6 +435,10 @@ def run_dialog():
         window.close()
 
     add_rule_button.connect("clicked", add_rule)
+    select_all_button.connect("clicked", select_all_rules)
+    invert_selection_button.connect("clicked", invert_rule_selection)
+    reset_table_button.connect("clicked", reset_table_selection)
+    list_box.connect("row-activated", lambda _list_box, row: load_rule_into_form(row))
     remove_button.connect("clicked", remove_selected)
     undo_button.connect("clicked", undo_last)
     clean_button.connect("clicked", clean_list)

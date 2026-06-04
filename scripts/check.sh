@@ -523,6 +523,18 @@ if ! rg -q -F 'ApplyFilterProfile' "$FILTER_PROFILES_DIALOG"; then
     echo "ERROR: filter profiles dialog does not load profiles through D-Bus"
     STATUS=1
 fi
+for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Gelöschte wieder anlegen"; do
+    if ! rg -q -F "${blacklist_dialog_label}" "$BLACKLIST_DIALOG"; then
+        echo "ERROR: blacklist dialog label is missing: ${blacklist_dialog_label}"
+        STATUS=1
+    fi
+done
+for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "invert_rule_selection" "reset_table_selection" "load_rule_into_form" '"row-activated"'; do
+    if ! rg -q -F "${blacklist_dialog_handler}" "$BLACKLIST_DIALOG"; then
+        echo "ERROR: blacklist dialog selection handler is missing: ${blacklist_dialog_handler}"
+        STATUS=1
+    fi
+done
 
 node --check "$APPLET_JS" >/dev/null
 
