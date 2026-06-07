@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.66
+
+- ATPlayer-nahe Zielordner-History ergänzt: Der Queue-Edit-Dialog nutzt jetzt eine editierbare Pfadliste statt eines reinen Textfelds.
+- Der Helper bietet `download-folder-history-list` und `download-folder-history-clear`; erfolgreich gespeicherte `download-update --folder`-Pfade werden dedupliziert und neueste zuerst in `download-folder-history.json` gemerkt.
+- Der Dialog lädt die History defensiv, ignoriert kaputte/unsichere Einträge und bietet **Liste der Pfade löschen**, ohne Ordner anzulegen oder die bestehende `download-update`-Validierung zu umgehen.
+- `scripts/check.sh` prüft die History funktional inklusive Clear, Dedupe, kaputter Datei und Dialog-Combobox-Contract; `scripts/validate-installed.sh` prüft die installierten Dialog-Contracts.
+- Versionssprung auf `0.3.66`; `metadata.json`, `VERSION`, `README.md`, Helper, Queue-Edit-Dialog und Checks aktualisiert.
+
 ## 0.3.65
 
 - Queue-Edit-Dialog erweitert um Checkbox `Infodatei anlegen: "Name.txt"` für per-Download `info_file`.

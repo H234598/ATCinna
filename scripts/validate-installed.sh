@@ -397,7 +397,7 @@ if ! rg -q -F '"download-run"' "$HELPER"; then
     echo "ERROR: installed helper action is missing: download-run"
     exit 1
 fi
-for helper_action in "download-error-list" "download-error-clear"; do
+for helper_action in "download-error-list" "download-error-clear" "download-folder-history-list" "download-folder-history-clear"; do
     if ! rg -q -F "${helper_action}" "$HELPER"; then
         echo "ERROR: installed helper action is missing: ${helper_action}"
         exit 1
@@ -455,11 +455,15 @@ if ! rg -q -F 'Infodatei anlegen: "Name.txt"' "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog label is missing: Infodatei anlegen: \"Name.txt\""
     exit 1
 fi
+if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog label is missing: Liste der Pfade löschen"
+    exit 1
+fi
 if ! rg -q -F -- "--info-file" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog argument is missing: --info-file"
     exit 1
 fi
-for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()"; do
+for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: installed queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         exit 1

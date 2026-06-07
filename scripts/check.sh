@@ -313,7 +313,7 @@ for applet_label in "Download starten" "Downloads aktualisieren" "Liste der Down
         STATUS=1
     fi
 done
-for helper_action in download-enqueue download-list download-run-next download-run download-cancel download-clear; do
+for helper_action in download-enqueue download-list download-run-next download-run download-cancel download-clear download-folder-history-list download-folder-history-clear; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
         STATUS=1
@@ -829,7 +829,11 @@ if ! rg -q -F 'Infodatei anlegen: "Name.txt"' "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Infodatei anlegen: \"Name.txt\""
     STATUS=1
 fi
-for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()"; do
+if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: Liste der Pfade löschen"
+    STATUS=1
+fi
+for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         STATUS=1
@@ -875,6 +879,7 @@ assert module._default_download_folder() == str(xdg_downloads)
 assert module._proposed_download_folder("Feature Thema") == str(topic_dir)
 assert module._proposed_download_folder("Fehlt") == str(xdg_downloads)
 assert module._sanitize_topic_folder_name("../Traversal") == "Traversal"
+assert module._folder_history_choices(str(xdg_downloads), [str(fallback_downloads), str(xdg_downloads), "", "bad\x00path"]) == [str(xdg_downloads), str(fallback_downloads)]
 
 (config_home / "user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="relative/path"\n', encoding="utf-8")
 assert module._load_xdg_download_dir() == ""
@@ -2201,6 +2206,76 @@ fi
 if ! jq -e '.status == "error" and (.message == "queue folder does not exist" or .message == "queue folder is not writable")' "$TMP_DIR/update-folder-missing.out" >/dev/null 2>&1; then
     echo "ERROR: download-update with nonexistent folder did not return expected error"
     cat "$TMP_DIR/update-folder-missing.out"
+    exit 1
+fi
+
+FOLDER_HISTORY_CLEAR_BEFORE="$(python3 "$HELPER" download-folder-history-clear)"
+if ! echo "$FOLDER_HISTORY_CLEAR_BEFORE" | jq -e '.status == "ok" and (.removed | type == "number")' >/dev/null; then
+    echo "ERROR: download-folder-history-clear should reset existing folder history"
+    echo "$FOLDER_HISTORY_CLEAR_BEFORE"
+    exit 1
+fi
+FOLDER_HISTORY_LIST_AFTER_INITIAL_CLEAR="$(python3 "$HELPER" download-folder-history-list)"
+if ! echo "$FOLDER_HISTORY_LIST_AFTER_INITIAL_CLEAR" | jq -e '.status == "ok" and .count == 0 and (.results | length == 0)' >/dev/null; then
+    echo "ERROR: download-folder-history-list should be empty after initial reset"
+    echo "$FOLDER_HISTORY_LIST_AFTER_INITIAL_CLEAR"
+    exit 1
+fi
+
+FOLDER_HISTORY_UPDATE_ONE="$(python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --folder "$QUEUE_HTTP_DIR")"
+if ! echo "$FOLDER_HISTORY_UPDATE_ONE" | jq -e '.status == "ok" and .updated == 1' >/dev/null; then
+    echo "ERROR: download-update with queue folder should still update for history test"
+    echo "$FOLDER_HISTORY_UPDATE_ONE"
+    exit 1
+fi
+FOLDER_HISTORY_LIST_ONE="$(python3 "$HELPER" download-folder-history-list)"
+if ! echo "$FOLDER_HISTORY_LIST_ONE" | jq -e --arg path "$QUEUE_HTTP_DIR" '.status == "ok" and .count >= 1 and .results[0] == $path' >/dev/null; then
+    echo "ERROR: download-folder-history-list should store last updated queue folder first"
+    echo "$FOLDER_HISTORY_LIST_ONE"
+    exit 1
+fi
+
+FOLDER_HISTORY_UPDATE_TWO="$(python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$FOLDER_HISTORY_UPDATE_TWO" | jq -e '.status == "ok" and .updated == 1' >/dev/null; then
+    echo "ERROR: second download-update should still update queue folder history"
+    echo "$FOLDER_HISTORY_UPDATE_TWO"
+    exit 1
+fi
+FOLDER_HISTORY_LIST_TWO="$(python3 "$HELPER" download-folder-history-list)"
+if ! echo "$FOLDER_HISTORY_LIST_TWO" | jq -e --arg http "$QUEUE_HTTP_DIR" --arg dl "$QUEUE_DOWNLOAD_DIR" '.status == "ok" and .count >= 2 and .results[0] == $dl and .results[1] == $http' >/dev/null; then
+    echo "ERROR: download-folder-history-list should keep latest-first history and dedupe"
+    echo "$FOLDER_HISTORY_LIST_TWO"
+    exit 1
+fi
+
+FOLDER_HISTORY_CLEAR_AFTER="$(python3 "$HELPER" download-folder-history-clear)"
+if ! echo "$FOLDER_HISTORY_CLEAR_AFTER" | jq -e '.status == "ok" and .removed >= 2' >/dev/null; then
+    echo "ERROR: download-folder-history-clear should remove stored folder history"
+    echo "$FOLDER_HISTORY_CLEAR_AFTER"
+    exit 1
+fi
+FOLDER_HISTORY_LIST_AFTER_CLEAR="$(python3 "$HELPER" download-folder-history-list)"
+if ! echo "$FOLDER_HISTORY_LIST_AFTER_CLEAR" | jq -e '.status == "ok" and .count == 0 and (.results | length == 0)' >/dev/null; then
+    echo "ERROR: download-folder-history-list should be empty after clear"
+    echo "$FOLDER_HISTORY_LIST_AFTER_CLEAR"
+    exit 1
+fi
+
+if ! { mkdir -p "$XDG_DATA_HOME/atcinna@H234598" && printf '%s\n' '{"invalid": true}' > "$XDG_DATA_HOME/atcinna@H234598/download-folder-history.json"; }; then
+    echo "ERROR: failed to write invalid download folder history fixture"
+    exit 1
+fi
+FOLDER_HISTORY_LIST_INVALID="$(python3 "$HELPER" download-folder-history-list)"
+if ! echo "$FOLDER_HISTORY_LIST_INVALID" | jq -e '.status == "ok" and .count == 0 and (.results | length == 0)' >/dev/null; then
+    echo "ERROR: download-folder-history-list should ignore corrupted history data"
+    echo "$FOLDER_HISTORY_LIST_INVALID"
+    exit 1
+fi
+
+FOLDER_HISTORY_CLEAR_INVALID="$(python3 "$HELPER" download-folder-history-clear)"
+if ! echo "$FOLDER_HISTORY_CLEAR_INVALID" | jq -e '.status == "ok" and .removed == 0' >/dev/null; then
+    echo "ERROR: download-folder-history-clear should treat corrupted history data as empty"
+    echo "$FOLDER_HISTORY_CLEAR_INVALID"
     exit 1
 fi
 mkdir -p "$TMP_DIR/atcinna-check-queue/atcinna@H234598"

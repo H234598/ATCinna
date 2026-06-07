@@ -31,6 +31,7 @@ HISTORY_MAX_ENTRIES = 100
 HISTORY_EXPORT_TARGET = "history"
 BOOKMARK_MAX_ENTRIES = 500
 BOOKMARK_EXPORT_TARGET = "bookmarks"
+DOWNLOAD_FOLDER_HISTORY_MAX_ENTRIES = 20
 UNDO_MAX_ENTRIES = 100
 BLACKLIST_MAX_ENTRIES = 500
 BLACKLIST_MODES = {"off", "hide", "only"}
@@ -133,6 +134,10 @@ def _blacklist_undo_path():
 
 def _filter_profiles_path():
     return data_dir() / "filter-profiles.json"
+
+
+def _download_folder_history_path():
+    return data_dir() / "download-folder-history.json"
 
 
 def _load_list(path):
@@ -575,6 +580,68 @@ def _store_list(path, items):
             os.close(dir_fd)
     finally:
         tmp.unlink(missing_ok=True)
+
+
+def _load_text_list(path):
+    if not path.exists():
+        return []
+
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            raw = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return []
+    except Exception:
+        return []
+
+    if not isinstance(raw, list):
+        return []
+
+    normalized = []
+    for item in raw:
+        value = _normalize_entry_value(item)
+        if value:
+            normalized.append(value)
+    return normalized
+
+
+def _store_text_list(path, items):
+    normalized = [
+        item.strip()
+        for item in items
+        if isinstance(item, str) and item.strip()
+    ]
+
+    ensure_dir(path.parent)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as handle:
+            json.dump(normalized, handle, ensure_ascii=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        dir_fd = os.open(path.parent, os.O_DIRECTORY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _store_download_folder_history(folder):
+    normalized = _normalize_entry_value(folder)
+    if not normalized:
+        return
+
+    path = _download_folder_history_path()
+    with _store_lock(path):
+        entries = _load_text_list(path)
+        entries = [entry for entry in entries if entry != normalized]
+        entries.insert(0, normalized)
+        if DOWNLOAD_FOLDER_HISTORY_MAX_ENTRIES > 0:
+            entries = entries[:DOWNLOAD_FOLDER_HISTORY_MAX_ENTRIES]
+        _store_text_list(path, entries)
 
 
 @contextlib.contextmanager
@@ -1095,6 +1162,22 @@ def action_history_remove(args):
     print(json.dumps({"status": "ok", "removed": bool(removed)}))
 
 
+def action_download_folder_history_list(args):
+    path = _download_folder_history_path()
+    with _store_lock(path):
+        entries = _load_text_list(path)
+    print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
+
+
+def action_download_folder_history_clear(args):
+    path = _download_folder_history_path()
+    with _store_lock(path):
+        entries = _load_text_list(path)
+        if entries:
+            _store_text_list(path, [])
+    print(json.dumps({"status": "ok", "removed": len(entries)}))
+
+
 def action_bookmark_add(args):
     _validate_and_normalize_url("url", args.url)
     _validate_and_normalize_url("website", args.website)
@@ -1607,6 +1690,7 @@ def action_download_update(args):
     if updates["folder"] is not None:
         updates["folder"] = _resolve_updated_folder(updates["folder"])
 
+    remember_folder = updates["folder"]
     running_blocks = 0
     updated = 0
     with _store_lock(_queue_path()):
@@ -1653,6 +1737,9 @@ def action_download_update(args):
 
         if updated > 0:
             _store_queue(entries)
+
+    if updated > 0 and remember_folder is not None:
+        _store_download_folder_history(remember_folder)
 
     print(json.dumps({
         "status": "ok",
@@ -2571,6 +2658,8 @@ def parse_args():
     sub.add_parser("download-list", help="List queue entries")
     sub.add_parser("download-error-list", help="List persistent download errors")
     sub.add_parser("download-error-clear", help="Clear persistent download errors")
+    sub.add_parser("download-folder-history-list", help="List queued download folder history")
+    sub.add_parser("download-folder-history-clear", help="Clear queued download folder history")
 
     sub.add_parser("download-run-next", help="Run next queued download")
     download_run = sub.add_parser("download-run", help="Run queued download by URL")
@@ -2657,6 +2746,10 @@ def main():
         action_download_error_list(args)
     elif args.action == "download-error-clear":
         action_download_error_clear(args)
+    elif args.action == "download-folder-history-list":
+        action_download_folder_history_list(args)
+    elif args.action == "download-folder-history-clear":
+        action_download_folder_history_clear(args)
     elif args.action == "download-run-next":
         action_download_run_next(args)
     elif args.action == "download-run":

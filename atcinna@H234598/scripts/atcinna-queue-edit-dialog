@@ -60,6 +60,73 @@ def _run_helper(args):
         raise RuntimeError(f"invalid helper response: {exc}") from exc
 
 
+def _normalize_folder_choice(value):
+    text = str(value or "").strip()
+    if not text or "\x00" in text:
+        return ""
+    return text
+
+
+def _load_folder_history():
+    try:
+        payload = _run_helper(["download-folder-history-list"])
+    except Exception:
+        return []
+
+    if not isinstance(payload, dict) or payload.get("status") != "ok":
+        return []
+
+    choices = []
+    for value in payload.get("results", []):
+        normalized = _normalize_folder_choice(value)
+        if normalized:
+            choices.append(normalized)
+    return choices
+
+
+def _folder_history_choices(current_folder, history=None):
+    candidates = [_normalize_folder_choice(current_folder)]
+    candidates.extend(history if history is not None else _load_folder_history())
+
+    choices = []
+    seen = set()
+    for value in candidates:
+        normalized = _normalize_folder_choice(value)
+        if not normalized or normalized in seen:
+            continue
+        choices.append(normalized)
+        seen.add(normalized)
+    return choices
+
+
+def _set_field_text(widget, value):
+    text = str(value or "")
+    if widget is None:
+        return
+    if hasattr(widget, "get_child"):
+        child = widget.get_child()
+        if child is not None and hasattr(child, "set_text"):
+            child.set_text(text)
+            return
+    if hasattr(widget, "set_text"):
+        widget.set_text(text)
+
+
+def _clear_folder_history(folder_widget, status_label):
+    current_folder = _collect_field(folder_widget)
+    try:
+        payload = _run_helper(["download-folder-history-clear"])
+        if payload.get("status") != "ok":
+            status_label.set_text(f"Pfadliste löschen fehlgeschlagen: {payload.get('message') or 'unbekannter Fehler'}")
+            return
+        if hasattr(folder_widget, "remove_all"):
+            folder_widget.remove_all()
+        _set_field_text(folder_widget, current_folder)
+        status_label.set_text("Pfadliste gelöscht")
+    except Exception as exc:
+        status_label.set_text(f"Pfadliste löschen fehlgeschlagen: {exc}")
+
+
 def _load_queue_info_file(url):
     if not _is_http_url(url):
         return None
@@ -127,8 +194,15 @@ def _text_from_buffer(text_view):
 def _collect_field(widget):
     if widget is None:
         return ""
+    if hasattr(widget, "get_child"):
+        child = widget.get_child()
+        if child is not None and hasattr(child, "get_text"):
+            return child.get_text().strip()
     if hasattr(widget, "get_text"):
         return widget.get_text().strip()
+    if hasattr(widget, "get_active_text"):
+        text = widget.get_active_text()
+        return text.strip() if text else ""
     return ""
 
 
@@ -204,7 +278,7 @@ def _proposed_download_folder(topic):
 def _propose_download_folder(folder_entry, topic):
     proposed_folder = _proposed_download_folder(topic)
     if proposed_folder:
-        folder_entry.set_text(proposed_folder)
+        _set_field_text(folder_entry, proposed_folder)
 
 
 def _select_download_folder(parent_window, folder_entry, gtk_module):
@@ -226,7 +300,7 @@ def _select_download_folder(parent_window, folder_entry, gtk_module):
         if response == Gtk.ResponseType.OK:
             selected_folder = dialog.get_filename()
             if selected_folder:
-                folder_entry.set_text(selected_folder)
+                _set_field_text(folder_entry, selected_folder)
     finally:
         dialog.destroy()
 
@@ -264,16 +338,20 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
 
     title_entry = Gtk.Entry()
     title_entry.set_text(title)
-    folder_entry = Gtk.Entry()
-    folder_entry.set_text(folder)
+    folder_combo = Gtk.ComboBoxText.new_with_entry()
+    for folder_choice in _folder_history_choices(folder):
+        folder_combo.append_text(folder_choice)
+    _set_field_text(folder_combo, folder)
     folder_picker_button = Gtk.Button(label="Pfad auswählen")
     folder_propose_button = Gtk.Button(label="Pfad vorschlagen")
+    folder_clear_button = Gtk.Button(label="Liste der Pfade löschen")
     info_file_checkbox = Gtk.CheckButton(label='Infodatei anlegen: "Name.txt"')
     info_file_checkbox.set_active(bool(info_file))
     folder_picker_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-    folder_picker_row.pack_start(folder_entry, True, True, 0)
+    folder_picker_row.pack_start(folder_combo, True, True, 0)
     folder_picker_row.pack_start(folder_picker_button, False, False, 0)
     folder_picker_row.pack_start(folder_propose_button, False, False, 0)
+    folder_picker_row.pack_start(folder_clear_button, False, False, 0)
     sender_entry = Gtk.Entry()
     sender_entry.set_text(sender)
     genre_entry = Gtk.Entry()
@@ -334,7 +412,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
 
     controls = {
         "title": title_entry,
-        "folder": folder_entry,
+        "folder": folder_combo,
         "sender": sender_entry,
         "genre": genre_entry,
         "topic": topic_entry,
@@ -381,11 +459,12 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
 
     save_button.connect("clicked", do_save)
     cancel_button.connect("clicked", lambda _button: window.close())
-    folder_picker_button.connect("clicked", lambda _button: _select_download_folder(window, folder_entry, Gtk))
+    folder_picker_button.connect("clicked", lambda _button: _select_download_folder(window, folder_combo, Gtk))
     folder_propose_button.connect(
         "clicked",
-        lambda _button: _propose_download_folder(folder_entry, controls["topic"].get_text()),
+        lambda _button: _propose_download_folder(folder_combo, controls["topic"].get_text()),
     )
+    folder_clear_button.connect("clicked", lambda _button: _clear_folder_history(folder_combo, status))
 
     window.show_all()
     Gtk.main()
