@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.74
+
+- Das Applet-Menü **Filterprofile** unterstützt jetzt ATPlayer-nahe Aktionen für das aktuell gewählte Profil: **Aktuelles Filterprofil wieder laden**, **Filtereinstellungen in aktuellem Filterprofil speichern** und **Aktuelles Filterprofil löschen**.
+- Beim Laden oder Speichern merkt sich das Applet den aktuellen Profilnamen; Löschen, Leeren und Wiederherstellen setzen diese Auswahl zurück.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen die neuen Menü- und Helper-Contracts; `metadata.json`, `VERSION` und README wurden auf `0.3.74` angehoben.
+
 ## 0.3.73
 
 - Das Applet-Menü **Filterprofile** enthält jetzt zusätzlich den ATPlayer-nahen Direktpunkt **Alle Filterprofile löschen**.

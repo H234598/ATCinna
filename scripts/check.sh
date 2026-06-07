@@ -199,13 +199,13 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Filterprofile in eigenem Fenster anz
     echo "ERROR: applet filter profiles manage menu label is missing"
     STATUS=1
 fi
-for profile_label in "Filtereinstellungen in neuem Filterprofil speichern" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Alle Filterprofile löschen"; do
+for profile_label in "Filtereinstellungen in neuem Filterprofil speichern" "Aktuelles Filterprofil wieder laden" "Filtereinstellungen in aktuellem Filterprofil speichern" "Aktuelles Filterprofil löschen" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Alle Filterprofile löschen"; do
     if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${profile_label}\")" "$APPLET_JS"; then
         echo "ERROR: applet filter profiles label is missing: ${profile_label}"
         STATUS=1
     fi
 done
-for profile_handler in "_sortFilterProfiles" "_resetFilterProfiles" "_clearFilterProfiles"; do
+for profile_handler in "_reloadCurrentFilterProfile" "_saveActiveFilterProfile" "_removeCurrentFilterProfile" "_currentFilterProfileName" "_sortFilterProfiles" "_resetFilterProfiles" "_clearFilterProfiles"; do
     if ! rg -q -F "${profile_handler}" "$APPLET_JS"; then
         echo "ERROR: applet filter profile handler is missing: ${profile_handler}"
         STATUS=1
