@@ -85,6 +85,14 @@ def normalize_value(value, fallback):
     return fallback
 
 
+def _normalize_size_value(value):
+    if isinstance(value, bool):
+        return ""
+    if isinstance(value, (int, float)):
+        return str(value).strip()
+    return _normalize_entry_value(value)
+
+
 def _is_http_url(url):
     parsed = urlparse(url)
     return parsed.scheme in ("http", "https") and bool(parsed.netloc)
@@ -2176,13 +2184,14 @@ def _catalog_db_schema():
             date TEXT NOT NULL DEFAULT '',
             time TEXT NOT NULL DEFAULT '',
             duration TEXT NOT NULL DEFAULT '',
+            size TEXT NOT NULL DEFAULT '',
             description TEXT NOT NULL DEFAULT '',
             url TEXT NOT NULL,
             website TEXT NOT NULL DEFAULT '',
             is_new INTEGER NOT NULL DEFAULT 0,
             podcast INTEGER NOT NULL DEFAULT 0
         );
-        CREATE INDEX IF NOT EXISTS idx_catalog_query ON catalog (sender, genre, topic, title, description, url, date, time, duration);
+        CREATE INDEX IF NOT EXISTS idx_catalog_query ON catalog (sender, genre, topic, title, description, url, date, time, duration, size);
     """
 
 
@@ -2203,6 +2212,7 @@ def _row_to_audio_item(raw, last_sender, last_genre, last_topic):
     date = normalize_value(raw[4], "")
     time_value = normalize_value(raw[5], "")
     duration = normalize_value(raw[6], "")
+    size = _normalize_size_value(raw[7])
     description = normalize_value(raw[8], "")
     url = normalize_value(raw[9], "")
     website = normalize_value(raw[10], "") if len(raw) > 10 else ""
@@ -2224,6 +2234,7 @@ def _row_to_audio_item(raw, last_sender, last_genre, last_topic):
         "date": date,
         "time": time_value,
         "duration": duration,
+        "size": size,
         "description": description,
         "url": url,
         "website": website,
@@ -2261,6 +2272,7 @@ def _normalize_catalog_row(raw, last_sender, last_genre, last_topic):
             "date": _normalize_entry_value(raw.get("date")),
             "time": _normalize_entry_value(raw.get("time")),
             "duration": _normalize_entry_value(raw.get("duration")),
+            "size": _normalize_size_value(raw.get("size")),
             "description": _normalize_entry_value(raw.get("description")),
             "url": _normalize_entry_value(raw.get("url")),
             "website": _normalize_entry_value(raw.get("website")),
@@ -2279,6 +2291,7 @@ def _catalog_result_item(normalized):
         "date": normalized["date"],
         "time": normalized["time"],
         "duration": normalized["duration"],
+        "size": normalized["size"],
         "description": normalized["description"],
         "url": normalized["url"],
         "website": normalized["website"],
@@ -2296,7 +2309,7 @@ def _iter_catalog_rows(path):
         with sqlite3.connect(path) as connection:
             connection.row_factory = sqlite3.Row
             for row in connection.execute(
-                "SELECT sender, genre, topic, title, date, time, duration, description, url, website, is_new, podcast "
+                "SELECT sender, genre, topic, title, date, time, duration, size, description, url, website, is_new, podcast "
                 "FROM catalog ORDER BY id"
             ):
                 yield {
@@ -2307,6 +2320,7 @@ def _iter_catalog_rows(path):
                     "date": _normalize_entry_value(row["date"]),
                     "time": _normalize_entry_value(row["time"]),
                     "duration": _normalize_entry_value(row["duration"]),
+                    "size": _normalize_size_value(row["size"]),
                     "description": _normalize_entry_value(row["description"]),
                     "url": _normalize_entry_value(row["url"]),
                     "website": _normalize_entry_value(row["website"]),
@@ -2323,7 +2337,26 @@ def _catalog_db_is_valid(path):
     try:
         with sqlite3.connect(path) as connection:
             cursor = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog'")
-            return cursor.fetchone() is not None
+            if cursor.fetchone() is None:
+                return False
+            column_rows = connection.execute("PRAGMA table_info(catalog)").fetchall()
+            columns = {row[1] for row in column_rows}
+            required_columns = {
+                "sender",
+                "genre",
+                "topic",
+                "title",
+                "date",
+                "time",
+                "duration",
+                "size",
+                "description",
+                "url",
+                "website",
+                "is_new",
+                "podcast",
+            }
+            return required_columns.issubset(columns)
     except sqlite3.Error:
         return False
 
@@ -2346,8 +2379,8 @@ def _rebuild_catalog_db(cache_path, catalog_db_path):
         last_genre = ""
         last_topic = ""
         insert = (
-            "INSERT INTO catalog (sender, genre, topic, title, date, time, duration, description, url, website, is_new, podcast) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO catalog (sender, genre, topic, title, date, time, duration, size, description, url, website, is_new, podcast) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         for raw in _iter_audio_rows(cache_path):
             item, last_sender, last_genre, last_topic = _row_to_audio_item(raw, last_sender, last_genre, last_topic)
@@ -2363,6 +2396,7 @@ def _rebuild_catalog_db(cache_path, catalog_db_path):
                     item["date"],
                     item["time"],
                     item["duration"],
+                    item["size"],
                     item["description"],
                     item["url"],
                     item["website"],

@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.84`.
+- `VERSION` is `0.3.85`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -85,6 +85,13 @@
   - Keep helper, store, settings, and database logic unchanged.
   - Include source and installed-tree checks for the new label and a guard against the old duration row.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.84`.
+
+- [x] **Task 85: Carry catalog size into audio info (0.3.85)**
+  - Read ATPlayer catalog `raw[7]` as normalized `size` while keeping `raw[8]` as description and `raw[9]` as URL.
+  - Add `size` to the SQLite catalog schema, schema validity check, insert/select path, normalized search JSON, and visible **Größe [MB]** audio info row.
+  - Keep history, bookmark, download-store schemas, CLI arguments, URL handling, and shell-path handling unchanged.
+  - Include source and installed-tree checks for old SQLite schemas without `size`, fixture `size` assertions, and the Applet info row.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.85`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 

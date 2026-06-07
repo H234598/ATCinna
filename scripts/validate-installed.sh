@@ -437,9 +437,10 @@ fi
 for info_date_contract in \
     '["Datum", safeItem.date]' \
     '["Zeit", safeItem.time]' \
-    '["Dauer [min]", safeItem.duration]'; do
+    '["Dauer [min]", safeItem.duration]' \
+    '["Größe [MB]", safeItem.size]'; do
     if ! rg -q -F "${info_date_contract}" "$APPLET_JS"; then
-        echo "ERROR: installed applet info date/time/duration contract is missing: ${info_date_contract}"
+        echo "ERROR: installed applet info date/time/duration/size contract is missing: ${info_date_contract}"
         exit 1
     fi
 done
@@ -838,22 +839,51 @@ rm -f "$CATALOG_DB"
 TODAY="$(date +%F)"
 OLD_DATE="$(date -d '100 days ago' +%F)"
 cat > "$TMP_DIR/audios.jsonl" <<JSONL
-"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","12:00","5","","Kurzbeschreibung","https://example.com/stream","https://example.com","true","false"]
-"Audios":["","","","Zweite Kurzmeldung","${TODAY}","12:00","12","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page","false","true"]
-"Audios":["","","","Archivmeldung","${OLD_DATE}","12:00","15","","Alte Beschreibung","https://example.com/old","https://example.com/old-page","false","false"]
+"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","12:00","5","12.3","Kurzbeschreibung","https://example.com/stream","https://example.com","true","false"]
+"Audios":["","","","Zweite Kurzmeldung","${TODAY}","12:00","12","7.5","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page","false","true"]
+"Audios":["","","","Archivmeldung","${OLD_DATE}","12:00","15","123.4","Alte Beschreibung","https://example.com/old","https://example.com/old-page","false","false"]
 JSONL
 
 xz -z -c "$TMP_DIR/audios.jsonl" > "$CACHE_FILE"
+python3 - "$CATALOG_DB" <<'PY'
+import sqlite3
+import sys
+
+connection = sqlite3.connect(sys.argv[1])
+connection.executescript(
+    """
+    CREATE TABLE catalog (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender TEXT NOT NULL DEFAULT '',
+        genre TEXT NOT NULL DEFAULT '',
+        topic TEXT NOT NULL DEFAULT '',
+        title TEXT NOT NULL DEFAULT '',
+        date TEXT NOT NULL DEFAULT '',
+        time TEXT NOT NULL DEFAULT '',
+        duration TEXT NOT NULL DEFAULT '',
+        description TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL,
+        website TEXT NOT NULL DEFAULT '',
+        is_new INTEGER NOT NULL DEFAULT 0,
+        podcast INTEGER NOT NULL DEFAULT 0
+    );
+    INSERT INTO catalog (sender, genre, topic, title, date, time, duration, description, url, website, is_new, podcast)
+    VALUES ('Alt', 'Alt', 'Alt', 'Alte SQLite ohne Size', '', '', '', '', 'https://example.com/legacy', '', 0, 0);
+    """
+)
+connection.commit()
+connection.close()
+PY
 
 SEARCH_JSON="$(python3 "$HELPER" search --query "Kurz" --max 1)"
-if ! echo "$SEARCH_JSON" | jq -e '.status == "ok" and .count >= 1 and .results[0].title == "Kurzmeldung" and .results[0].url == "https://example.com/stream"' >/dev/null; then
+if ! echo "$SEARCH_JSON" | jq -e '.status == "ok" and .count >= 1 and .results[0].title == "Kurzmeldung" and .results[0].size == "12.3" and .results[0].url == "https://example.com/stream"' >/dev/null; then
     echo "ERROR: installed helper search validation failed for fixture"
     echo "$SEARCH_JSON"
     exit 1
 fi
 
 SEARCH_JSON_TWO="$(python3 "$HELPER" search --query "Zweite" --max 1)"
-if ! echo "$SEARCH_JSON_TWO" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].sender == "WDR" and .results[0].url == "https://example.com/second"' >/dev/null; then
+if ! echo "$SEARCH_JSON_TWO" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].sender == "WDR" and .results[0].size == "7.5" and .results[0].url == "https://example.com/second"' >/dev/null; then
     echo "ERROR: installed helper search for second fixture entry failed"
     echo "$SEARCH_JSON_TWO"
     exit 1
@@ -862,10 +892,19 @@ if [ ! -f "$CATALOG_DB" ]; then
     echo "ERROR: installed catalog.sqlite was not built from fixture"
     exit 1
 fi
+python3 - "$CATALOG_DB" <<'PY'
+import sqlite3
+import sys
+
+with sqlite3.connect(sys.argv[1]) as connection:
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(catalog)")}
+if "size" not in columns:
+    raise SystemExit("installed catalog.sqlite schema is missing size column")
+PY
 
 mv "$CACHE_FILE" "$CACHE_FILE.bak"
 SEARCH_SQLITE_JSON="$(python3 "$HELPER" search --query "Zweite" --max 1)"
-if ! echo "$SEARCH_SQLITE_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung"' >/dev/null; then
+if ! echo "$SEARCH_SQLITE_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].size == "7.5"' >/dev/null; then
     echo "ERROR: installed helper should read search results from catalog.sqlite when audios.xz is missing"
     echo "$SEARCH_SQLITE_JSON"
     exit 1

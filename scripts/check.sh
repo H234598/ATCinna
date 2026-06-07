@@ -668,9 +668,10 @@ fi
 for info_date_contract in \
     '["Datum", safeItem.date]' \
     '["Zeit", safeItem.time]' \
-    '["Dauer [min]", safeItem.duration]'; do
+    '["Dauer [min]", safeItem.duration]' \
+    '["Größe [MB]", safeItem.size]'; do
     if ! rg -q -F "${info_date_contract}" "$APPLET_JS"; then
-        echo "ERROR: info section date/time/duration contract is missing: ${info_date_contract}"
+        echo "ERROR: info section date/time/duration/size contract is missing: ${info_date_contract}"
         STATUS=1
     fi
 done
@@ -1236,10 +1237,10 @@ export XDG_DATA_HOME="$TMP_DIR/data"
 TODAY="$(date +%F)"
 OLD_DATE="$(date -d '100 days ago' +%F)"
 cat > "$TMP_DIR/audios.jsonl" <<JSONL
-"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","","00:12:30","","Kurzbeschreibung","https://example.com/stream","https://example.com","true","false"]
-"Audios":["","","","Zweite Kurzmeldung","${TODAY}","","00:03:10","","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page","false","true"]
-"Audios":["","", "","Gefährlich","${TODAY}","","00:01:00","","Unsichere URL","file://evil/audio.mp3","https://example.com/file","true","true"]
-"Audios":["","", "","Ungültige Website","${OLD_DATE}","","02:30:00","","Archiv Beschreibung","https://example.com/valid-audio","javascript://alert('x')","false","false"]
+"Audios":["WDR","Genre","Thema","Kurzmeldung","${TODAY}","","00:12:30","12.3","Kurzbeschreibung","https://example.com/stream","https://example.com","true","false"]
+"Audios":["","","","Zweite Kurzmeldung","${TODAY}","","00:03:10","7.5","Noch eine Kurzbeschreibung","https://example.com/second","https://example.com/second-page","false","true"]
+"Audios":["","", "","Gefährlich","${TODAY}","","00:01:00","1.0","Unsichere URL","file://evil/audio.mp3","https://example.com/file","true","true"]
+"Audios":["","", "","Ungültige Website","${OLD_DATE}","","02:30:00","123.4","Archiv Beschreibung","https://example.com/valid-audio","javascript://alert('x')","false","false"]
 JSONL
 
 export XDG_CACHE_HOME="$TMP_DIR"
@@ -1248,6 +1249,35 @@ CATALOG_DB="$XDG_CACHE_HOME/atcinna@H234598/catalog.sqlite"
 mkdir -p "$(dirname "$LZMA_FILE")"
 rm -f "$CATALOG_DB"
 xz -z -c "$TMP_DIR/audios.jsonl" > "$LZMA_FILE"
+python3 - "$CATALOG_DB" <<'PY'
+import sqlite3
+import sys
+
+connection = sqlite3.connect(sys.argv[1])
+connection.executescript(
+    """
+    CREATE TABLE catalog (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender TEXT NOT NULL DEFAULT '',
+        genre TEXT NOT NULL DEFAULT '',
+        topic TEXT NOT NULL DEFAULT '',
+        title TEXT NOT NULL DEFAULT '',
+        date TEXT NOT NULL DEFAULT '',
+        time TEXT NOT NULL DEFAULT '',
+        duration TEXT NOT NULL DEFAULT '',
+        description TEXT NOT NULL DEFAULT '',
+        url TEXT NOT NULL,
+        website TEXT NOT NULL DEFAULT '',
+        is_new INTEGER NOT NULL DEFAULT 0,
+        podcast INTEGER NOT NULL DEFAULT 0
+    );
+    INSERT INTO catalog (sender, genre, topic, title, date, time, duration, description, url, website, is_new, podcast)
+    VALUES ('Alt', 'Alt', 'Alt', 'Alte SQLite ohne Size', '', '', '', '', 'https://example.com/legacy', '', 0, 0);
+    """
+)
+connection.commit()
+connection.close()
+PY
 
 SEARCH_JSON="$(python3 "$HELPER" search --query "Kurz" --max 1)"
 if ! echo "$SEARCH_JSON" | jq -e '.status == "ok" and .count >= 1' >/dev/null; then
@@ -1259,9 +1289,18 @@ if [ ! -f "$CATALOG_DB" ]; then
     echo "ERROR: catalog.sqlite was not built from fixture on first search run"
     exit 1
 fi
+python3 - "$CATALOG_DB" <<'PY'
+import sqlite3
+import sys
+
+with sqlite3.connect(sys.argv[1]) as connection:
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(catalog)")}
+if "size" not in columns:
+    raise SystemExit("catalog.sqlite schema is missing size column")
+PY
 
 SEARCH_SQLITE_JSON="$(python3 "$HELPER" search --query "Zweite" --max 1)"
-if ! echo "$SEARCH_SQLITE_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung"' >/dev/null; then
+if ! echo "$SEARCH_SQLITE_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung" and .results[0].size == "7.5"' >/dev/null; then
     echo "ERROR: search from catalog.sqlite did not return expected fixture result"
     echo "$SEARCH_SQLITE_JSON"
     exit 1
@@ -1269,7 +1308,7 @@ fi
 
 mv "$LZMA_FILE" "$LZMA_FILE.bak"
 SEARCH_NO_CACHE_FILE="$(python3 "$HELPER" search --query "Kurz" --max 1)"
-if ! echo "$SEARCH_NO_CACHE_FILE" | jq -e '.status == "ok" and .count >= 1 and .results[0].title == "Kurzmeldung"' >/dev/null; then
+if ! echo "$SEARCH_NO_CACHE_FILE" | jq -e '.status == "ok" and .count >= 1 and .results[0].title == "Kurzmeldung" and .results[0].size == "12.3"' >/dev/null; then
     echo "ERROR: search should still work from catalog.sqlite after audios.xz is missing"
     echo "$SEARCH_NO_CACHE_FILE"
     exit 1
@@ -1311,7 +1350,7 @@ if ! echo "$FILTER_PROFILES_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk
     exit 1
 fi
 
-if ! echo "$SEARCH_JSON" | jq -e '.results[0].title == "Kurzmeldung" and .results[0].sender == "WDR" and .results[0].url == "https://example.com/stream"' >/dev/null; then
+if ! echo "$SEARCH_JSON" | jq -e '.results[0].title == "Kurzmeldung" and .results[0].sender == "WDR" and .results[0].size == "12.3" and .results[0].url == "https://example.com/stream"' >/dev/null; then
     echo "ERROR: search result fields are not mapped correctly"
     echo "$SEARCH_JSON"
     exit 1

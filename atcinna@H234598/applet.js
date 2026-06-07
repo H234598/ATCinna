@@ -3917,6 +3917,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["Datum", safeItem.date],
             ["Zeit", safeItem.time],
             ["Dauer [min]", safeItem.duration],
+            ["Größe [MB]", safeItem.size],
             ["Neu", this._yesNoInfoValue(safeItem.is_new)],
             ["Podcast", this._yesNoInfoValue(safeItem.podcast)],
             ["Beschreibung", safeItem.description],

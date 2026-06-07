@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.85
+
+- Das ATPlayer-Katalogfeld `raw[7]` wird jetzt als `size` normalisiert, in `catalog.sqlite` gespeichert und im `search`-JSON ausgegeben.
+- Die Audioinformation zeigt die neue sichtbare Zeile **Größe [MB]**; History-, Bookmark- und Download-Store-Schemas bleiben unverändert.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen alte SQLite-Schemas ohne `size`, die neue Spalte, SQLite- und XZ-Lesewege sowie die Applet-Infozeile; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.85` angehoben.
+
 ## 0.3.84
 
 - Audioinformation benennt die ATPlayer-nahe Dauerzeile jetzt sichtbar als **Dauer [min]**.
