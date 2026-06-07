@@ -210,6 +210,27 @@ if missing:
     raise SystemExit(1)
 PY
 
+if ! rg -q -F 'label: "URL"' "$APPLET_JS"; then
+    echo "ERROR: installed applet info metadata is missing URL clickable row"
+    exit 1
+fi
+if ! rg -q -F 'label: "Website"' "$APPLET_JS"; then
+    echo "ERROR: installed applet info metadata is missing Website clickable row"
+    exit 1
+fi
+if ! rg -q -F 'clickable: true' "$APPLET_JS"; then
+    echo "ERROR: installed applet info metadata is missing clickable marker"
+    exit 1
+fi
+if ! rg -q -F 'action: (value) => this._xdgOpen(value)' "$APPLET_JS"; then
+    echo "ERROR: installed applet info metadata action is not wired to _xdgOpen"
+    exit 1
+fi
+if ! rg -q -F 'const isTuple = Array.isArray(field);' "$APPLET_JS"; then
+    echo "ERROR: installed applet info renderer does not support field metadata"
+    exit 1
+fi
+
 if ! rg -q -F "Audio-URL kopieren" "$APPLET_JS"; then
     echo "ERROR: installed applet label is missing: Audio-URL kopieren"
     exit 1

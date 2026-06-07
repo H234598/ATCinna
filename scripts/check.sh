@@ -499,6 +499,26 @@ if ! rg -q -F "_renderInfoSection(fields = [])" "$APPLET_JS"; then
     echo "ERROR: applet metadata info section renderer is missing"
     STATUS=1
 fi
+if ! rg -q -F 'label: "URL"' "$APPLET_JS"; then
+    echo "ERROR: info section does not define clickable URL metadata"
+    STATUS=1
+fi
+if ! rg -q -F 'label: "Website"' "$APPLET_JS"; then
+    echo "ERROR: info section does not define clickable Website metadata"
+    STATUS=1
+fi
+if ! rg -q -F 'clickable: true' "$APPLET_JS"; then
+    echo "ERROR: info section metadata is not marking rows as clickable"
+    STATUS=1
+fi
+if ! rg -q -F 'action: (value) => this._xdgOpen(value)' "$APPLET_JS"; then
+    echo "ERROR: info section clickable rows are not wired to _xdgOpen"
+    STATUS=1
+fi
+if ! rg -q -F "const isTuple = Array.isArray(field);" "$APPLET_JS"; then
+    echo "ERROR: info section renderer does not support field metadata and tuple fallback"
+    STATUS=1
+fi
 if ! rg -q -F "_copyToClipboard" "$APPLET_JS"; then
     echo "ERROR: applet clipboard helper is missing"
     STATUS=1

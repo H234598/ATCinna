@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.57
+
+- Audio-Info-Abschnitt: **URL** und **Website** sind jetzt als klickbare Zeilen verfügbar; beide rufen beim Aktivieren `this._xdgOpen(value)` auf, während Titel/Sender/Genre/Thema/Beschreibung etc. statisch bleiben.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen die neue klickbare Info-Zeilen-Contract.
+- Versionssprung auf `0.3.57`; `metadata.json`, `README`, `VERSION` und Applet-Dateien aktualisiert.
+
 ## 0.3.56
 
 - `download-trash-file` bricht jetzt explizit bei `running`-Queue-Einträgen mit klarer JSON-Fehlermeldung ab und verschiebt bei Erfolg optional die zugehörige `.txt`-Infodatei zusammen mit der Audiodatei in den Papierkorb.

@@ -3353,8 +3353,18 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["Thema", safeItem.topic],
             ["Datum/Uhrzeit/Dauer", `${safeItem.date || ""} ${safeItem.time || ""} ${safeItem.duration || ""}`.trim().replace(/\s+/g, " ")],
             ["Beschreibung", safeItem.description],
-            ["URL", safeItem.url],
-            ["Website", safeItem.website],
+            {
+                label: "URL",
+                value: safeItem.url,
+                clickable: true,
+                action: (value) => this._xdgOpen(value)
+            },
+            {
+                label: "Website",
+                value: safeItem.website,
+                clickable: true,
+                action: (value) => this._xdgOpen(value)
+            },
             ["Pfad", safeItem.path]
         ];
 
@@ -3373,13 +3383,27 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._infoSection.addMenuItem(header);
 
         let hasField = false;
-        for (const [label, value] of fields) {
+        for (const field of fields) {
+            if (!field) {
+                continue;
+            }
+            const isTuple = Array.isArray(field);
+            const label = isTuple ? field[0] : field.label;
+            const value = isTuple ? field[1] : field.value;
+            const clickable = isTuple ? false : field.clickable;
+            const action = isTuple ? null : field.action;
             if (!value) {
                 continue;
             }
             hasField = true;
             const itemRow = new PopupMenu.PopupMenuItem(`${label}: ${this._shortText(value)}`);
-            itemRow.actor.reactive = false;
+            if (clickable === true && typeof action === "function") {
+                itemRow.connect("activate", () => {
+                    action(value);
+                });
+            } else {
+                itemRow.actor.reactive = false;
+            }
             this._infoSection.addMenuItem(itemRow);
         }
 
