@@ -1405,19 +1405,19 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         copyTitle.connect("activate", () => this._runResultCopyTitleFirstSelected());
         this._resultsSection.addMenuItem(copyTitle);
 
-        const markShownSelected = new PopupMenu.PopupMenuItem("Markierte als gesehen markieren");
+        const markShownSelected = new PopupMenu.PopupMenuItem("Filme als gesehen markieren");
         markShownSelected.connect("activate", () => this._runResultMarkShownSelected());
         this._resultsSection.addMenuItem(markShownSelected);
 
-        const markUnshownSelected = new PopupMenu.PopupMenuItem("Markierte als ungesehen markieren");
+        const markUnshownSelected = new PopupMenu.PopupMenuItem("Filme als ungesehen markieren");
         markUnshownSelected.connect("activate", () => this._runResultMarkUnshownSelected());
         this._resultsSection.addMenuItem(markUnshownSelected);
 
-        const bookmarkSelected = new PopupMenu.PopupMenuItem("Markierte als Bookmarks anlegen");
+        const bookmarkSelected = new PopupMenu.PopupMenuItem("Neue Bookmarks anlegen");
         bookmarkSelected.connect("activate", () => this._runResultBookmarkSelected());
         this._resultsSection.addMenuItem(bookmarkSelected);
 
-        const removeBookmarksSelected = new PopupMenu.PopupMenuItem("Markierte Bookmarks löschen");
+        const removeBookmarksSelected = new PopupMenu.PopupMenuItem("Bookmarks löschen");
         removeBookmarksSelected.connect("activate", () => this._runResultRemoveBookmarksSelected());
         this._resultsSection.addMenuItem(removeBookmarksSelected);
 
@@ -1555,7 +1555,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runResultBookmarkSelected() {
         this._runResultBatchAction(
-            "Markierte als Bookmarks anlegen",
+            "Neue Bookmarks anlegen",
             this._getSelectedResultItems(),
             (item, callback) => this._runBookmarkAdd(item, callback),
             false,
@@ -1565,7 +1565,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runResultRemoveBookmarksSelected() {
         this._runResultBatchAction(
-            "Markierte Bookmarks löschen",
+            "Bookmarks löschen",
             this._getSelectedResultItems(),
             (item, callback) => this._runBookmarkRemove(item, callback),
             false,
@@ -1575,7 +1575,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runResultMarkShownSelected() {
         this._runResultBatchAction(
-            "Markierte als gesehen markieren",
+            "Filme als gesehen markieren",
             this._getSelectedResultItems(),
             (item, callback) => this._runHistoryAdd(item, callback),
             false,
@@ -1585,7 +1585,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runResultMarkUnshownSelected() {
         this._runResultBatchAction(
-            "Markierte als ungesehen markieren",
+            "Filme als ungesehen markieren",
             this._getSelectedResultItems(),
             (item, callback) => this._runHistoryRemove(item, callback),
             false,

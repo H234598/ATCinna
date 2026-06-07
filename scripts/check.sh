@@ -371,7 +371,7 @@ for queue_top_action in 'const playSelected = new PopupMenu.PopupMenuItem("Audio
         STATUS=1
     fi
 done
-for result_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Markierte als gesehen markieren" "Markierte als ungesehen markieren" "Markierte als Bookmarks anlegen" "Markierte Bookmarks löschen" "Auswahl umschalten"; do
+for result_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Filme als gesehen markieren" "Filme als ungesehen markieren" "Neue Bookmarks anlegen" "Bookmarks löschen" "Auswahl umschalten"; do
     if ! rg -q -F "${result_label}" "$APPLET_JS"; then
         echo "ERROR: applet result selection label is missing: ${result_label}"
         STATUS=1

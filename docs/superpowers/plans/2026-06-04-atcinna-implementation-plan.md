@@ -313,10 +313,19 @@
   - Erweitere Source-/Installed-Checks um die neuen Top-Level-Labels, Handler und Applet-Version.
   - Bump auf `0.3.45`; update `metadata.json`, `VERSION`, `README` und `CHANGELOG`.
 
+### Task 46: Align Result Selection Labels to ATPlayer (0.3.46)
+
+- [x] **ATPlayer-nahe Treffer-Auswahllabels**
+  - Rename existing result batch actions to **Filme als gesehen markieren**, **Filme als ungesehen markieren**, **Neue Bookmarks anlegen**, and **Bookmarks löschen**.
+  - Keep existing result selection handlers and helper/backend paths unchanged.
+- [x] **Checks/docs/version**
+  - Extend source and installed validation for the updated visible labels.
+  - Bump version to `0.3.46`, update metadata/version/readme/changelog.
+
 
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: left-click menu open with a direct **Einstellungen** entry, catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style filter/info visibility toggles, visible Treffer selection with batch play/save/bookmark/history actions, direct **Abspielen**/**Speichern** audio context actions, audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including per-entry **Download starten**, selected **Downloads starten**, selected **Downloads vorziehen/zurückstellen**, selected **Downloads stoppen**, selected **Downloads aus Liste entfernen**, `Download ändern`, refresh/cleanup labels, first visible-list selection/reset workflows, **Anleitung im Web**, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: left-click menu open with a direct **Einstellungen** entry, catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style filter/info visibility toggles, visible Treffer selection with **Film abspielen**, **Alle markierten Audios abspielen**, **Film speichern**, **Filme als gesehen markieren**, **Filme als ungesehen markieren**, **Neue Bookmarks anlegen**, **Bookmarks löschen**, direct **Abspielen**/**Speichern** audio context actions, audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including per-entry **Download starten**, selected **Downloads starten**, selected **Downloads vorziehen/zurückstellen**, selected **Downloads stoppen**, selected **Downloads aus Liste entfernen**, `Download ändern`, refresh/cleanup labels, first visible-list selection/reset workflows, **Anleitung im Web**, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 

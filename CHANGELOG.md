@@ -1,4 +1,9 @@
 # Changelog
+## 0.3.46
+
+- Treffer-Batch-Aktionen im Treffer-Top-Level auf ATPlayer-nahe Labels umgestellt: **Filme als gesehen markieren**, **Filme als ungesehen markieren**, **Neue Bookmarks anlegen**, **Bookmarks löschen**.
+- Source- und Installationschecks schützen die neuen Sichtbarkeitslabels sowie `metadata.json`, `VERSION`, README und Checkskripte.
+
 ## 0.3.45
 
 - Top-Level-Trefferaktionen ergänzt: **Filminformation anzeigen**, **Thema in die Zwischenablage kopieren**, **Titel in die Zwischenablage kopieren** auf den ersten markierten sichtbaren Treffer umgesetzt.

@@ -230,7 +230,7 @@ for applet_label in "Als gesehen markieren" "Als ungesehen markieren"; do
         exit 1
     fi
 done
-for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Film abspielen" "Film speichern" "Filminformation anzeigen" "Thema in die Zwischenablage kopieren" "Titel in die Zwischenablage kopieren" "Markierte als gesehen markieren" "Markierte als ungesehen markieren" "Markierte als Bookmarks anlegen" "Markierte Bookmarks löschen"; do
+for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Film abspielen" "Film speichern" "Filminformation anzeigen" "Thema in die Zwischenablage kopieren" "Titel in die Zwischenablage kopieren" "Filme als gesehen markieren" "Filme als ungesehen markieren" "Neue Bookmarks anlegen" "Bookmarks löschen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
         exit 1
