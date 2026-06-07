@@ -379,7 +379,7 @@ if ! rg -q -F "\"download-update\"" "$HELPER"; then
     echo "ERROR: helper action is missing: download-update"
     STATUS=1
 fi
-for helper_action in blacklist-add blacklist-list blacklist-remove blacklist-undo blacklist-clean blacklist-clear; do
+for helper_action in blacklist-add blacklist-count blacklist-list blacklist-remove blacklist-undo blacklist-clean blacklist-clear; do
     if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
         echo "ERROR: helper action is missing: ${helper_action}"
         STATUS=1
@@ -879,13 +879,13 @@ if ! rg -q -F 'ApplyFilterProfile' "$FILTER_PROFILES_DIALOG"; then
     echo "ERROR: filter profiles dialog does not load profiles through D-Bus"
     STATUS=1
 fi
-for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Gelöschte wieder anlegen"; do
+for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Treffer zählen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${blacklist_dialog_label}" "$BLACKLIST_DIALOG"; then
         echo "ERROR: blacklist dialog label is missing: ${blacklist_dialog_label}"
         STATUS=1
     fi
 done
-for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "invert_rule_selection" "reset_table_selection" "load_rule_into_form" '"row-activated"'; do
+for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "invert_rule_selection" "reset_table_selection" "load_rule_into_form" "count_rule_hits" '"row-activated"'; do
     if ! rg -q -F "${blacklist_dialog_handler}" "$BLACKLIST_DIALOG"; then
         echo "ERROR: blacklist dialog selection handler is missing: ${blacklist_dialog_handler}"
         STATUS=1
@@ -1501,6 +1501,12 @@ SEARCH_BLACKLIST_TOPIC_PARTIAL="$(python3 "$HELPER" search --query "" --blacklis
 if ! echo "$SEARCH_BLACKLIST_TOPIC_PARTIAL" | jq -e '.status == "ok" and .count == 3 and ([.results[] | select(.title=="Kurzmeldung" or .title=="Zweite Kurzmeldung" or .title=="Ungültige Website")] | length)==3' >/dev/null; then
     echo "ERROR: topic_exact=false should use substring matching for topic"
     echo "$SEARCH_BLACKLIST_TOPIC_PARTIAL"
+    exit 1
+fi
+BLACKLIST_COUNT_TOPIC_PARTIAL="$(python3 "$HELPER" blacklist-count --topic the --topic-exact false --active false)"
+if ! echo "$BLACKLIST_COUNT_TOPIC_PARTIAL" | jq -e '.status == "ok" and .count == 3' >/dev/null; then
+    echo "ERROR: blacklist-count should count all matching catalog rows without blacklist filtering"
+    echo "$BLACKLIST_COUNT_TOPIC_PARTIAL"
     exit 1
 fi
 if ! python3 "$HELPER" blacklist-remove --topic the --topic-exact false >/dev/null; then

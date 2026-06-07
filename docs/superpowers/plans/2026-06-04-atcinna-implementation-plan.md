@@ -12,9 +12,9 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.76`.
+- `VERSION` is `0.3.77`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
-- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
+- `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
 - `scripts/check.sh` is the local quality gate and includes a non-mutating installed-tree validation selftest.
 
@@ -31,6 +31,13 @@
   - Apply/remove style class `atcinna-dark-surface` on the menu actor in response to setting changes.
   - Include the new class and setting wiring in `scripts/check.sh` and `scripts/validate-installed.sh`.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.76`.
+
+- [x] **Task 77: Add Blacklist hit counting (0.3.77)**
+  - Add helper action `blacklist-count` with the same rule arguments as `blacklist-add`.
+  - Count matching catalog rows across the complete local catalog without the search result `max_hits` cutoff and without changing normal Blacklist filter behavior.
+  - Add **Treffer zählen** to `atcinna@H234598/scripts/atcinna-blacklist-dialog`, using safe helper argument lists and reporting the count in the status label.
+  - Include helper, dialog label/handler, and functional result checks in `scripts/check.sh` and `scripts/validate-installed.sh`.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.77`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 

@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.77
+
+- Blacklist-Dialog um die ATPlayer-nahe Aktion **Treffer zählen** ergänzt.
+- Neuer Helper-Befehl `blacklist-count` zählt Treffer einer Formularregel gegen den kompletten lokalen Katalog, nutzt dabei dieselbe Blacklist-Feldlogik wie die Suche und bricht nicht nach dem ersten Treffer ab.
+- Die normale Blacklist-Suche bleibt unverändert aktivitätsabhängig; `blacklist-count` zählt wie ATPlayer die Regelkriterien auch dann, wenn die Formularregel als inaktiv markiert ist.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen Helper, Dialog-Label, Handler und funktionale Zählergebnisse; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.77` angehoben.
+
 ## 0.3.76
 
 - Neuen direkten Popup-Menüpunkt **Dunkle Oberfläche** ergänzt, der die gesamte Popup-Oberfläche über die CSS-Klasse `atcinna-dark-surface` in den dunklen Modus schaltet.

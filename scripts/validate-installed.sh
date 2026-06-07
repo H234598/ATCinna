@@ -513,7 +513,7 @@ if ! rg -q -F '"download-run"' "$HELPER"; then
     echo "ERROR: installed helper action is missing: download-run"
     exit 1
 fi
-for helper_action in "download-error-list" "download-error-clear" "download-folder-history-list" "download-folder-history-clear" "filter-profile-get" "filter-profile-rename" "filter-profile-remove" "filter-profile-clear" "filter-profile-sort" "filter-profile-reset"; do
+for helper_action in "download-error-list" "download-error-clear" "download-folder-history-list" "download-folder-history-clear" "blacklist-count" "filter-profile-get" "filter-profile-rename" "filter-profile-remove" "filter-profile-clear" "filter-profile-sort" "filter-profile-reset"; do
     if ! rg -q -F "${helper_action}" "$HELPER"; then
         echo "ERROR: installed helper action is missing: ${helper_action}"
         exit 1
@@ -559,13 +559,13 @@ if ! rg -q -F -- "--download-file-name-template" "$HELPER"; then
     echo "ERROR: installed helper does not define --download-file-name-template"
     exit 1
 fi
-for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Gelöschte wieder anlegen"; do
+for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Treffer zählen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${blacklist_dialog_label}" "$BLACKLIST_DIALOG"; then
         echo "ERROR: installed blacklist dialog label is missing: ${blacklist_dialog_label}"
         exit 1
     fi
 done
-for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "invert_rule_selection" "reset_table_selection" "load_rule_into_form" '"row-activated"'; do
+for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "invert_rule_selection" "reset_table_selection" "load_rule_into_form" "count_rule_hits" '"row-activated"'; do
     if ! rg -q -F "${blacklist_dialog_handler}" "$BLACKLIST_DIALOG"; then
         echo "ERROR: installed blacklist dialog selection handler is missing: ${blacklist_dialog_handler}"
         exit 1
@@ -846,6 +846,12 @@ SEARCH_BLACKLIST_THEME_TITLE_INSTALL="$(python3 "$HELPER" search --query "" --bl
 if ! echo "$SEARCH_BLACKLIST_THEME_TITLE_INSTALL" | jq -e '.status == "ok" and ([.results[] | select(.title=="Zweite Kurzmeldung")] | length) == 1' >/dev/null; then
     echo "ERROR: installed helper theme-title blacklist matching failed"
     echo "$SEARCH_BLACKLIST_THEME_TITLE_INSTALL"
+    exit 1
+fi
+BLACKLIST_COUNT_THEME_TITLE_INSTALL="$(python3 "$HELPER" blacklist-count --theme-title "ZWEITE KURZ" --active false)"
+if ! echo "$BLACKLIST_COUNT_THEME_TITLE_INSTALL" | jq -e '.status == "ok" and .count == 1' >/dev/null; then
+    echo "ERROR: installed helper blacklist-count should count matching catalog rows"
+    echo "$BLACKLIST_COUNT_THEME_TITLE_INSTALL"
     exit 1
 fi
 if ! python3 "$HELPER" blacklist-remove --theme-title "ZWEITE KURZ" >/dev/null; then

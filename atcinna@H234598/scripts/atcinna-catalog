@@ -693,8 +693,7 @@ def _list_store(path):
     print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
 
 
-def action_blacklist_add(args):
-    # pylint: disable=too-many-locals
+def _blacklist_rule_from_args(args):
     rule = _normalize_rule(args)
     if (
         _is_unsupported_blacklist_regex(rule["sender"]) or
@@ -715,15 +714,20 @@ def action_blacklist_add(args):
 
     active = _parse_bool_arg(args.active, "active") if args.active is not None else True
     topic_exact = _parse_bool_arg(args.topic_exact, "topic-exact") if args.topic_exact is not None else True
+    return _load_blacklist_rule({
+        **rule,
+        "active": active,
+        "topic_exact": topic_exact,
+        "timestamp": int(time.time()),
+    })
+
+
+def action_blacklist_add(args):
+    # pylint: disable=too-many-locals
+    target = _blacklist_rule_from_args(args)
     path = _blacklist_path()
     with _store_lock(path):
         entries = _load_blacklist()
-        target = _load_blacklist_rule({
-            **rule,
-            "active": active,
-            "topic_exact": topic_exact,
-            "timestamp": int(time.time()),
-        })
         target_key = _blacklist_rule_key(target)
         filtered = [
             entry for entry in entries
@@ -740,6 +744,26 @@ def action_blacklist_add(args):
 def action_blacklist_list(args):
     entries = _load_blacklist()
     print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
+
+
+def action_blacklist_count(args):
+    rule = _blacklist_rule_from_args(args)
+    count = 0
+    last_sender = ""
+    last_genre = ""
+    last_topic = ""
+    for raw in _load_catalog_rows():
+        normalized, last_sender, last_genre, last_topic = _normalize_catalog_row(
+            raw,
+            last_sender,
+            last_genre,
+            last_topic,
+        )
+        if normalized is None:
+            continue
+        if _rule_matches_result(rule, _catalog_result_item(normalized), respect_active=False):
+            count += 1
+    print(json.dumps({"status": "ok", "count": count}))
 
 
 def action_blacklist_remove(args):
@@ -1001,8 +1025,8 @@ def _blacklist_rule_key(rule):
     )
 
 
-def _rule_matches_result(rule, item):
-    if not _normalize_bool_value(rule.get("active"), True):
+def _rule_matches_result(rule, item, respect_active=True):
+    if respect_active and not _normalize_bool_value(rule.get("active"), True):
         return False
 
     fields = {
@@ -2208,6 +2232,61 @@ def _row_to_audio_item(raw, last_sender, last_genre, last_topic):
     }, last_sender, last_genre, last_topic
 
 
+def _load_catalog_rows():
+    xz_path = cache_dir() / "audios.xz"
+    catalog_db_path = _catalog_db_path()
+
+    rows = []
+    if _catalog_db_is_valid(catalog_db_path):
+        rows = list(_iter_catalog_rows(catalog_db_path))
+    elif xz_path.exists():
+        try:
+            _rebuild_catalog_db(xz_path, catalog_db_path)
+        except Exception:
+            rows = list(_iter_audio_rows(xz_path))
+        else:
+            rows = list(_iter_catalog_rows(catalog_db_path))
+    if not rows and xz_path.exists():
+        rows = list(_iter_audio_rows(xz_path))
+    return rows
+
+
+def _normalize_catalog_row(raw, last_sender, last_genre, last_topic):
+    if isinstance(raw, dict):
+        return {
+            "sender": _normalize_entry_value(raw.get("sender")),
+            "genre": _normalize_entry_value(raw.get("genre")),
+            "topic": _normalize_entry_value(raw.get("topic")),
+            "title": _normalize_entry_value(raw.get("title")),
+            "date": _normalize_entry_value(raw.get("date")),
+            "time": _normalize_entry_value(raw.get("time")),
+            "duration": _normalize_entry_value(raw.get("duration")),
+            "description": _normalize_entry_value(raw.get("description")),
+            "url": _normalize_entry_value(raw.get("url")),
+            "website": _normalize_entry_value(raw.get("website")),
+            "is_new": _parse_bool_value(raw.get("is_new"), False),
+            "podcast": _parse_bool_value(raw.get("podcast"), False),
+        }, last_sender, last_genre, last_topic
+    return _row_to_audio_item(raw, last_sender, last_genre, last_topic)
+
+
+def _catalog_result_item(normalized):
+    return {
+        "title": normalized["title"],
+        "sender": normalized["sender"],
+        "genre": normalized["genre"],
+        "topic": normalized["topic"],
+        "date": normalized["date"],
+        "time": normalized["time"],
+        "duration": normalized["duration"],
+        "description": normalized["description"],
+        "url": normalized["url"],
+        "website": normalized["website"],
+        "is_new": normalized["is_new"],
+        "podcast": normalized["podcast"],
+    }
+
+
 def _iter_catalog_rows(path):
     if not path.exists():
         return
@@ -2372,21 +2451,7 @@ def action_refresh(args):
 
 
 def _iter_results(query, max_hits, filters):
-    xz_path = cache_dir() / "audios.xz"
-    catalog_db_path = _catalog_db_path()
-
-    rows = []
-    if _catalog_db_is_valid(catalog_db_path):
-        rows = list(_iter_catalog_rows(catalog_db_path))
-    elif xz_path.exists():
-        try:
-            _rebuild_catalog_db(xz_path, catalog_db_path)
-        except Exception:
-            rows = list(_iter_audio_rows(xz_path))
-        else:
-            rows = list(_iter_catalog_rows(catalog_db_path))
-    if not rows and xz_path.exists():
-        rows = list(_iter_audio_rows(xz_path))
+    rows = _load_catalog_rows()
     if not rows:
         return 0, []
 
@@ -2416,27 +2481,12 @@ def _iter_results(query, max_hits, filters):
     last_topic = ""
 
     for raw in rows:
-        sender = genre = topic = title = date = time = duration = description = url = website = ""
-        is_new = False
-        is_podcast = False
-        normalized = None
-        if isinstance(raw, dict):
-            normalized = {
-                "sender": _normalize_entry_value(raw.get("sender")),
-                "genre": _normalize_entry_value(raw.get("genre")),
-                "topic": _normalize_entry_value(raw.get("topic")),
-                "title": _normalize_entry_value(raw.get("title")),
-                "date": _normalize_entry_value(raw.get("date")),
-                "time": _normalize_entry_value(raw.get("time")),
-                "duration": _normalize_entry_value(raw.get("duration")),
-                "description": _normalize_entry_value(raw.get("description")),
-                "url": _normalize_entry_value(raw.get("url")),
-                "website": _normalize_entry_value(raw.get("website")),
-                "is_new": _parse_bool_value(raw.get("is_new"), False),
-                "podcast": _parse_bool_value(raw.get("podcast"), False),
-            }
-        else:
-            normalized, last_sender, last_genre, last_topic = _row_to_audio_item(raw, last_sender, last_genre, last_topic)
+        normalized, last_sender, last_genre, last_topic = _normalize_catalog_row(
+            raw,
+            last_sender,
+            last_genre,
+            last_topic,
+        )
 
         if normalized is None:
             continue
@@ -2482,20 +2532,7 @@ def _iter_results(query, max_hits, filters):
         if podcast_mode == "none" and is_podcast:
             continue
 
-        result_item = {
-            "title": title,
-            "sender": sender,
-            "genre": genre,
-            "topic": topic,
-            "date": date,
-            "time": time,
-            "duration": duration,
-            "description": description,
-            "url": url,
-            "website": website,
-            "is_new": is_new,
-            "podcast": is_podcast,
-        }
+        result_item = _catalog_result_item(normalized)
         if blacklist_mode in {"hide", "only"}:
             is_blacklisted = any(_rule_matches_result(rule, result_item) for rule in blacklist_rules)
             if blacklist_mode == "hide" and is_blacklisted:
@@ -2583,6 +2620,15 @@ def parse_args():
     blacklist_add.add_argument("--theme-title", dest="theme_title", default="", help="Blacklist topic or title")
     blacklist_add.add_argument("--active", default=None, help="Whether rule is active (true/false)")
     blacklist_add.add_argument("--topic-exact", default=None, help="Whether topic matches exactly (true/false)")
+
+    blacklist_count = sub.add_parser("blacklist-count", help="Count catalog entries matching a blacklist rule")
+    blacklist_count.add_argument("--sender", default="", help="Blacklist sender")
+    blacklist_count.add_argument("--genre", default="", help="Blacklist genre")
+    blacklist_count.add_argument("--topic", default="", help="Blacklist topic")
+    blacklist_count.add_argument("--title", default="", help="Blacklist title")
+    blacklist_count.add_argument("--theme-title", dest="theme_title", default="", help="Blacklist topic or title")
+    blacklist_count.add_argument("--active", default=None, help="Whether rule is active (true/false)")
+    blacklist_count.add_argument("--topic-exact", default=None, help="Whether topic matches exactly (true/false)")
 
     blacklist_list = sub.add_parser("blacklist-list", help="List blacklist rules")
 
@@ -2769,6 +2815,8 @@ def main():
         action_blacklist_add(args)
     elif args.action == "blacklist-list":
         action_blacklist_list(args)
+    elif args.action == "blacklist-count":
+        action_blacklist_count(args)
     elif args.action == "blacklist-remove":
         action_blacklist_remove(args)
     elif args.action == "blacklist-undo":

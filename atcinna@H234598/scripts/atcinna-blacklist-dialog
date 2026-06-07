@@ -198,7 +198,9 @@ def run_dialog():
     form.attach(active_check, 5, 1, 1, 1)
     form.attach(topic_exact_check, 6, 1, 1, 1)
     add_rule_button = Gtk.Button(label="Neue Regel hinzufügen")
+    count_hits_button = Gtk.Button(label="Treffer zählen")
     form.attach(add_rule_button, 7, 1, 1, 1)
+    form.attach(count_hits_button, 8, 1, 1, 1)
     root.pack_start(form, False, False, 0)
 
     list_box = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE)
@@ -332,31 +334,38 @@ def run_dialog():
                 selected.append(selected_rule)
         return selected
 
-    def add_rule(_btn):
-        sender = sender_entry.get_text().strip()
-        genre = genre_entry.get_text().strip()
-        topic = topic_entry.get_text().strip()
-        title = title_entry.get_text().strip()
-        theme_title = theme_title_entry.get_text().strip()
-        if not (sender or genre or topic or title or theme_title):
-            _set_status(status_label, "Bitte mindestens ein Feld befüllen")
-            return
-
+    def _form_rule_args(action):
+        fields = {
+            "sender": sender_entry.get_text().strip(),
+            "genre": genre_entry.get_text().strip(),
+            "topic": topic_entry.get_text().strip(),
+            "title": title_entry.get_text().strip(),
+            "theme_title": theme_title_entry.get_text().strip(),
+        }
+        if not any(fields.values()):
+            return None
         args = [
-            "blacklist-add",
+            action,
             f"--active={'true' if active_check.get_active() else 'false'}",
             f"--topic-exact={'true' if topic_exact_check.get_active() else 'false'}",
         ]
-        if sender:
-            args.append(f"--sender={sender}")
-        if genre:
-            args.append(f"--genre={genre}")
-        if topic:
-            args.append(f"--topic={topic}")
-        if title:
-            args.append(f"--title={title}")
-        if theme_title:
-            args.append(f"--theme-title={theme_title}")
+        if fields["sender"]:
+            args.append(f"--sender={fields['sender']}")
+        if fields["genre"]:
+            args.append(f"--genre={fields['genre']}")
+        if fields["topic"]:
+            args.append(f"--topic={fields['topic']}")
+        if fields["title"]:
+            args.append(f"--title={fields['title']}")
+        if fields["theme_title"]:
+            args.append(f"--theme-title={fields['theme_title']}")
+        return args
+
+    def add_rule(_btn):
+        args = _form_rule_args("blacklist-add")
+        if args is None:
+            _set_status(status_label, "Bitte mindestens ein Feld befüllen")
+            return
 
         try:
             _run_helper(args)
@@ -367,6 +376,19 @@ def run_dialog():
             theme_title_entry.set_text("")
             refresh_rules()
             _set_status(status_label, "Neue Regel gespeichert")
+        except Exception as exc:
+            _set_status(status_label, str(exc))
+
+    def count_rule_hits(_btn):
+        args = _form_rule_args("blacklist-count")
+        if args is None:
+            _set_status(status_label, "Bitte mindestens ein Feld befüllen")
+            return
+
+        try:
+            payload = _run_helper(args)
+            hits = int(payload.get("count", 0) or 0)
+            _set_status(status_label, f"Treffer zählen: {hits} Treffer")
         except Exception as exc:
             _set_status(status_label, str(exc))
 
@@ -435,6 +457,7 @@ def run_dialog():
         window.close()
 
     add_rule_button.connect("clicked", add_rule)
+    count_hits_button.connect("clicked", count_rule_hits)
     select_all_button.connect("clicked", select_all_rules)
     invert_selection_button.connect("clicked", invert_rule_selection)
     reset_table_button.connect("clicked", reset_table_selection)
