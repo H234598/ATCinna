@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -125,6 +126,51 @@ def _clear_folder_history(folder_widget, status_label):
         status_label.set_text("Pfadliste gelöscht")
     except Exception as exc:
         status_label.set_text(f"Pfadliste löschen fehlgeschlagen: {exc}")
+
+
+def _refresh_folder_space_label(folder_widget, label_widget):
+    if label_widget is None:
+        return
+    label_widget.set_text(_folder_disk_space_label_text(_collect_field(folder_widget)))
+
+
+def _disk_space_target(path_value):
+    text = str(path_value or "").strip()
+    if not text:
+        return None
+
+    candidate = Path(text).expanduser()
+    if not candidate.is_absolute():
+        return None
+
+    if not candidate.is_dir():
+        return None
+
+    return candidate
+
+
+def _folder_disk_space_label_text(path_value):
+    target = _disk_space_target(path_value)
+    if target is None:
+        return ""
+
+    try:
+        free_bytes = shutil.disk_usage(str(target)).free
+    except Exception:
+        return ""
+
+    gib = free_bytes / float(1024 ** 3)
+    if gib >= 1:
+        value = f"{gib:.1f} GB"
+    else:
+        mib = free_bytes / float(1024 ** 2)
+        if mib >= 1:
+            value = f"{mib:.1f} MB"
+        else:
+            kib = free_bytes / float(1024)
+            value = f"{kib:.1f} KB"
+
+    return f"[ noch frei: {value} ]"
 
 
 def _load_queue_info_file(url):
@@ -296,7 +342,7 @@ def _propose_download_folder(folder_entry, topic):
         _set_field_text(folder_entry, proposed_folder)
 
 
-def _select_download_folder(parent_window, folder_entry, gtk_module):
+def _select_download_folder(parent_window, folder_entry, label_widget, gtk_module):
     Gtk = gtk_module
     dialog = Gtk.FileChooserDialog(
         title="Pfad auswählen",
@@ -316,6 +362,7 @@ def _select_download_folder(parent_window, folder_entry, gtk_module):
             selected_folder = dialog.get_filename()
             if selected_folder:
                 _set_field_text(folder_entry, selected_folder)
+                _refresh_folder_space_label(folder_entry, label_widget)
     finally:
         dialog.destroy()
 
@@ -374,6 +421,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     for folder_choice in _folder_history_choices(folder):
         folder_combo.append_text(folder_choice)
     _set_field_text(folder_combo, folder)
+    folder_entry = folder_combo.get_child()
     folder_picker_button = Gtk.Button(label="Pfad auswählen")
     folder_propose_button = Gtk.Button(label="Pfad vorschlagen")
     folder_clear_button = Gtk.Button(label="Liste der Pfade löschen")
@@ -384,6 +432,11 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     folder_picker_row.pack_start(folder_picker_button, False, False, 0)
     folder_picker_row.pack_start(folder_propose_button, False, False, 0)
     folder_picker_row.pack_start(folder_clear_button, False, False, 0)
+    folder_space_label = Gtk.Label(label="", xalign=0)
+    folder_space_label.set_line_wrap(True)
+    folder_details_row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    folder_details_row.pack_start(folder_picker_row, False, False, 0)
+    folder_details_row.pack_start(folder_space_label, False, False, 0)
     sender_entry = Gtk.Entry()
     sender_entry.set_text(sender)
     genre_entry = Gtk.Entry()
@@ -433,7 +486,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
 
     for label_text, widget, row in [
         ("Titel", title_entry, 0),
-        ("Zielordner", folder_picker_row, 1),
+        ("Zielordner", folder_details_row, 1),
         ("Sender", sender_entry, 2),
         ("Genre", genre_entry, 3),
         ("Thema", topic_entry, 4),
@@ -515,12 +568,24 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
 
     save_button.connect("clicked", do_save)
     cancel_button.connect("clicked", lambda _button: window.close())
-    folder_picker_button.connect("clicked", lambda _button: _select_download_folder(window, folder_combo, Gtk))
+    folder_picker_button.connect("clicked", lambda _button: _select_download_folder(window, folder_combo, folder_space_label, Gtk))
     folder_propose_button.connect(
         "clicked",
-        lambda _button: _propose_download_folder(folder_combo, controls["topic"].get_text()),
+        lambda _button: (
+            _propose_download_folder(folder_combo, controls["topic"].get_text()),
+            _refresh_folder_space_label(folder_combo, folder_space_label),
+        ),
     )
-    folder_clear_button.connect("clicked", lambda _button: _clear_folder_history(folder_combo, status))
+    folder_clear_button.connect(
+        "clicked",
+        lambda _button: (
+            _clear_folder_history(folder_combo, status),
+            _refresh_folder_space_label(folder_combo, folder_space_label),
+        ),
+    )
+    if folder_entry is not None and hasattr(folder_entry, "connect"):
+        folder_entry.connect("changed", lambda *_args: _refresh_folder_space_label(folder_combo, folder_space_label))
+    _refresh_folder_space_label(folder_combo, folder_space_label)
 
     window.show_all()
     Gtk.main()

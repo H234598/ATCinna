@@ -881,7 +881,17 @@ if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Liste der Pfade löschen"
     STATUS=1
 fi
-for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "_run_open_url" "_xdg_open" "subprocess.Popen" "set_selectable" "set_max_width_chars" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear" "xdg-open"; do
+if ! rg -q -F "[ noch frei:" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: [ noch frei:"
+    STATUS=1
+fi
+for forbidden_space_phrase in "reicht nicht" "zu wenig" "nicht genug" "ausreichend" "Kapazität"; do
+    if rg -q -F "${forbidden_space_phrase}" "$QUEUE_EDIT_DIALOG"; then
+        echo "ERROR: queue edit dialog must not evaluate folder size: ${forbidden_space_phrase}"
+        STATUS=1
+    fi
+done
+for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "_refresh_folder_space_label" "_disk_space_target" "_folder_disk_space_label_text" "_run_open_url" "_xdg_open" "subprocess.Popen" "set_selectable" "set_max_width_chars" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear" "xdg-open" "shutil.disk_usage"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         STATUS=1
@@ -940,6 +950,13 @@ assert module._proposed_download_folder("Feature Thema") == str(topic_dir)
 assert module._proposed_download_folder("Fehlt") == str(xdg_downloads)
 assert module._sanitize_topic_folder_name("../Traversal") == "Traversal"
 assert module._folder_history_choices(str(xdg_downloads), [str(fallback_downloads), str(xdg_downloads), "", "bad\x00path"]) == [str(xdg_downloads), str(fallback_downloads)]
+assert module._disk_space_target(str(xdg_downloads / "missing")) is None
+assert module._folder_disk_space_label_text(str(xdg_downloads)).startswith("[ noch frei: ")
+assert module._folder_disk_space_label_text("").strip() == ""
+assert module._folder_disk_space_label_text(str(xdg_downloads / 'missing')) == ""
+assert "_refresh_folder_space_label(folder_combo, folder_space_label)" in dialog_path.read_text(encoding="utf-8")
+for forbidden_space_phrase in ("reicht nicht", "zu wenig", "nicht genug", "ausreichend", "Kapazität"):
+    assert forbidden_space_phrase not in dialog_path.read_text(encoding="utf-8")
 
 (config_home / "user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="relative/path"\n', encoding="utf-8")
 assert module._load_xdg_download_dir() == ""

@@ -503,6 +503,16 @@ if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog label is missing: Liste der Pfade löschen"
     exit 1
 fi
+if ! rg -q -F "[ noch frei:" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog label is missing: [ noch frei:"
+    exit 1
+fi
+for forbidden_space_phrase in "reicht nicht" "zu wenig" "nicht genug" "ausreichend" "Kapazität"; do
+    if rg -q -F "${forbidden_space_phrase}" "$QUEUE_EDIT_DIALOG"; then
+        echo "ERROR: installed queue edit dialog must not evaluate folder size: ${forbidden_space_phrase}"
+        exit 1
+    fi
+done
 if ! rg -q -F -- "--info-file" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog argument is missing: --info-file"
     exit 1
@@ -519,7 +529,7 @@ if ! rg -q -F 'download_update.add_argument("--download-file-name-template"' "$H
     echo "ERROR: installed helper download-update parser is missing --download-file-name-template"
     exit 1
 fi
-for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "_run_open_url" "_xdg_open" "subprocess.Popen" "set_selectable" "set_max_width_chars" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear" "xdg-open"; do
+for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "_refresh_folder_space_label" "_disk_space_target" "_folder_disk_space_label_text" "_run_open_url" "_xdg_open" "subprocess.Popen" "set_selectable" "set_max_width_chars" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear" "xdg-open" "shutil.disk_usage"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: installed queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         exit 1

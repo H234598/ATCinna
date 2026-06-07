@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.70
+
+- Der Queue-Edit-Dialog zeigt unter der Zielordnerzeile jetzt nur ein deutsches Freispeicherlabel im Stil `[ noch frei: 12.3 GB ]` an; bei ungültigem Pfad bleibt die Anzeige leer.
+- Die Freispeicheranzeige wird beim Öffnen des Dialogs, nach Pfad-Auswahl, nach Pfad-Vorschlag und bei manueller Pfadeingabe aktualisiert; die Checks wurden um den neuen Dialog-Contract erweitert.
+- Versionssprung auf `0.3.70`; `metadata.json`, `VERSION`, `README.md`, `CHANGELOG.md` und die Queue-Edit-Checks aktualisiert.
+
 ## 0.3.69
 
 - Queue-Edit-Dialog ergänzt um eine ATPlayer-nahe Aktion zum Öffnen der aktuellen Audio-URL: Button `URL öffnen` führt die vorhandene sichere URL-Validierung mit sicherem `xdg-open`-Aufruf (als Argumentliste) aus.
