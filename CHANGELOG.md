@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.89
+
+- Audioinformationszeilen, die keine URL/Website sind, sind jetzt per sichtbarem Untermenü **Kopieren** direkt aus dem Info-Bereich bedienbar; URL und Website bleiben unverändert klickbar.
+- Der bestehende Clipboard-Helfer `_copyToClipboard(value, actionLabel)` wird für diese neuen Zeilen wiederverwendet.
+- Es wurden keine Helper-, DB-, Downloader-, Such-/Filter-/Blacklist- oder CI-Logikpfade geändert.
+- `scripts/check.sh`, `scripts/validate-installed.sh`, `metadata.json`, `VERSION`, `README.md` und den Umsetzungsplan wurden auf `0.3.89` angehoben.
+
 ## 0.3.88
 
 - Queue-Eintrag-Kontexte haben jetzt die ATPlayer-nahe, non-mutierende Selektionsnachführung mit **Alles auswählen** und **Auswahl umkehren** bekommen; beide rufen die bestehenden Handler `_runQueueSelectAll()` und `_runQueueInvertSelection()` auf.

@@ -496,6 +496,26 @@ if ! rg -q -F 'const isTuple = Array.isArray(field);' "$APPLET_JS"; then
     echo "ERROR: installed applet info renderer does not support field metadata"
     exit 1
 fi
+if ! rg -q -F 'const itemLabel = `${label}: ${this._shortText(value)}`;' "$APPLET_JS"; then
+    echo "ERROR: installed applet info section should use a shared label for non-clickable submenus"
+    exit 1
+fi
+if ! rg -q -F 'const itemRow = new PopupMenu.PopupSubMenuMenuItem(itemLabel);' "$APPLET_JS"; then
+    echo "ERROR: installed applet info section should render non-clickable rows as submenus"
+    exit 1
+fi
+if ! rg -q -F 'const copyItem = new PopupMenu.PopupMenuItem("Kopieren");' "$APPLET_JS"; then
+    echo "ERROR: installed applet info section should expose Kopieren menu item for non-clickable rows"
+    exit 1
+fi
+if ! rg -q -F 'copyItem.connect("activate", () => {' "$APPLET_JS"; then
+    echo "ERROR: installed applet info section Kopieren menu item must have activate handler"
+    exit 1
+fi
+if ! rg -q -F 'this._copyToClipboard(value, "Kopieren");' "$APPLET_JS"; then
+    echo "ERROR: installed applet info section Kopieren action must call _copyToClipboard"
+    exit 1
+fi
 
 if ! rg -q -F "Audio-URL kopieren" "$APPLET_JS"; then
     echo "ERROR: installed applet label is missing: Audio-URL kopieren"

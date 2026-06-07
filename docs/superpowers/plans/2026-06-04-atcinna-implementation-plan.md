@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.88`.
+- `VERSION` is `0.3.89`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -114,6 +114,13 @@
   - Keep helper, DB, downloader, filter, blacklist, and CI logic unchanged.
   - Extend `scripts/check.sh` and `scripts/validate-installed.sh` with queue-entry action/wiring checks for the new labels and handlers.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.88`.
+
+- [x] **Task 89: Add copy submenu for non-clickable audio info lines (0.3.89)**
+  - Keep URL and Website rows in the audio info section clickable via existing `_xdgOpen` behavior.
+  - Add a visible **Kopieren** submenu entry to each non-clickable info row; on activation use the existing `_copyToClipboard(value, actionLabel)` helper.
+  - Keep Helper-/DB-/Downloader-/Filter-/Blacklist-Logik unverändert.
+  - Extend `scripts/check.sh` and `scripts/validate-installed.sh` for submenu/wiring/contracts of non-clickable info rows.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.89`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 

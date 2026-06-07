@@ -731,6 +731,26 @@ if ! rg -q -F "const isTuple = Array.isArray(field);" "$APPLET_JS"; then
     echo "ERROR: info section renderer does not support field metadata and tuple fallback"
     STATUS=1
 fi
+if ! rg -q -F 'const itemLabel = `${label}: ${this._shortText(value)}`;' "$APPLET_JS"; then
+    echo "ERROR: info section should use shared label text for non-clickable submenu rows"
+    STATUS=1
+fi
+if ! rg -q -F 'const itemRow = new PopupMenu.PopupSubMenuMenuItem(itemLabel);' "$APPLET_JS"; then
+    echo "ERROR: info section should render non-clickable rows with visible submenu"
+    STATUS=1
+fi
+if ! rg -q -F 'const copyItem = new PopupMenu.PopupMenuItem("Kopieren");' "$APPLET_JS"; then
+    echo "ERROR: info section non-clickable submenu should expose Kopieren action"
+    STATUS=1
+fi
+if ! rg -q -F 'copyItem.connect("activate", () => {' "$APPLET_JS"; then
+    echo "ERROR: info section Kopieren item is missing activate handler"
+    STATUS=1
+fi
+if ! rg -q -F 'this._copyToClipboard(value, "Kopieren");' "$APPLET_JS"; then
+    echo "ERROR: info section Kopieren action is not wired to clipboard helper"
+    STATUS=1
+fi
 if ! rg -q -F "_copyToClipboard" "$APPLET_JS"; then
     echo "ERROR: applet clipboard helper is missing"
     STATUS=1

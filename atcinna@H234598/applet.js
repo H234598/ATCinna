@@ -3975,14 +3975,22 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 continue;
             }
             hasField = true;
-            const itemRow = new PopupMenu.PopupMenuItem(`${label}: ${this._shortText(value)}`);
+            const itemLabel = `${label}: ${this._shortText(value)}`;
             if (clickable === true && typeof action === "function") {
+                const itemRow = new PopupMenu.PopupMenuItem(itemLabel);
                 itemRow.connect("activate", () => {
                     action(value);
                 });
-            } else {
-                itemRow.actor.reactive = false;
+                this._infoSection.addMenuItem(itemRow);
+                continue;
             }
+
+            const itemRow = new PopupMenu.PopupSubMenuMenuItem(itemLabel);
+            const copyItem = new PopupMenu.PopupMenuItem("Kopieren");
+            copyItem.connect("activate", () => {
+                this._copyToClipboard(value, "Kopieren");
+            });
+            itemRow.menu.addMenuItem(copyItem);
             this._infoSection.addMenuItem(itemRow);
         }
 
