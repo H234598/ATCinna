@@ -447,7 +447,11 @@ if ! rg -q -F "Pfad auswählen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog label is missing: Pfad auswählen"
     exit 1
 fi
-for queue_edit_dialog_handler in "_select_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder"; do
+if ! rg -q -F "Pfad vorschlagen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog label is missing: Pfad vorschlagen"
+    exit 1
+fi
+for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: installed queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         exit 1

@@ -817,12 +817,62 @@ if ! rg -q -F "Pfad auswählen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Pfad auswählen"
     STATUS=1
 fi
-for queue_edit_dialog_handler in "_select_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder"; do
+if ! rg -q -F "Pfad vorschlagen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: Pfad vorschlagen"
+    STATUS=1
+fi
+for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         STATUS=1
     fi
 done
+if ! python3 - "$QUEUE_EDIT_DIALOG" "$TMP_DIR" <<'PY'; then
+import os
+import sys
+from importlib.machinery import SourceFileLoader
+from importlib.util import module_from_spec, spec_from_loader
+from pathlib import Path
+
+dialog_path = Path(sys.argv[1]).resolve()
+tmp_dir = Path(sys.argv[2]).resolve()
+home = tmp_dir / "queue-dialog-home"
+config_home = tmp_dir / "queue-dialog-config"
+xdg_downloads = home / "AudioDownloads"
+fallback_downloads = home / "Downloads"
+topic_dir = xdg_downloads / "Feature Thema"
+
+for folder in (config_home, xdg_downloads, fallback_downloads, topic_dir):
+    folder.mkdir(parents=True, exist_ok=True)
+
+(config_home / "user-dirs.dirs").write_text(
+    'XDG_DESKTOP_DIR="$HOME/Desktop"\nXDG_DOWNLOAD_DIR="$HOME/AudioDownloads"\n',
+    encoding="utf-8",
+)
+
+os.environ["HOME"] = str(home)
+os.environ["XDG_CONFIG_HOME"] = str(config_home)
+
+loader = SourceFileLoader("queue_edit_dialog_contract", str(dialog_path))
+spec = spec_from_loader(loader.name, loader)
+module = module_from_spec(spec)
+loader.exec_module(module)
+
+assert module._load_xdg_download_dir() == str(xdg_downloads)
+assert module._default_download_folder() == str(xdg_downloads)
+assert module._proposed_download_folder("Feature Thema") == str(topic_dir)
+assert module._proposed_download_folder("Fehlt") == str(xdg_downloads)
+assert module._sanitize_topic_folder_name("../Traversal") == "Traversal"
+
+(config_home / "user-dirs.dirs").write_text('XDG_DOWNLOAD_DIR="relative/path"\n', encoding="utf-8")
+assert module._load_xdg_download_dir() == ""
+assert module._default_download_folder() == str(fallback_downloads)
+
+print("queue edit dialog path suggestion contract ok")
+PY
+    echo "ERROR: queue edit dialog path suggestion contract failed"
+    STATUS=1
+fi
 
 node --check "$APPLET_JS" >/dev/null
 

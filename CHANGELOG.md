@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.64
+
+- ATPlayer-naher Zielordner-Vorschlag ergänzt: Der Queue-Edit-Dialog bietet jetzt **Pfad vorschlagen** neben **Pfad auswählen**.
+- Die Vorschlagslogik nutzt den XDG-Downloadordner, fällt auf `~/Downloads` oder das Home-Verzeichnis zurück und wählt einen Themen-Unterordner nur dann, wenn dieser bereits existiert.
+- Der Button erstellt keine Ordner und umgeht keine Helper-Validierung; `download-update` prüft den Zielordner weiterhin beim Speichern.
+- `scripts/check.sh` ergänzt neben den statischen Dialog-Contracts einen funktionalen Headless-Test für XDG-Parsing, Fallback und Topic-Unterordner-Vorschläge.
+- Versionssprung auf `0.3.64`; `metadata.json`, `VERSION`, `README.md` und Queue-Edit-Dialog aktualisiert.
+
 ## 0.3.63
 
 - ATPlayer-naher Dialogpfad-Button ergänzt: Der Queue-Edit-Dialog (`atcinna-queue-edit-dialog`) bietet jetzt den Button **Pfad auswählen** auf Basis eines GTK3-`FileChooserDialog` mit `SELECT_FOLDER` für die Zielordner-Auswahl.
