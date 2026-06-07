@@ -264,6 +264,15 @@
   - Extend source and installed validation for new labels, action handlers, and action-state wiring.
   - Bump version to `0.3.40` and document that full ATPlayer parity is still open.
 
+### Task 41: Add Web Help Link (0.3.41)
+
+- [x] **ATPlayer-Guide link in help submenu**
+  - Add **Anleitung im Web** under **Hilfe** that opens the fixed ATPlayer manual URL `https://www.p2tools.de/atplayer/manual/`.
+  - Reuse the existing `_xdgOpen()` path so HTTP/HTTPS validation remains enforced and no new helpers are introduced.
+- [x] **Checks/docs/version**
+  - Extend source and installed validation for help-label and handler wiring.
+  - Bump version to `0.3.41` and document that full ATPlayer parity is still open.
+
 ### ATPlayer Parity Audit
 
 ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: left-click menu open with a direct **Einstellungen** entry, catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style filter/info visibility toggles, ATPlayer-style visible Treffer selection with batch play/save/bookmark/history actions, ATPlayer-style **Abspielen**/**Speichern** audio context actions, ATPlayer-style audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including per-entry **Download starten**, selected **Markierte Downloads starten**, selected **Markierte Downloads vorziehen/zurückstellen**, `Download ändern`, refresh/cleanup labels, and first visible-list selection/reset workflows, history, optional GTK dialogs with first Blacklist table-interaction parity, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.

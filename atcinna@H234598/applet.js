@@ -213,6 +213,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
         this._helpMenu.menu.addMenuItem(this._helpDialogItem);
 
+        this._helpWebItem = new PopupMenu.PopupMenuItem("Anleitung im Web");
+        this._helpWebItem.connect("activate", () => {
+            this._openWebHelp();
+        });
+        this._helpMenu.menu.addMenuItem(this._helpWebItem);
+
         this._helpBlacklistItem = new PopupMenu.PopupMenuItem("Blacklist verwalten");
         this._helpBlacklistItem.connect("activate", () => {
             this._launchBlacklistDialog();
@@ -1030,6 +1036,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["Downloads", "Einträge können in die Download-Warteschlange gelegt oder direkt heruntergeladen werden."],
             ["Tastatur", "Popup kann mit Maus geöffnet und per Enter im Suchfeld ausgelöst werden."]
         ]);
+    }
+
+    _openWebHelp() {
+        this._setStatus("Web-Anleitung wird geöffnet");
+        this._xdgOpen("https://www.p2tools.de/atplayer/manual/");
     }
 
     _resetAppletSettings() {

@@ -193,6 +193,14 @@ checks = {
         r"_openAppletSettings\s*\(\s*\)\s*\{[\s\S]*?\bthis\.configureApplet\s*\(\s*\)\s*;",
         re.S,
     ),
+    "Hilfe submenu has web entry": re.compile(
+        r"this\._helpWebItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Anleitung im Web['\"]\s*\)",
+        re.S,
+    ),
+    "web help handler is wired": re.compile(
+        r"this\._helpWebItem\.connect\s*\(\s*['\"]activate['\"]\s*,\s*\(\s*\)\s*=>\s*\{\s*this\._openWebHelp\s*\(\s*\)\s*;\s*\}\)",
+        re.S,
+    ),
 }
 
 missing = [description for description, pattern in checks.items() if not pattern.search(source)]
@@ -231,6 +239,12 @@ done
 for applet_label in "Download starten" "Downloads aktualisieren" "Markierte Downloads starten" "Audio (URL) abspielen" "Download (URL) kopieren" "Markierte Downloads vorziehen" "Markierte Downloads zurückstellen" "Liste der Downloads aufräumen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
+for applet_label in "Hilfedialog" "Anleitung im Web" "Blacklist verwalten" "Alle Programmeinstellungen zurücksetzen" "Gibt's ein Update?" "Über dieses Programm"; do
+    if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${applet_label}\")" "$APPLET_JS"; then
+        echo "ERROR: installed help menu label is missing: ${applet_label}"
         exit 1
     fi
 done

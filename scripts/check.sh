@@ -143,6 +143,10 @@ if ! rg -q -F '_showHelpDialog' "$APPLET_JS"; then
     echo "ERROR: applet help dialog action handler is missing"
     STATUS=1
 fi
+if ! rg -q -F '_openWebHelp' "$APPLET_JS"; then
+    echo "ERROR: applet web help action handler is missing"
+    STATUS=1
+fi
 if ! rg -q -F '_resetAppletSettings' "$APPLET_JS"; then
     echo "ERROR: applet settings reset handler is missing"
     STATUS=1
@@ -173,6 +177,10 @@ if ! rg -q -F 'ApplyFilterProfile' "$APPLET_JS"; then
 fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Hilfedialog")' "$APPLET_JS"; then
     echo "ERROR: applet help dialog menu label is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Anleitung im Web")' "$APPLET_JS"; then
+    echo "ERROR: applet web help menu label is missing"
     STATUS=1
 fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Blacklist verwalten")' "$APPLET_JS"; then

@@ -14,6 +14,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - ATPlayer-nahe Umschaltung im Menü: **Filter ein-/ausblenden** und **Infos ein-/ausblenden**; beide Zustände werden in Cinnamon-Settings gespeichert.
 - Hilfe-/Programm-Untermenü mit ATPlayer-nahen Aktionen:
   - Hilfedialog (Infos im Popup-Infobereich)
+  - Anleitung im Web (führt auf die ATPlayer-Hilfeseite)
   - Alle Programmeinstellungen zurücksetzen
   - Gibt's ein Update?
   - Blacklist verwalten
@@ -54,7 +55,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.39`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.41`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

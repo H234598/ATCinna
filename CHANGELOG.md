@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.41
+
+- Hilfemenü um **Anleitung im Web** ergänzt und verknüpft mit dem festen ATPlayer-Hilfe-Link `https://www.p2tools.de/atplayer/manual/` via bestehendem sicheren Browser-Öffner `_xdgOpen()`.
+- Keine neuen Helferklassen oder Shell-String-Bausteine eingeführt; bestehender URL-Sicherheitscheck in `_xdgOpen` wird wiederverwendet.
+- Versionssprung auf `0.3.41`; `metadata.json`, `VERSION`, README, Plan und Checks angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.40
 
 - ATPlayer-nahe Queue-Top-Aktionen ergänzt: **Audio (URL) abspielen** und **Download (URL) kopieren** im Warteschlangen-Top-Level.
