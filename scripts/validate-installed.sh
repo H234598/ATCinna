@@ -452,6 +452,20 @@ if rg -q -F '["Datum/Uhrzeit/Dauer"' "$APPLET_JS"; then
     echo "ERROR: installed applet combined info date/time/duration row is still present"
     exit 1
 fi
+for helper_info_file_contract in \
+    'Dauer [min]:' \
+    'Größe [MB]:' \
+    '_download_info_size_mb(destination)' \
+    'Path(destination).stat().st_size'; do
+    if ! rg -q -F "${helper_info_file_contract}" "$HELPER"; then
+        echo "ERROR: installed helper download info file contract is missing: ${helper_info_file_contract}"
+        exit 1
+    fi
+done
+if rg -q -F 'f"Dauer:         ' "$HELPER"; then
+    echo "ERROR: installed helper old download info duration label is still present"
+    exit 1
+fi
 for about_path_contract in \
     'this._cacheDirPath = GLib.build_filenamev([GLib.get_user_cache_dir(), UUID]);' \
     'this._dataDirPath = GLib.build_filenamev([GLib.get_user_data_dir(), UUID]);' \

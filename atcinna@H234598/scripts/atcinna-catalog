@@ -1583,7 +1583,12 @@ def _to_info_file_path(destination):
     return str(Path(destination).with_suffix(".txt"))
 
 
-def _info_file_lines(item):
+def _download_info_size_mb(destination):
+    size_bytes = Path(destination).stat().st_size
+    return f"{size_bytes / (1024 * 1024):.2f}"
+
+
+def _info_file_lines(item, size_mb):
     description = _normalize_entry_value(item.get("description"))
     wrapped_description = []
     line = ""
@@ -1606,7 +1611,8 @@ def _info_file_lines(item):
         "",
         f"Datum:         {_normalize_entry_value(item.get('date'))}",
         f"Zeit:          {_normalize_entry_value(item.get('time'))}",
-        f"Dauer:         {_normalize_entry_value(item.get('duration'))}",
+        f"Dauer [min]:   {_normalize_entry_value(item.get('duration'))}",
+        f"Größe [MB]:    {_normalize_entry_value(size_mb)}",
         "",
         "Website:",
         _normalize_entry_value(item.get("website")),
@@ -1620,7 +1626,10 @@ def _info_file_lines(item):
 
 
 def _write_info_file(destination, item):
-    return _store_text_lines(Path(_to_info_file_path(destination)), _info_file_lines(item))
+    return _store_text_lines(
+        Path(_to_info_file_path(destination)),
+        _info_file_lines(item, _download_info_size_mb(destination)),
+    )
 
 
 def _remove_file_if_exists(path):

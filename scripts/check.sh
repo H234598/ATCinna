@@ -683,6 +683,20 @@ if rg -q -F '["Datum/Uhrzeit/Dauer"' "$APPLET_JS"; then
     echo "ERROR: combined info section date/time/duration row is still present"
     STATUS=1
 fi
+for helper_info_file_contract in \
+    'Dauer [min]:' \
+    'Größe [MB]:' \
+    '_download_info_size_mb(destination)' \
+    'Path(destination).stat().st_size'; do
+    if ! rg -q -F "${helper_info_file_contract}" "$HELPER"; then
+        echo "ERROR: helper download info file contract is missing: ${helper_info_file_contract}"
+        STATUS=1
+    fi
+done
+if rg -q -F 'f"Dauer:         ' "$HELPER"; then
+    echo "ERROR: helper old download info duration label is still present"
+    STATUS=1
+fi
 for info_state_contract in \
     '_yesNoInfoValue(value)' \
     'return value ? "Ja" : "Nein";' \
@@ -2336,8 +2350,22 @@ QUEUE_HTTP_DIR="$TMP_DIR/queue-http"
 mkdir -p "$QUEUE_DOWNLOAD_DIR" "$QUEUE_HTTP_DIR"
 printf 'queued audio fixture\n' > "$QUEUE_HTTP_DIR/audio-one.mp3"
 printf 'queued audio fixture two\n' > "$QUEUE_HTTP_DIR/audio-two.mp3"
-printf 'queued audio fixture info\n' > "$QUEUE_HTTP_DIR/audio-info.mp3"
+python3 - "$QUEUE_HTTP_DIR/audio-info.mp3" <<'PY'
+import sys
+from pathlib import Path
+
+Path(sys.argv[1]).write_bytes(b"i" * (1024 * 1024 + 512 * 1024))
+PY
 printf 'queued audio fixture direct\n' > "$QUEUE_HTTP_DIR/audio-direct.mp3"
+
+info_file_size_mb() {
+    python3 - "$1" <<'PY'
+import sys
+from pathlib import Path
+
+print(f"{Path(sys.argv[1]).stat().st_size / (1024 * 1024):.2f}")
+PY
+}
 python3 - "$QUEUE_HTTP_DIR" "$TMP_DIR/http-server.port" >"$TMP_DIR/http-server.log" 2>&1 <<'PY' &
 import functools
 import http.server
@@ -2453,6 +2481,25 @@ if ! rg -q -F "Titel:         $DIRECT_INFO_TITLE" "$DIRECT_INFO_TEXT"; then
 fi
 if ! rg -q -F "Sender:        Sender D" "$DIRECT_INFO_TEXT"; then
     echo "ERROR: direct download info file missing sender"
+    echo "--- $DIRECT_INFO_TEXT"
+    cat "$DIRECT_INFO_TEXT"
+    exit 1
+fi
+if ! rg -q -F "Dauer [min]:   00:12" "$DIRECT_INFO_TEXT"; then
+    echo "ERROR: direct download info file missing ATPlayer duration label"
+    echo "--- $DIRECT_INFO_TEXT"
+    cat "$DIRECT_INFO_TEXT"
+    exit 1
+fi
+if rg -q '^Dauer:' "$DIRECT_INFO_TEXT"; then
+    echo "ERROR: direct download info file still contains old duration label"
+    echo "--- $DIRECT_INFO_TEXT"
+    cat "$DIRECT_INFO_TEXT"
+    exit 1
+fi
+DIRECT_INFO_SIZE_MB="$(info_file_size_mb "$DIRECT_INFO_PATH")"
+if ! rg -q -F "Größe [MB]:    $DIRECT_INFO_SIZE_MB" "$DIRECT_INFO_TEXT"; then
+    echo "ERROR: direct download info file missing actual file size"
     echo "--- $DIRECT_INFO_TEXT"
     cat "$DIRECT_INFO_TEXT"
     exit 1
@@ -2944,6 +2991,25 @@ if ! rg -q -F "Titel:         Queue mit Infodatei" "$QUEUE_INFO_TEXT"; then
 fi
 if ! rg -q -F "Warteschlangen-Download mit Infodatei" "$QUEUE_INFO_TEXT"; then
     echo "ERROR: queue info file missing description"
+    echo "--- $QUEUE_INFO_TEXT"
+    cat "$QUEUE_INFO_TEXT"
+    exit 1
+fi
+if ! rg -q -F "Dauer [min]:   00:20" "$QUEUE_INFO_TEXT"; then
+    echo "ERROR: queue info file missing ATPlayer duration label"
+    echo "--- $QUEUE_INFO_TEXT"
+    cat "$QUEUE_INFO_TEXT"
+    exit 1
+fi
+if rg -q '^Dauer:' "$QUEUE_INFO_TEXT"; then
+    echo "ERROR: queue info file still contains old duration label"
+    echo "--- $QUEUE_INFO_TEXT"
+    cat "$QUEUE_INFO_TEXT"
+    exit 1
+fi
+QUEUE_INFO_SIZE_MB="$(info_file_size_mb "$QUEUE_INFO_PATH")"
+if ! rg -q -F "Größe [MB]:    $QUEUE_INFO_SIZE_MB" "$QUEUE_INFO_TEXT"; then
+    echo "ERROR: queue info file missing actual file size"
     echo "--- $QUEUE_INFO_TEXT"
     cat "$QUEUE_INFO_TEXT"
     exit 1

@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.86
+
+- Download-Infodateien schreiben die Dauer jetzt ATPlayer-nah als **Dauer [min]** statt **Dauer**.
+- Direkte und Queue-Downloads ergänzen in der `.txt`-Infodatei **Größe [MB]** aus der tatsächlich heruntergeladenen Datei nach erfolgreichem Schreiben des Zielpfads.
+- History-, Bookmark- und Queue-Store-Schemas, CLI-Argumente, URL-Handling und Shellpfade bleiben unverändert; `scripts/check.sh` und `scripts/validate-installed.sh` prüfen den neuen Helper-Vertrag.
+
 ## 0.3.85
 
 - Das ATPlayer-Katalogfeld `raw[7]` wird jetzt als `size` normalisiert, in `catalog.sqlite` gespeichert und im `search`-JSON ausgegeben.

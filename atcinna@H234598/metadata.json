@@ -4,7 +4,7 @@
   "description": "ATPlayer-like radio catalogue applet for Cinnamon",
   "description:de": "ATPlayer-ähnliches Cinnamon-Applet für Radio-Kataloge",
   "url": "",
-  "version": "0.3.85",
+  "version": "0.3.86",
   "icon": "audio-x-generic",
   "max-instances": 1,
   "schema-version": 1
