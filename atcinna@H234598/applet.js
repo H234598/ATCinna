@@ -46,6 +46,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueEditDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-queue-edit-dialog"]);
         this._blacklistDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-blacklist-dialog"]);
         this._filterProfilesDialogPath = GLib.build_filenamev([appletPath, "scripts", "atcinna-filter-profiles-dialog"]);
+        this._cacheDirPath = GLib.build_filenamev([GLib.get_user_cache_dir(), UUID]);
+        this._dataDirPath = GLib.build_filenamev([GLib.get_user_data_dir(), UUID]);
+        this._audioListPath = GLib.build_filenamev([this._cacheDirPath, "audios.xz"]);
+        this._catalogDbPath = GLib.build_filenamev([this._cacheDirPath, "catalog.sqlite"]);
+        this._settingsFilePath = GLib.build_filenamev([GLib.get_user_config_dir(), "cinnamon", "spices", UUID, UUID + ".json"]);
         this._historySection = null;
         this._favoritesSection = null;
         this._filterSection = null;
@@ -1535,6 +1540,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["UUID", UUID],
             ["Icon", iconPath],
             ["Datenzugriff", "Katalogcache lokal, Downloads über sicheren Helper"],
+            ["Audioliste", this._audioListPath],
+            ["Katalogdatenbank", this._catalogDbPath],
+            ["Datenordner", this._dataDirPath],
+            ["Einstellungen", this._settingsFilePath],
             ["Java", "Keine Java-Abhängigkeit im Applet"]
         ]);
     }

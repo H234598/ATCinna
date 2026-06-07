@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.81`.
+- `VERSION` is `0.3.82`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -66,6 +66,13 @@
   - Keep internal section variables and helper/store names unchanged; this is a UI-wording parity change only.
   - Include source and installed-tree checks for the new Bookmarks wording and targeted guards against the old visible Favoriten labels.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.81`.
+
+- [x] **Task 82: Show concrete About paths (0.3.82)**
+  - Add ATPlayer-style **Audioliste** and **Einstellungen** path rows to **Über dieses Programm**.
+  - Add ATCinna-specific **Katalogdatenbank** and **Datenordner** rows based on the same XDG cache/data locations used by the helper.
+  - Compute paths in GJS with `GLib.get_user_cache_dir()`, `GLib.get_user_data_dir()`, `GLib.get_user_config_dir()`, and `UUID`; do not call the helper or create files.
+  - Include source and installed-tree checks for the path variables and About rows.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.82`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 
@@ -454,7 +461,7 @@
 
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: left-click menu open with a direct **Einstellungen** entry, catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style filter/info visibility toggles, visible Treffer selection with **Film abspielen**, **Alle markierten Audios abspielen**, **Film speichern**, **Filme als gesehen markieren**, **Filme als ungesehen markieren**, **Neue Bookmarks anlegen**, **Bookmarks löschen**, direct **Abspielen**/**Speichern** audio context actions, compact audio info with visible **Neu**/**Podcast** Ja/Nein states, ATPlayer-style visible **Bookmarks** wording for bookmark sections/actions, audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including per-entry **Download starten**, selected **Downloads starten**, selected **Downloads vorziehen/zurückstellen**, selected **Downloads stoppen**, selected **Downloads aus Liste entfernen**, `Download ändern`, refresh/cleanup labels, first visible-list selection/reset workflows, **Anleitung im Web**, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: left-click menu open with a direct **Einstellungen** entry, catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style filter/info visibility toggles, visible Treffer selection with **Film abspielen**, **Alle markierten Audios abspielen**, **Film speichern**, **Filme als gesehen markieren**, **Filme als ungesehen markieren**, **Neue Bookmarks anlegen**, **Bookmarks löschen**, direct **Abspielen**/**Speichern** audio context actions, compact audio info with visible **Neu**/**Podcast** Ja/Nein states, ATPlayer-style visible **Bookmarks** wording for bookmark sections/actions, About path rows for **Audioliste** and **Einstellungen**, audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including per-entry **Download starten**, selected **Downloads starten**, selected **Downloads vorziehen/zurückstellen**, selected **Downloads stoppen**, selected **Downloads aus Liste entfernen**, `Download ändern`, refresh/cleanup labels, first visible-list selection/reset workflows, **Anleitung im Web**, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 

@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.82
+
+- **Über dieses Programm** zeigt jetzt ATPlayer-nahe konkrete Pfade für **Audioliste** und **Einstellungen**.
+- Zusätzlich werden die ATCinna-spezifischen XDG-Pfade **Katalogdatenbank** und **Datenordner** angezeigt, ohne Helper-Aufruf oder Dateiänderung.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen die GLib/XDG-Pfadberechnung und About-Zeilen; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.82` angehoben.
+
 ## 0.3.81
 
 - Verbliebene sichtbare Audio-Bookmark-Wortlaute von **Favoriten** auf ATPlayer-nahes **Bookmarks** umgestellt.

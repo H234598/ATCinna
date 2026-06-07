@@ -19,7 +19,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - Alle Programmeinstellungen zurücksetzen
   - Gibt's ein Update?
   - Blacklist verwalten
-  - Über dieses Programm
+  - Über dieses Programm (inklusive Audioliste-, Katalogdatenbank-, Datenordner- und Einstellungspfad)
 - Texteingaben in der Suchzeile werden entprellt (ca. 350 ms), Enter sucht sofort.
 - Suchabfrage aus Einstellungen (`search-query`).
 - Erweiterte Teiltreffer-Filter (`sender-filter`, `genre-filter`, `topic-filter`) im Popup mit kompaktem Status (`Filter: ...`), Schnellaktion „Filter löschen“ und ATPlayer-nahem **Bookmarks anzeigen**-Toggle.
@@ -76,7 +76,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.81`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.82`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

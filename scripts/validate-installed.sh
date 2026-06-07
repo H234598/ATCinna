@@ -434,6 +434,21 @@ if ! rg -q -F 'action: (value) => this._xdgOpen(value)' "$APPLET_JS"; then
     echo "ERROR: installed applet info metadata action is not wired to _xdgOpen"
     exit 1
 fi
+for about_path_contract in \
+    'this._cacheDirPath = GLib.build_filenamev([GLib.get_user_cache_dir(), UUID]);' \
+    'this._dataDirPath = GLib.build_filenamev([GLib.get_user_data_dir(), UUID]);' \
+    'this._audioListPath = GLib.build_filenamev([this._cacheDirPath, "audios.xz"]);' \
+    'this._catalogDbPath = GLib.build_filenamev([this._cacheDirPath, "catalog.sqlite"]);' \
+    'this._settingsFilePath = GLib.build_filenamev([GLib.get_user_config_dir(), "cinnamon", "spices", UUID, UUID + ".json"]);' \
+    '["Audioliste", this._audioListPath]' \
+    '["Katalogdatenbank", this._catalogDbPath]' \
+    '["Datenordner", this._dataDirPath]' \
+    '["Einstellungen", this._settingsFilePath]'; do
+    if ! rg -q -F "${about_path_contract}" "$APPLET_JS"; then
+        echo "ERROR: installed applet about path contract is missing: ${about_path_contract}"
+        exit 1
+    fi
+done
 for info_state_contract in \
     '_yesNoInfoValue(value)' \
     'return value ? "Ja" : "Nein";' \

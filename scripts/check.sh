@@ -167,6 +167,21 @@ if ! rg -q -F '_showAboutProgram' "$APPLET_JS"; then
     echo "ERROR: applet about action handler is missing"
     STATUS=1
 fi
+for about_path_contract in \
+    'this._cacheDirPath = GLib.build_filenamev([GLib.get_user_cache_dir(), UUID]);' \
+    'this._dataDirPath = GLib.build_filenamev([GLib.get_user_data_dir(), UUID]);' \
+    'this._audioListPath = GLib.build_filenamev([this._cacheDirPath, "audios.xz"]);' \
+    'this._catalogDbPath = GLib.build_filenamev([this._cacheDirPath, "catalog.sqlite"]);' \
+    'this._settingsFilePath = GLib.build_filenamev([GLib.get_user_config_dir(), "cinnamon", "spices", UUID, UUID + ".json"]);' \
+    '["Audioliste", this._audioListPath]' \
+    '["Katalogdatenbank", this._catalogDbPath]' \
+    '["Datenordner", this._dataDirPath]' \
+    '["Einstellungen", this._settingsFilePath]'; do
+    if ! rg -q -F "${about_path_contract}" "$APPLET_JS"; then
+        echo "ERROR: applet about path contract is missing: ${about_path_contract}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F '_launchBlacklistDialog' "$APPLET_JS"; then
     echo "ERROR: applet blacklist dialog action handler is missing"
     STATUS=1
