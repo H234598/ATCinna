@@ -195,10 +195,22 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Bookmarks anzeigen")' "$APPLET_JS"; 
     echo "ERROR: applet bookmark filter toggle label is missing"
     STATUS=1
 fi
-if ! rg -q -F 'new PopupMenu.PopupMenuItem("Filterprofile verwalten")' "$APPLET_JS"; then
+if ! rg -q -F 'new PopupMenu.PopupMenuItem("Filterprofile in eigenem Fenster anzeigen")' "$APPLET_JS"; then
     echo "ERROR: applet filter profiles manage menu label is missing"
     STATUS=1
 fi
+for profile_label in "Filtereinstellungen in neuem Filterprofil speichern" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen"; do
+    if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${profile_label}\")" "$APPLET_JS"; then
+        echo "ERROR: applet filter profiles label is missing: ${profile_label}"
+        STATUS=1
+    fi
+done
+for profile_handler in "_sortFilterProfiles" "_resetFilterProfiles"; do
+    if ! rg -q -F "${profile_handler}" "$APPLET_JS"; then
+        echo "ERROR: applet filter profile handler is missing: ${profile_handler}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Programmeinstellungen zurücksetzen")' "$APPLET_JS"; then
     echo "ERROR: applet settings reset menu label is missing"
     STATUS=1

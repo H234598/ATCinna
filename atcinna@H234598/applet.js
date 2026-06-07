@@ -177,7 +177,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._filterSection.addMenuItem(this._bookmarkFilterToggleItem);
 
         this._filterProfilesMenu = new PopupMenu.PopupSubMenuMenuItem("Filterprofile");
-        this._saveFilterProfileItem = new PopupMenu.PopupMenuItem("Aktuelle Filter als Profil speichern");
+        this._saveFilterProfileItem = new PopupMenu.PopupMenuItem("Filtereinstellungen in neuem Filterprofil speichern");
         this._saveFilterProfileItem.connect("activate", () => {
             this._saveCurrentFilterProfile();
         });
@@ -187,7 +187,17 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._refreshFilterProfilesMenu();
         });
         this._filterProfilesMenu.menu.addMenuItem(this._refreshFilterProfilesItem);
-        this._manageFilterProfilesItem = new PopupMenu.PopupMenuItem("Filterprofile verwalten");
+        this._sortFilterProfilesItem = new PopupMenu.PopupMenuItem("Filterprofile sortieren");
+        this._sortFilterProfilesItem.connect("activate", () => {
+            this._sortFilterProfiles();
+        });
+        this._filterProfilesMenu.menu.addMenuItem(this._sortFilterProfilesItem);
+        this._resetFilterProfilesItem = new PopupMenu.PopupMenuItem("Alle Filterprofile wieder herstellen");
+        this._resetFilterProfilesItem.connect("activate", () => {
+            this._resetFilterProfiles();
+        });
+        this._filterProfilesMenu.menu.addMenuItem(this._resetFilterProfilesItem);
+        this._manageFilterProfilesItem = new PopupMenu.PopupMenuItem("Filterprofile in eigenem Fenster anzeigen");
         this._manageFilterProfilesItem.connect("activate", () => {
             this._launchFilterProfilesDialog();
         });
@@ -827,6 +837,52 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             }
             this._setStatus(`Filterprofil gespeichert: ${payload.profile.name || "Filter"}`);
             this._refreshFilterProfilesMenu();
+        });
+    }
+
+    _sortFilterProfiles() {
+        this._setStatus("Filterprofile werden sortiert ...");
+        this._runHelper(["filter-profile-sort"], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`Filterprofile konnten nicht sortiert werden: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            let payload = {};
+            try {
+                payload = JSON.parse(stdout || "{}");
+            } catch (error) {
+                this._setStatus(`Filterprofile ungültige Antwort: ${error.message}`);
+                return;
+            }
+            if (payload.status !== "ok") {
+                this._setStatus("Filterprofile: unerwartete Antwort");
+                return;
+            }
+            this._refreshFilterProfilesMenu();
+            this._setStatus(`Filterprofile sortiert: ${payload.count || 0}`);
+        });
+    }
+
+    _resetFilterProfiles() {
+        this._setStatus("Filterprofile werden wiederhergestellt ...");
+        this._runHelper(["filter-profile-reset"], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`Filterprofile konnten nicht wiederhergestellt werden: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            let payload = {};
+            try {
+                payload = JSON.parse(stdout || "{}");
+            } catch (error) {
+                this._setStatus(`Filterprofile ungültige Antwort: ${error.message}`);
+                return;
+            }
+            if (payload.status !== "ok") {
+                this._setStatus("Filterprofile: unerwartete Antwort");
+                return;
+            }
+            this._refreshFilterProfilesMenu();
+            this._setStatus(`Filterprofile wiederhergestellt: ${payload.count || 0}`);
         });
     }
 

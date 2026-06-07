@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.72
+
+- Das Applet-Menü **Filterprofile** spricht jetzt die ATPlayer-nahen Direktaktionen klar aus: **Filtereinstellungen in neuem Filterprofil speichern**, **Filterprofile sortieren**, **Alle Filterprofile wieder herstellen** und **Filterprofile in eigenem Fenster anzeigen**.
+- Die neuen Menüaktionen rufen die vorhandenen Helper-Aktionen `filter-profile-sort` und `filter-profile-reset` auf, aktualisieren danach die Profilliste und setzen den Status auf den jeweiligen Ergebniszustand.
+- `scripts/check.sh` und `scripts/validate-installed.sh` wurden um die neuen Menü- und Helper-Contracts ergänzt; `metadata.json`, `VERSION` und README wurden auf `0.3.72` angehoben.
+
 ## 0.3.71
 
 - Queue-Einträge unterstützen jetzt einen direkten `download_file_name`, der per `download --download-file-name`, `download-enqueue --download-file-name` und `download-update --download-file-name` gesetzt werden kann.
