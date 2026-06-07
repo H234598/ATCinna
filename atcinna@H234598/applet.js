@@ -648,7 +648,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             active.push("nur neue");
         }
         if (filters.onlyBookmarks) {
-            active.push("nur Favoriten");
+            active.push("nur Bookmarks");
         }
         if (filters.hideHistory) {
             active.push("ohne Verlauf");
@@ -1502,7 +1502,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["Zeitraum", "alles"],
             ["Dauer", "alles"],
             ["Nur neue", "nein"],
-            ["Nur Favoriten", "nein"],
+            ["Nur Bookmarks", "nein"],
             ["Verlauf ausblenden", "nein"],
             ["Podcast", "alles"]
         ]);
@@ -1715,7 +1715,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             enqueue.connect("activate", () => this._runDownloadEnqueue(item));
             entry.menu.addMenuItem(enqueue);
 
-            const addBookmark = new PopupMenu.PopupMenuItem("Zu Favoriten hinzufügen");
+            const addBookmark = new PopupMenu.PopupMenuItem("Neue Bookmarks anlegen");
             addBookmark.connect("activate", () => this._runBookmarkAdd(item));
             entry.menu.addMenuItem(addBookmark);
 
@@ -3536,14 +3536,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         this._favoritesSection.removeAll();
 
-        const heading = new PopupMenu.PopupMenuItem("Favoriten");
+        const heading = new PopupMenu.PopupMenuItem("Bookmarks");
         heading.actor.reactive = false;
         heading.actor.add_style_class_name("atcinna-section-title");
         this._favoritesSection.addMenuItem(heading);
 
         const entries = Array.isArray(items) ? items : [];
         if (!entries.length) {
-            const empty = new PopupMenu.PopupMenuItem("keine Favoriten");
+            const empty = new PopupMenu.PopupMenuItem("keine Bookmarks");
             empty.actor.reactive = false;
             this._favoritesSection.addMenuItem(empty);
             return;

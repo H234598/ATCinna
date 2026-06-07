@@ -458,9 +458,32 @@ if ! rg -q -F "Bookmarks anzeigen" "$APPLET_JS"; then
     echo "ERROR: installed applet label is missing: Bookmarks anzeigen"
     exit 1
 fi
-for applet_label in "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; do
+for applet_label in "Neue Bookmarks anlegen" "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
+for applet_bookmark_ui_label in "nur Bookmarks" "Nur Bookmarks" "Bookmarks" "keine Bookmarks"; do
+    if ! rg -q -F "${applet_bookmark_ui_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet bookmark UI wording is missing: ${applet_bookmark_ui_label}"
+        exit 1
+    fi
+done
+for applet_bookmark_ui_contract in \
+    'active.push("nur Bookmarks");' \
+    '["Nur Bookmarks", "nein"]' \
+    'const addBookmark = new PopupMenu.PopupMenuItem("Neue Bookmarks anlegen");' \
+    'const heading = new PopupMenu.PopupMenuItem("Bookmarks");' \
+    'const empty = new PopupMenu.PopupMenuItem("keine Bookmarks");'; do
+    if ! rg -q -F "${applet_bookmark_ui_contract}" "$APPLET_JS"; then
+        echo "ERROR: installed applet bookmark UI wording contract is missing: ${applet_bookmark_ui_contract}"
+        exit 1
+    fi
+done
+for legacy_bookmark_ui_label in "nur Favoriten" "Nur Favoriten" "Zu Favoriten hinzufügen" 'PopupMenu.PopupMenuItem("Favoriten")' "keine Favoriten"; do
+    if rg -q -F "${legacy_bookmark_ui_label}" "$APPLET_JS"; then
+        echo "ERROR: installed applet legacy favorite wording remains in visible bookmark UI: ${legacy_bookmark_ui_label}"
         exit 1
     fi
 done

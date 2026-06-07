@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.81
+
+- Verbliebene sichtbare Audio-Bookmark-Wortlaute von **Favoriten** auf ATPlayer-nahes **Bookmarks** umgestellt.
+- Filterstatus, Reset-Info, Eintragsaktion und Bookmark-Abschnitt sprechen jetzt von **Bookmarks** bzw. **Neue Bookmarks anlegen**.
+- `scripts/check.sh` und `scripts/validate-installed.sh` schützen die neuen Labels und verbieten die alten sichtbaren Favoriten-Labels an diesen UI-Stellen; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.81` angehoben.
+
 ## 0.3.80
 
 - Audioinformation zeigt jetzt ATPlayer-nahe Zustandszeilen **Neu** und **Podcast**.
