@@ -57,6 +57,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionResetSelection = null;
         this._resultActionPlaySelected = null;
         this._resultActionSaveSelected = null;
+        this._resultActionPlayFirstSelected = null;
+        this._resultActionSaveFirstSelected = null;
         this._queueSection = null;
         this._queueListSection = null;
         this._queueSelectionItems = new Set();
@@ -1376,9 +1378,17 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         playSelected.connect("activate", () => this._runResultPlaySelected());
         this._resultsSection.addMenuItem(playSelected);
 
+        const playMovie = new PopupMenu.PopupMenuItem("Film abspielen");
+        playMovie.connect("activate", () => this._runResultPlayFirstSelected());
+        this._resultsSection.addMenuItem(playMovie);
+
         const saveSelected = new PopupMenu.PopupMenuItem("Markierte Audios speichern");
         saveSelected.connect("activate", () => this._runResultSaveSelected());
         this._resultsSection.addMenuItem(saveSelected);
+
+        const saveMovie = new PopupMenu.PopupMenuItem("Film speichern");
+        saveMovie.connect("activate", () => this._runResultSaveFirstSelected());
+        this._resultsSection.addMenuItem(saveMovie);
 
         const markShownSelected = new PopupMenu.PopupMenuItem("Markierte als gesehen markieren");
         markShownSelected.connect("activate", () => this._runResultMarkShownSelected());
@@ -1401,6 +1411,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionResetSelection = resetSelection;
         this._resultActionPlaySelected = playSelected;
         this._resultActionSaveSelected = saveSelected;
+        this._resultActionPlayFirstSelected = playMovie;
+        this._resultActionSaveFirstSelected = saveMovie;
         this._resultActionMarkShownSelected = markShownSelected;
         this._resultActionMarkUnshownSelected = markUnshownSelected;
         this._resultActionBookmarkSelected = bookmarkSelected;
@@ -1476,6 +1488,24 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             (item, callback) => this._runDownloadEnqueue(item, callback),
             true
         );
+    }
+
+    _runResultPlayFirstSelected() {
+        const selectedItems = this._getSelectedResultItems();
+        if (!selectedItems.length) {
+            this._setStatus("Film abspielen: keine Auswahl");
+            return;
+        }
+        this._playItem(selectedItems[0]);
+    }
+
+    _runResultSaveFirstSelected() {
+        const selectedItems = this._getSelectedResultItems();
+        if (!selectedItems.length) {
+            this._setStatus("Film speichern: keine Auswahl");
+            return;
+        }
+        this._runDownloadEnqueue(selectedItems[0]);
     }
 
     _runResultBookmarkSelected() {
@@ -1609,6 +1639,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._resultActionSaveSelected) {
             this._resultActionSaveSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionPlayFirstSelected) {
+            this._resultActionPlayFirstSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionSaveFirstSelected) {
+            this._resultActionSaveFirstSelected.setSensitive(hasSelection);
         }
         if (this._resultActionMarkShownSelected) {
             this._resultActionMarkShownSelected.setSensitive(hasSelection);

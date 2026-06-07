@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.42`.
+- `VERSION` is `0.3.44`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -292,6 +292,17 @@
 - [x] **Checks/docs/version**
   - Extend static checks/installed validation for `Download ändern`, `_runQueueEditSelected()`, `_queueActionEditSelected`, and wiring.
   - Bump version to `0.3.43`, update metadata/version/readme/changelog.
+
+### Task 44: Add Top-Level Film Actions for Selected Result (0.3.44)
+
+- [x] **ATPlayer-nahe Ergebnis-Treffer-Top-Aktionen**
+  - Add **Film abspielen** and **Film speichern** in the Treffer section.
+  - Both actions use the first currently visible selected result and reuse the existing `_playItem` and `_runDownloadEnqueue` paths.
+- [x] **Defensive UX**
+  - Keep explicit status output on missing selection for both actions (`Film abspielen: keine Auswahl`, `Film speichern: keine Auswahl`).
+- [x] **Checks/docs/version**
+  - Extend source/installed checks for new top-level labels and handler symbols.
+  - Bump version to `0.3.44`, update metadata/version/readme/changelog.
 
 
 ### ATPlayer Parity Audit

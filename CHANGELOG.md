@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.44
+
+- Treffer-Top-Level ergänzt: **Film abspielen** und **Film speichern** greifen jetzt auf den ersten markierten sichtbaren Treffer zu.
+- Bei fehlender Treffer-Auswahl liefern die neuen Aktionen klare Statusmeldungen statt stiller No-Op.
+- Bestehende Batch-Aktionen und Queue-/Helfer-Workflows bleiben unverändert erhalten.
+- Versionssprung auf `0.3.44`; `metadata.json`, `VERSION`, README, Checkskripte und Installvalidierung angepasst.
+
 ## 0.3.43
 
 - ATPlayer-nahe Queue-Top-Aktion ergänzt: **Download ändern** öffnet nun den vorhandenen Edit-Dialog für den ersten markierten sichtbaren Queue-Eintrag.

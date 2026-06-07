@@ -230,9 +230,15 @@ for applet_label in "Als gesehen markieren" "Als ungesehen markieren"; do
         exit 1
     fi
 done
-for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Markierte als gesehen markieren" "Markierte als ungesehen markieren" "Markierte als Bookmarks anlegen" "Markierte Bookmarks löschen"; do
+for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Film abspielen" "Film speichern" "Markierte als gesehen markieren" "Markierte als ungesehen markieren" "Markierte als Bookmarks anlegen" "Markierte Bookmarks löschen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
+for applet_result_action in 'const playMovie = new PopupMenu.PopupMenuItem("Film abspielen");' 'const saveMovie = new PopupMenu.PopupMenuItem("Film speichern");'; do
+    if ! rg -q -F "${applet_result_action}" "$APPLET_JS"; then
+        echo "ERROR: installed applet result top-level action is missing: ${applet_result_action}"
         exit 1
     fi
 done

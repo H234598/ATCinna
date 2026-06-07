@@ -377,7 +377,19 @@ for result_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffe
         STATUS=1
     fi
 done
-for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_setupResultActions" "_runResultSelectAll" "_runResultInvertSelection" "_runResultResetSelection" "_runResultToggleSelection" "_runResultPlaySelected" "_runResultSaveSelected" "_runResultMarkShownSelected" "_runResultMarkUnshownSelected" "_runResultBookmarkSelected" "_runResultRemoveBookmarksSelected" "_runResultBatchAction" "_getSelectedResultItems" "_resultItemKey" "_pruneResultSelection" "_updateResultSelectionActionState"; do
+for result_label in "Film abspielen" "Film speichern"; do
+    if ! rg -q -F "${result_label}" "$APPLET_JS"; then
+        echo "ERROR: applet result top-level label is missing: ${result_label}"
+        STATUS=1
+    fi
+done
+for result_top_action in 'const playMovie = new PopupMenu.PopupMenuItem("Film abspielen");' 'const saveMovie = new PopupMenu.PopupMenuItem("Film speichern");'; do
+    if ! rg -q -F "${result_top_action}" "$APPLET_JS"; then
+        echo "ERROR: applet result top-level action is missing: ${result_top_action}"
+        STATUS=1
+    fi
+done
+for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_setupResultActions" "_runResultSelectAll" "_runResultInvertSelection" "_runResultResetSelection" "_runResultToggleSelection" "_runResultPlaySelected" "_runResultSaveSelected" "_runResultPlayFirstSelected" "_runResultSaveFirstSelected" "_runResultMarkShownSelected" "_runResultMarkUnshownSelected" "_runResultBookmarkSelected" "_runResultRemoveBookmarksSelected" "_runResultBatchAction" "_getSelectedResultItems" "_resultItemKey" "_pruneResultSelection" "_updateResultSelectionActionState"; do
     if ! rg -q -F "${result_selection_handler}" "$APPLET_JS"; then
         echo "ERROR: applet result selection handler is missing: ${result_selection_handler}"
         STATUS=1

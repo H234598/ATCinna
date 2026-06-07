@@ -28,6 +28,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Blacklist-Modus (`blacklist-mode`) fuer Suche: aus, passende Treffer ausblenden oder nur Whitelist/Invers-Treffer anzeigen.
 - Play-Aktion über `xdg-open`.
 - Trefferliste mit ATPlayer-naher sichtbarer Auswahl: Treffer auswählen, Auswahl umkehren/zurücksetzen, alle markierten Audios abspielen, markierte Audios speichern (in die Download-Warteschlange legen), markierte als gesehen/ungesehen markieren, markierte als Bookmarks anlegen und markierte Bookmarks löschen.
+- Top-Level Trefferspezifische ATPlayer-nähere Aktionen ergänzt: **Film abspielen** und **Film speichern** verarbeiten den ersten markierten sichtbaren Treffer mit klarer Statusmeldung bei fehlender Auswahl.
 - Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert; Kontextmenüs können Einträge auch direkt als gesehen markieren oder über **Als ungesehen markieren** wieder aus dem Verlauf entfernen.
 - Website-Aktion (falls vorhanden).
 - Favoriten/Bookmarks: Einträge können pro Treffer als Favorit gespeichert, aus den Kontexten wieder entfernt, in der Liste angezeigt und gesammelt über **Alle angelegten Bookmarks löschen** geleert werden.
