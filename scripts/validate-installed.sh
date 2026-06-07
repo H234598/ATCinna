@@ -156,7 +156,7 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
-for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-info-file"; do
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-info-file" "download-show-notification"; do
     if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
         echo "ERROR: settings-schema key missing: $key"
         exit 1

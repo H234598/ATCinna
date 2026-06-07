@@ -259,8 +259,20 @@ if ! rg -q -F "download-info-file\": false" "$APPLET_JS"; then
     echo "ERROR: settings reset default for download-info-file is missing"
     STATUS=1
 fi
+if ! rg -q -F "download-show-notification\": true" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for download-show-notification is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'this.settings.bind("download-show-notification", "downloadShowNotification", null);' "$APPLET_JS"; then
+    echo "ERROR: applet does not bind download-show-notification setting"
+    STATUS=1
+fi
 if ! rg -q -F '"max-hits": 20' "$APPLET_JS"; then
     echo "ERROR: settings reset default for max-hits is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'imports.ui.main' "$APPLET_JS"; then
+    echo "ERROR: applet main UI import is missing"
     STATUS=1
 fi
 if ! rg -q -F '_openAppletSettings()' "$APPLET_JS"; then
@@ -539,6 +551,18 @@ if ! rg -q -F '_runQueueRunAll()' "$APPLET_JS"; then
     echo "ERROR: applet queue run-all action handler is missing"
     STATUS=1
 fi
+if ! rg -q -F "_notifyDownloadRunAllSummary" "$APPLET_JS"; then
+    echo "ERROR: applet queue run-all summary notifier is missing"
+    STATUS=1
+fi
+if ! rg -q -F "_notifyDownloadResult" "$APPLET_JS"; then
+    echo "ERROR: applet download completion notifier is missing"
+    STATUS=1
+fi
+if ! rg -q -F "_showDownloadNotification" "$APPLET_JS"; then
+    echo "ERROR: applet download notification wrapper is missing"
+    STATUS=1
+fi
 if ! rg -q -F '_runQueueCancelItem(item)' "$APPLET_JS"; then
     echo "ERROR: applet queue cancel-item action handler is missing"
     STATUS=1
@@ -675,7 +699,7 @@ if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
     echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-info-file; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-info-file download-show-notification; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
         STATUS=1

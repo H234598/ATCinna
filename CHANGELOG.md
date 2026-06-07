@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.58
+
+- Direkte Downloads und Queue-Downloads melden `Main.notify("Download beendet", details)` nach fertiggestelltem Download als Erfolg oder Fehler, sofern die neue Applet-Einstellung `download-show-notification` aktiv ist.
+- Für **Alle Downloads starten** gibt es jetzt eine zusammenfassende Abschlussbenachrichtigung (`Download-Warteschlange abgeschlossen: erledigt X, Fehler Y`) statt Einzelmeldungen.
+- Das neue Einstellungsschlüssel `download-show-notification` ist im Settings-Schema mit Default `true` ergänzt; Versionssprung auf `0.3.58` in Metadaten/VERSION/README/Checks.
+
 ## 0.3.57
 
 - Audio-Info-Abschnitt: **URL** und **Website** sind jetzt als klickbare Zeilen verfügbar; beide rufen beim Aktivieren `this._xdgOpen(value)` auf, während Titel/Sender/Genre/Thema/Beschreibung etc. statisch bleiben.

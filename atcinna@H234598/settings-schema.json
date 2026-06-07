@@ -145,6 +145,12 @@
     "tooltip": "Schreibe nach erfolgreichen Downloads eine .txt-Datei mit vorhandenen Metadaten neben der Audiodatei.",
     "default": false
   },
+  "download-show-notification": {
+    "type": "switch",
+    "description": "Download-Ende benachrichtigen",
+    "tooltip": "Nach einem erfolgreichen oder fehlgeschlagenen Download eine Benachrichtigung anzeigen.",
+    "default": true
+  },
   "refresh-mirror": {
     "type": "combobox",
     "description": "Katalog-Mirror",

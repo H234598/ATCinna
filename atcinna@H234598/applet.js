@@ -3,6 +3,7 @@ const GLib = imports.gi.GLib;
 const St = imports.gi.St;
 const Mainloop = imports.mainloop;
 const Applet = imports.ui.applet;
+const Main = imports.ui.main;
 const PopupMenu = imports.ui.popupMenu;
 const Settings = imports.ui.settings;
 const Util = imports.misc.util;
@@ -118,6 +119,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("show-info-section", "showInfoSection", this._onSectionVisibilityChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
         this.settings.bind("download-info-file", "downloadInfoFile", null);
+        this.settings.bind("download-show-notification", "downloadShowNotification", null);
         this.settings.bind("refresh-mirror", "refreshMirror", null);
         this._activeSearchQuery = this.searchQuery || "";
 
@@ -387,6 +389,36 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _setStatus(message) {
         this._statusItem.label.text = message;
+    }
+
+    _notifyDownloadResult(title, status, details = "") {
+        if (!this.downloadShowNotification) {
+            return;
+        }
+        if (status !== "finished" && status !== "error") {
+            return;
+        }
+        const safeTitle = title || "Download";
+        const detailText = `${safeTitle}: ${details || (status === "error" ? "unbekannter Fehler" : "erfolgreich abgeschlossen")}`;
+        this._showDownloadNotification(detailText);
+    }
+
+    _notifyDownloadRunAllSummary(finishedCount, errorCount) {
+        if (!this.downloadShowNotification) {
+            return;
+        }
+        this._showDownloadNotification(`Download-Warteschlange abgeschlossen: erledigt ${finishedCount}, Fehler ${errorCount}`);
+    }
+
+    _showDownloadNotification(details) {
+        if (!Main || typeof Main.notify !== "function") {
+            return;
+        }
+        try {
+            Main.notify("Download beendet", details);
+        } catch (error) {
+            // Notifications are best-effort; download state must stay authoritative.
+        }
     }
 
     _runRefresh() {
@@ -1078,7 +1110,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "podcast-filter": "all",
             "show-filter-section": true,
             "show-info-section": true,
-            "download-info-file": false
+            "download-info-file": false,
+            "download-show-notification": true
         };
         const nextSearchQuery = defaults["search-query"];
 
@@ -1104,6 +1137,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.showFilterSection = defaults["show-filter-section"];
             this.showInfoSection = defaults["show-info-section"];
             this.downloadInfoFile = defaults["download-info-file"];
+            this.downloadShowNotification = defaults["download-show-notification"];
 
             this.settings.setValue("search-query", defaults["search-query"]);
             this.settings.setValue("sender-filter", defaults["sender-filter"]);
@@ -1124,6 +1158,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("show-filter-section", defaults["show-filter-section"]);
             this.settings.setValue("show-info-section", defaults["show-info-section"]);
             this.settings.setValue("download-info-file", defaults["download-info-file"]);
+            this.settings.setValue("download-show-notification", defaults["download-show-notification"]);
 
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
@@ -1952,6 +1987,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download-run-next fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                this._notifyDownloadResult("Download", "error", stderr || "unbekannter Fehler");
                 return;
             }
             try {
@@ -1966,10 +2002,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 }
                 if (payload.result && payload.result.path) {
                     this._setStatus(`gespeichert: ${payload.result.path}`);
+                    this._notifyDownloadResult("Download", "finished", payload.result.path);
                 } else if (payload.result && payload.result.status === "error") {
                     this._setStatus(`download fehlgeschlagen: ${payload.result.error}`);
+                    this._notifyDownloadResult("Download", "error", payload.result.error || "unbekannter Fehler");
                 } else {
                     this._setStatus("download abgeschlossen");
+                    this._notifyDownloadResult("Download", "finished", "erfolgreich abgeschlossen");
                 }
                 this._runQueueList();
             } catch (error) {
@@ -1997,6 +2036,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download-run fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                this._notifyDownloadResult(title, "error", stderr || "unbekannter Fehler");
                 if (callback) {
                     callback(false, 0);
                 }
@@ -2031,10 +2071,13 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 }
                 if (payload.result && payload.result.path) {
                     this._setStatus(`gespeichert: ${payload.result.path}`);
+                    this._notifyDownloadResult(title, "finished", payload.result.path);
                 } else if (payload.result && payload.result.status === "error") {
                     this._setStatus(`download fehlgeschlagen: ${payload.result.error || "unbekannter Fehler"}`);
+                    this._notifyDownloadResult(title, "error", payload.result.error || "unbekannter Fehler");
                 } else {
                     this._setStatus("download abgeschlossen");
+                    this._notifyDownloadResult(title, "finished", "erfolgreich abgeschlossen");
                 }
                 if (callback) {
                     callback(true, payload.result ? 1 : 0);
@@ -2058,6 +2101,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const runQueued = () => {
             if (remaining <= 0) {
                 this._setStatus(`Alle Downloads gestartet: erledigt ${finishedCount}, Fehler ${errorCount} (Limit erreicht)`);
+                this._notifyDownloadRunAllSummary(finishedCount, errorCount);
                 this._runQueueList();
                 return;
             }
@@ -2067,6 +2111,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ], (status, stdout, stderr) => {
                 if (status !== CMD_SUCCESS) {
                     this._setStatus(`download-run-next fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                    this._notifyDownloadRunAllSummary(finishedCount, errorCount);
                     this._runQueueList();
                     return;
                 }
@@ -2075,17 +2120,19 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                     const payload = JSON.parse(stdout || "{}");
                     if (payload.status !== "ok") {
                         this._setStatus("download-run-next: unerwartete Antwort");
+                        this._notifyDownloadRunAllSummary(finishedCount, errorCount);
                         this._runQueueList();
                         return;
                     }
 
                     if (payload.state === "empty") {
                         this._setStatus(`Alle Downloads abgearbeitet: erledigt ${finishedCount}, Fehler ${errorCount}`);
+                        this._notifyDownloadRunAllSummary(finishedCount, errorCount);
                         this._runQueueList();
                         return;
                     }
 
-                    if (payload.result && payload.result.status === "finished") {
+                    if (payload.result && (payload.result.status === "finished" || payload.result.path)) {
                         finishedCount += 1;
                     } else if (payload.result && payload.result.status === "error") {
                         errorCount += 1;
@@ -2097,6 +2144,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                     runQueued();
                 } catch (error) {
                     this._setStatus(`download-run-next ungültige Antwort: ${error.message}`);
+                    this._notifyDownloadRunAllSummary(finishedCount, errorCount);
                     this._runQueueList();
                 }
             });
@@ -3713,18 +3761,23 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                this._notifyDownloadResult(item.title || "Eintrag", "error", stderr || "unbekannter Fehler");
                 return;
             }
             let payload = {};
             try {
                 payload = JSON.parse(stdout || "{}");
+                const title = item.title || "Eintrag";
                 if (payload.path) {
                     this._setStatus(`gespeichert: ${payload.path}`);
+                    this._notifyDownloadResult(title, "finished", payload.path);
                 } else {
                     this._setStatus("download abgeschlossen");
+                    this._notifyDownloadResult(title, "finished", "erfolgreich abgeschlossen");
                 }
             } catch (error) {
                 this._setStatus(`download Antwort ungültig: ${error.message}`);
+                this._notifyDownloadResult(item.title || "Eintrag", "error", error.message);
             }
         });
     }
