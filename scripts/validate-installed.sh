@@ -236,9 +236,15 @@ for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffe
         exit 1
     fi
 done
-for applet_label in "Download starten" "Downloads aktualisieren" "Markierte Downloads starten" "Audio (URL) abspielen" "Download (URL) kopieren" "Markierte Downloads vorziehen" "Markierte Downloads zurückstellen" "Liste der Downloads aufräumen"; do
+for applet_label in "Download starten" "Downloads aktualisieren" "Downloads starten" "Audio (URL) abspielen" "Download (URL) kopieren" "Downloads vorziehen" "Downloads zurückstellen" "Downloads stoppen" "Downloads aus Liste entfernen" "Liste der Downloads aufräumen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
+for applet_selected_action in 'const runSelected = new PopupMenu.PopupMenuItem("Downloads starten");' 'const preferSelected = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBackSelected = new PopupMenu.PopupMenuItem("Downloads zurückstellen");' 'const cancelSelected = new PopupMenu.PopupMenuItem("Downloads stoppen");' 'const removeSelected = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");'; do
+    if ! rg -q -F "${applet_selected_action}" "$APPLET_JS"; then
+        echo "ERROR: installed applet queue selected action label is missing: ${applet_selected_action}"
         exit 1
     fi
 done

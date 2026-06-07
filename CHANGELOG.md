@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.42
+
+- Queue-Auswahl-Aktionen im Warteschlangen-Menü auf ATPlayer-nahe Labels umgestellt: **Downloads starten**, **Downloads stoppen**, **Downloads vorziehen**, **Downloads zurückstellen**, **Downloads aus Liste entfernen**.
+- Status-/Check-Labels und Check-Expectations wurden auf denselben Wortlaut harmonisiert; Logik bleibt unverändert.
+- Versionssprung auf `0.3.42`; `metadata.json`, `VERSION`, README, Plan und Checks angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.41
 
 - Hilfemenü um **Anleitung im Web** ergänzt und verknüpft mit dem festen ATPlayer-Hilfe-Link `https://www.p2tools.de/atplayer/manual/` via bestehendem sicheren Browser-Öffner `_xdgOpen()`.

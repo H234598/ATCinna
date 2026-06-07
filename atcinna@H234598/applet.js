@@ -1651,7 +1651,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         runNext.connect("activate", () => this._runQueueRunNext());
         this._queueSection.addMenuItem(runNext);
 
-        const runSelected = new PopupMenu.PopupMenuItem("Markierte Downloads starten");
+        const runSelected = new PopupMenu.PopupMenuItem("Downloads starten");
         runSelected.connect("activate", () => this._runQueueRunSelected());
         this._queueSection.addMenuItem(runSelected);
 
@@ -1687,19 +1687,19 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         resetSelection.connect("activate", () => this._runQueueResetSelection());
         this._queueSection.addMenuItem(resetSelection);
 
-        const preferSelected = new PopupMenu.PopupMenuItem("Markierte Downloads vorziehen");
+        const preferSelected = new PopupMenu.PopupMenuItem("Downloads vorziehen");
         preferSelected.connect("activate", () => this._runQueuePreferSelected());
         this._queueSection.addMenuItem(preferSelected);
 
-        const putBackSelected = new PopupMenu.PopupMenuItem("Markierte Downloads zurückstellen");
+        const putBackSelected = new PopupMenu.PopupMenuItem("Downloads zurückstellen");
         putBackSelected.connect("activate", () => this._runQueuePutBackSelected());
         this._queueSection.addMenuItem(putBackSelected);
 
-        const cancelSelected = new PopupMenu.PopupMenuItem("Ausgewählte Downloads stoppen");
+        const cancelSelected = new PopupMenu.PopupMenuItem("Downloads stoppen");
         cancelSelected.connect("activate", () => this._runQueueCancelSelected());
         this._queueSection.addMenuItem(cancelSelected);
 
-        const removeSelected = new PopupMenu.PopupMenuItem("Ausgewählte aus Liste entfernen");
+        const removeSelected = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");
         removeSelected.connect("activate", () => this._runQueueRemoveSelected());
         this._queueSection.addMenuItem(removeSelected);
 
@@ -2182,7 +2182,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runQueueRunSelected() {
         this._runQueueBatchAction(
-            "Markierte Downloads starten",
+            "Downloads starten",
             this._getSelectedQueueItems(),
             (item, callback) => this._runQueueRunItem(item, callback)
         );
@@ -2208,7 +2208,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runQueuePreferSelected() {
         this._runQueueBatchAction(
-            "Markierte Downloads vorziehen",
+            "Downloads vorziehen",
             this._getSelectedQueueItems(),
             (item, callback) => this._runQueuePrefer(item, callback)
         );
@@ -2216,7 +2216,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runQueuePutBackSelected() {
         this._runQueueBatchAction(
-            "Markierte Downloads zurückstellen",
+            "Downloads zurückstellen",
             this._getSelectedQueueItems(),
             (item, callback) => this._runQueuePutBack(item, callback)
         );
@@ -2224,7 +2224,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runQueueCancelSelected() {
         this._runQueueBatchAction(
-            "Ausgewählte Downloads stoppen",
+            "Downloads stoppen",
             this._getSelectedQueueItems(),
             (item, callback) => this._runQueueCancelItem(item, callback)
         );
@@ -2232,7 +2232,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runQueueRemoveSelected() {
         this._runQueueBatchAction(
-            "Ausgewählte aus Liste entfernen",
+            "Downloads aus Liste entfernen",
             this._getSelectedQueueItems(),
             (item, callback) => this._runQueueRemove(item, callback)
         );

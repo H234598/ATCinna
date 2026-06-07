@@ -353,9 +353,15 @@ for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen"
         STATUS=1
     fi
 done
-for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Markierte Downloads starten" "Audio (URL) abspielen" "Download (URL) kopieren" "Markierte Downloads vorziehen" "Markierte Downloads zurückstellen" "Ausgewählte Downloads stoppen" "Ausgewählte aus Liste entfernen" "Auswahl umschalten"; do
+for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Downloads starten" "Audio (URL) abspielen" "Download (URL) kopieren" "Downloads vorziehen" "Downloads zurückstellen" "Downloads stoppen" "Downloads aus Liste entfernen" "Auswahl umschalten"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue selection label is missing: ${queue_label}"
+        STATUS=1
+    fi
+done
+for queue_selected_action in 'const runSelected = new PopupMenu.PopupMenuItem("Downloads starten");' 'const preferSelected = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBackSelected = new PopupMenu.PopupMenuItem("Downloads zurückstellen");' 'const cancelSelected = new PopupMenu.PopupMenuItem("Downloads stoppen");' 'const removeSelected = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");'; do
+    if ! rg -q -F "${queue_selected_action}" "$APPLET_JS"; then
+        echo "ERROR: applet queue selected action label is missing: ${queue_selected_action}"
         STATUS=1
     fi
 done
