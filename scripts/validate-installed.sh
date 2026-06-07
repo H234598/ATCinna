@@ -245,6 +245,10 @@ checks = {
         r"this\._removeCurrentFilterProfileItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Aktuelles Filterprofil löschen['\"]\s*\)",
         re.S,
     ),
+    "filter profile rename label is created": re.compile(
+        r"this\._renameCurrentFilterProfileItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Aktuelles Filterprofil umbenennen['\"]\s*\)",
+        re.S,
+    ),
     "filter profile manage label is updated": re.compile(
         r"this\._manageFilterProfilesItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Filterprofile in eigenem Fenster anzeigen['\"]\s*\)",
         re.S,
@@ -283,6 +287,10 @@ checks = {
     ),
     "filter profile current remove handler is wired": re.compile(
         r"this\._removeCurrentFilterProfileItem\.connect\s*\(\s*['\"]activate['\"]\s*,\s*\(\s*\)\s*=>\s*\{\s*this\._removeCurrentFilterProfile\s*\(\s*\)\s*;\s*\}\)",
+        re.S,
+    ),
+    "filter profile rename handler is wired": re.compile(
+        r"this\._renameCurrentFilterProfileItem\.connect\s*\(\s*['\"]activate['\"]\s*,\s*\(\s*\)\s*=>\s*\{\s*this\._renameCurrentFilterProfile\s*\(\s*\)\s*;\s*\}\)",
         re.S,
     ),
 }
@@ -419,7 +427,7 @@ for applet_queue_entry_action in 'const queueEntryResetSelection = new PopupMenu
         exit 1
     fi
 done
-for applet_label in "Hilfedialog" "Anleitung im Web" "Blacklist verwalten" "Filtereinstellungen in neuem Filterprofil speichern" "Aktuelles Filterprofil wieder laden" "Filtereinstellungen in aktuellem Filterprofil speichern" "Aktuelles Filterprofil löschen" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Alle Filterprofile löschen" "Filterprofile in eigenem Fenster anzeigen" "Alle Programmeinstellungen zurücksetzen" "Gibt's ein Update?" "Über dieses Programm"; do
+for applet_label in "Hilfedialog" "Anleitung im Web" "Blacklist verwalten" "Filtereinstellungen in neuem Filterprofil speichern" "Aktuelles Filterprofil wieder laden" "Filtereinstellungen in aktuellem Filterprofil speichern" "Aktuelles Filterprofil löschen" "Aktuelles Filterprofil umbenennen" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Alle Filterprofile löschen" "Filterprofile in eigenem Fenster anzeigen" "Alle Programmeinstellungen zurücksetzen" "Gibt's ein Update?" "Über dieses Programm"; do
     if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${applet_label}\")" "$APPLET_JS"; then
         echo "ERROR: installed help menu label is missing: ${applet_label}"
         exit 1
@@ -465,7 +473,7 @@ if ! rg -q -F '"download-run"' "$HELPER"; then
     echo "ERROR: installed helper action is missing: download-run"
     exit 1
 fi
-for helper_action in "download-error-list" "download-error-clear" "download-folder-history-list" "download-folder-history-clear" "filter-profile-get" "filter-profile-remove" "filter-profile-clear" "filter-profile-sort" "filter-profile-reset"; do
+for helper_action in "download-error-list" "download-error-clear" "download-folder-history-list" "download-folder-history-clear" "filter-profile-get" "filter-profile-rename" "filter-profile-remove" "filter-profile-clear" "filter-profile-sort" "filter-profile-reset"; do
     if ! rg -q -F "${helper_action}" "$HELPER"; then
         echo "ERROR: installed helper action is missing: ${helper_action}"
         exit 1
@@ -485,6 +493,18 @@ if ! python3 -m py_compile "$BLACKLIST_DIALOG"; then
 fi
 if ! python3 -m py_compile "$FILTER_PROFILES_DIALOG"; then
     echo "ERROR: py_compile failed for filter profiles dialog"
+    exit 1
+fi
+if ! rg -q -F -- "--select-name" "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: installed filter profiles dialog does not accept a selected profile name"
+    exit 1
+fi
+if ! rg -q -F -- "--rename-name" "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: installed filter profiles dialog does not accept a profile name for direct rename"
+    exit 1
+fi
+if ! rg -q -F "filter-profile-rename" "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: installed filter profiles dialog does not rename profiles through helper"
     exit 1
 fi
 if ! rg -q -F -- "--theme-title" "$HELPER"; then

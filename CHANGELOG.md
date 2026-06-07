@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.75
+
+- Das Applet-Menü **Filterprofile** bietet jetzt die ATPlayer-nahe Aktion **Aktuelles Filterprofil umbenennen** und öffnet dafür den bestehenden GTK-Dialog direkt im Rename-Modus für das aktuelle Profil.
+- Der Filterprofil-Dialog akzeptiert dafür jetzt `--select-name` und `--rename-name`; er wählt das passende Profil initial casefold-/trim-gleich vor und startet den vorhandenen Umbenennen-Prompt ohne manuelle Suche.
+- `scripts/check.sh`, `scripts/validate-installed.sh`, `metadata.json`, `VERSION` und README wurden auf `0.3.75` synchronisiert.
+
 ## 0.3.74
 
 - Das Applet-Menü **Filterprofile** unterstützt jetzt ATPlayer-nahe Aktionen für das aktuell gewählte Profil: **Aktuelles Filterprofil wieder laden**, **Filtereinstellungen in aktuellem Filterprofil speichern** und **Aktuelles Filterprofil löschen**.

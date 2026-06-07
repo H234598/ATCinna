@@ -199,13 +199,13 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Filterprofile in eigenem Fenster anz
     echo "ERROR: applet filter profiles manage menu label is missing"
     STATUS=1
 fi
-for profile_label in "Filtereinstellungen in neuem Filterprofil speichern" "Aktuelles Filterprofil wieder laden" "Filtereinstellungen in aktuellem Filterprofil speichern" "Aktuelles Filterprofil löschen" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Alle Filterprofile löschen"; do
+for profile_label in "Filtereinstellungen in neuem Filterprofil speichern" "Aktuelles Filterprofil wieder laden" "Filtereinstellungen in aktuellem Filterprofil speichern" "Aktuelles Filterprofil löschen" "Aktuelles Filterprofil umbenennen" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Alle Filterprofile löschen"; do
     if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${profile_label}\")" "$APPLET_JS"; then
         echo "ERROR: applet filter profiles label is missing: ${profile_label}"
         STATUS=1
     fi
 done
-for profile_handler in "_reloadCurrentFilterProfile" "_saveActiveFilterProfile" "_removeCurrentFilterProfile" "_currentFilterProfileName" "_sortFilterProfiles" "_resetFilterProfiles" "_clearFilterProfiles"; do
+for profile_handler in "_reloadCurrentFilterProfile" "_saveActiveFilterProfile" "_removeCurrentFilterProfile" "_renameCurrentFilterProfile" "_currentFilterProfileName" "_sortFilterProfiles" "_resetFilterProfiles" "_clearFilterProfiles"; do
     if ! rg -q -F "${profile_handler}" "$APPLET_JS"; then
         echo "ERROR: applet filter profile handler is missing: ${profile_handler}"
         STATUS=1
@@ -819,6 +819,18 @@ for search_arg in '--theme-title' '--somewhere' '--max-days' '--min-duration' '-
 done
 if ! rg -q -F 'filter-profile-save' "$FILTER_PROFILES_DIALOG"; then
     echo "ERROR: filter profiles dialog does not save profiles through helper"
+    STATUS=1
+fi
+if ! rg -q -F -- '--select-name' "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: filter profiles dialog does not accept a selected profile name"
+    STATUS=1
+fi
+if ! rg -q -F -- '--rename-name' "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: filter profiles dialog does not accept a profile name for direct rename"
+    STATUS=1
+fi
+if ! rg -q -F 'filter-profile-rename' "$FILTER_PROFILES_DIALOG"; then
+    echo "ERROR: filter profiles dialog does not rename profiles through helper"
     STATUS=1
 fi
 if ! rg -q -F 'ApplyFilterProfile' "$FILTER_PROFILES_DIALOG"; then

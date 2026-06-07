@@ -193,6 +193,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._saveActiveFilterProfile();
         });
         this._filterProfilesMenu.menu.addMenuItem(this._saveActiveFilterProfileItem);
+        this._renameCurrentFilterProfileItem = new PopupMenu.PopupMenuItem("Aktuelles Filterprofil umbenennen");
+        this._renameCurrentFilterProfileItem.connect("activate", () => {
+            this._renameCurrentFilterProfile();
+        });
+        this._filterProfilesMenu.menu.addMenuItem(this._renameCurrentFilterProfileItem);
         this._removeCurrentFilterProfileItem = new PopupMenu.PopupMenuItem("Aktuelles Filterprofil löschen");
         this._removeCurrentFilterProfileItem.connect("activate", () => {
             this._removeCurrentFilterProfile();
@@ -950,6 +955,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
+    _renameCurrentFilterProfile() {
+        const name = this._currentFilterProfileNameOrStatus("Aktuelles Filterprofil umbenennen");
+        if (!name) {
+            return;
+        }
+        this._launchFilterProfilesDialog(name, name);
+    }
+
     _sortFilterProfiles() {
         this._setStatus("Filterprofile werden sortiert ...");
         this._runHelper(["filter-profile-sort"], (status, stdout, stderr) => {
@@ -1491,32 +1504,39 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
     }
 
-    _launchFilterProfilesDialog() {
+    _launchFilterProfilesDialog(selectName = "", renameName = "") {
         if (!GLib.file_test(this._filterProfilesDialogPath, GLib.FileTest.EXISTS | GLib.FileTest.IS_EXECUTABLE)) {
             this._setStatus("Filterprofil-Dialog nicht verfügbar: Script fehlt");
             return;
         }
         const filters = this._getActiveFilters();
+        const args = [
+            this._filterProfilesDialogPath,
+            `--search-query=${this._getActiveSearchQuery()}`,
+            `--sender=${filters.sender}`,
+            `--genre=${filters.genre}`,
+            `--topic=${filters.topic}`,
+            `--title=${filters.title}`,
+            `--theme-title=${filters.themeTitle}`,
+            `--somewhere=${filters.somewhere}`,
+            `--blacklist-mode=${this._getBlacklistMode()}`,
+            `--max-hits=${this._profileMaxHits(this.maxHits)}`,
+            `--max-days=${filters.maxDays}`,
+            `--min-duration=${filters.minDuration}`,
+            `--max-duration=${filters.maxDuration}`,
+            `--only-new=${filters.onlyNew ? "true" : "false"}`,
+            `--only-bookmarks=${filters.onlyBookmarks ? "true" : "false"}`,
+            `--hide-history=${filters.hideHistory ? "true" : "false"}`,
+            `--podcast-mode=${filters.podcastMode}`
+        ];
+        if (selectName) {
+            args.push(`--select-name=${selectName}`);
+        }
+        if (renameName) {
+            args.push(`--rename-name=${renameName}`);
+        }
         try {
-            Util.spawn([
-                this._filterProfilesDialogPath,
-                `--search-query=${this._getActiveSearchQuery()}`,
-                `--sender=${filters.sender}`,
-                `--genre=${filters.genre}`,
-                `--topic=${filters.topic}`,
-                `--title=${filters.title}`,
-                `--theme-title=${filters.themeTitle}`,
-                `--somewhere=${filters.somewhere}`,
-                `--blacklist-mode=${this._getBlacklistMode()}`,
-                `--max-hits=${this._profileMaxHits(this.maxHits)}`,
-                `--max-days=${filters.maxDays}`,
-                `--min-duration=${filters.minDuration}`,
-                `--max-duration=${filters.maxDuration}`,
-                `--only-new=${filters.onlyNew ? "true" : "false"}`,
-                `--only-bookmarks=${filters.onlyBookmarks ? "true" : "false"}`,
-                `--hide-history=${filters.hideHistory ? "true" : "false"}`,
-                `--podcast-mode=${filters.podcastMode}`
-            ]);
+            Util.spawn(args);
         } catch (error) {
             this._setStatus(`Filterprofil-Dialog konnte nicht gestartet werden: ${error}`);
         }

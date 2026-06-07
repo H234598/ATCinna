@@ -202,6 +202,10 @@ def _prompt_text(parent, Gtk, title, label, default_text=""):
     return ""
 
 
+def _normalize_profile_name(value):
+    return str(value or "").strip().casefold()
+
+
 def _confirm(parent, Gtk, title, message):
     dialog = Gtk.MessageDialog(
         transient_for=parent,
@@ -254,7 +258,7 @@ def run_dialog(args):
     except Exception as exc:
         raise RuntimeError(f"GTK 3 not available: {exc}") from exc
 
-    from gi.repository import Gtk
+    from gi.repository import GLib, Gtk
 
     window = Gtk.Window(title="ATCinna Filterprofile")
     window.set_default_size(900, 560)
@@ -291,7 +295,7 @@ def run_dialog(args):
 
     rows = []
 
-    def refresh_profiles():
+    def refresh_profiles(select_name="", require_match=False):
         for row in list(rows):
             list_box.remove(row)
         rows.clear()
@@ -306,8 +310,24 @@ def run_dialog(args):
             list_box.add(row)
             rows.append(row)
         list_box.show_all()
-        if rows:
-            list_box.select_row(rows[0])
+        if not rows:
+            return False
+        target_name = _normalize_profile_name(select_name)
+        selected_row = None
+        if target_name:
+            for row in rows:
+                profile = row.get_data("profile")
+                if isinstance(profile, dict) and _normalize_profile_name(profile.get("name")) == target_name:
+                    selected_row = row
+                    break
+        if selected_row is not None:
+            list_box.select_row(selected_row)
+            return True
+        if target_name and require_match:
+            _set_status(status_label, f"Profil nicht gefunden: {select_name}")
+            return False
+        list_box.select_row(rows[0])
+        return not target_name
 
     def selected_profile():
         row = list_box.get_selected_row()
@@ -425,8 +445,11 @@ def run_dialog(args):
     reset_button.connect("clicked", reset_profiles)
     close_button.connect("clicked", lambda _btn: window.close())
 
-    refresh_profiles()
+    initial_select_name = args.rename_name or args.select_name
+    initial_profile_found = refresh_profiles(initial_select_name, bool(args.rename_name))
     window.show_all()
+    if args.rename_name and initial_profile_found:
+        GLib.idle_add(lambda: (rename_profile(None), False)[1])
     Gtk.main()
 
 
@@ -449,6 +472,8 @@ def parse_args():
     parser.add_argument("--only-bookmarks", default="false", help="Whether current profile only shows bookmarks")
     parser.add_argument("--hide-history", default="false", help="Whether current profile hides history entries")
     parser.add_argument("--podcast-mode", default="all", choices=("all", "only", "none"), help="Current podcast filter mode")
+    parser.add_argument("--select-name", default="", help="Initially select a filter profile by name")
+    parser.add_argument("--rename-name", default="", help="Initially select and rename a filter profile by name")
     return parser.parse_args()
 
 
