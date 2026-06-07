@@ -345,9 +345,15 @@ for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen"
         STATUS=1
     fi
 done
-for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Markierte Downloads starten" "Markierte Downloads vorziehen" "Markierte Downloads zurückstellen" "Ausgewählte Downloads stoppen" "Ausgewählte aus Liste entfernen" "Auswahl umschalten"; do
+for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Markierte Downloads starten" "Audio (URL) abspielen" "Download (URL) kopieren" "Markierte Downloads vorziehen" "Markierte Downloads zurückstellen" "Ausgewählte Downloads stoppen" "Ausgewählte aus Liste entfernen" "Auswahl umschalten"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue selection label is missing: ${queue_label}"
+        STATUS=1
+    fi
+done
+for queue_top_action in 'const playSelected = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");' 'const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");'; do
+    if ! rg -q -F "${queue_top_action}" "$APPLET_JS"; then
+        echo "ERROR: applet queue top-level selected media action is missing: ${queue_top_action}"
         STATUS=1
     fi
 done
@@ -363,7 +369,7 @@ for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_se
         STATUS=1
     fi
 done
-for queue_selection_handler in "_queueSelectionItems" "_queueItemsCache" "_queueActionRunSelected" "_queueActionPreferSelected" "_queueActionPutBackSelected" "_runQueueSelectAll" "_runQueueInvertSelection" "_runQueueResetSelection" "_runQueueToggleSelection" "_runQueueRunSelected" "_runQueuePreferSelected" "_runQueuePutBackSelected" "_runQueueCancelSelected" "_runQueueRemoveSelected" "_runQueueBatchAction" "_getSelectedQueueItems" "_queueItemKey" "_updateQueueSelectionActionState"; do
+for queue_selection_handler in "_queueSelectionItems" "_queueItemsCache" "_queueActionRunSelected" "_queueActionPlaySelected" "_queueActionCopySelected" "_queueActionPreferSelected" "_queueActionPutBackSelected" "_runQueueSelectAll" "_runQueueInvertSelection" "_runQueueResetSelection" "_runQueueToggleSelection" "_runQueueRunSelected" "_runQueuePlaySelected" "_runQueueCopySelected" "_runQueuePreferSelected" "_runQueuePutBackSelected" "_runQueueCancelSelected" "_runQueueRemoveSelected" "_runQueueBatchAction" "_getSelectedQueueItems" "_queueItemKey" "_updateQueueSelectionActionState"; do
     if ! rg -q -F "${queue_selection_handler}" "$APPLET_JS"; then
         echo "ERROR: applet queue selection handler is missing: ${queue_selection_handler}"
         STATUS=1

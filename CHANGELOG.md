@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.40
+
+- ATPlayer-nahe Queue-Top-Aktionen ergänzt: **Audio (URL) abspielen** und **Download (URL) kopieren** im Warteschlangen-Top-Level.
+- Die neuen Aktionen verwenden bestehende Top-Level-Selection-Helfer und pro markiertem Queue-Eintrag vorhandene Untermenü-Helfer `_playItem` bzw. `_copyQueueUrl`.
+- Sensitivität der neuen Aktionen hängt vom markierten Queue-Eintrag ab; keine neuen Helper-Subprozesse hinzugefügt.
+- Versionssprung auf `0.3.40`; `metadata.json`, `VERSION`, README und Checks angepasst.
+
 ## 0.3.39
 
 - ATPlayer-nahe Queue-Batch-Aktionen **Markierte Downloads vorziehen** und **Markierte Downloads zurückstellen** ergänzt.

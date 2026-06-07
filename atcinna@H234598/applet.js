@@ -61,6 +61,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueListSection = null;
         this._queueSelectionItems = new Set();
         this._queueItemsCache = [];
+        this._queueActionSelectAll = null;
+        this._queueActionInvertSelection = null;
+        this._queueActionResetSelection = null;
+        this._queueActionRunSelected = null;
+        this._queueActionPlaySelected = null;
+        this._queueActionCopySelected = null;
+        this._queueActionPreferSelected = null;
+        this._queueActionPutBackSelected = null;
+        this._queueActionCancelSelected = null;
+        this._queueActionRemoveSelected = null;
         this._infoSection = null;
         this._filterSummaryItem = null;
         this._clearFiltersItem = null;
@@ -1634,6 +1644,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         runSelected.connect("activate", () => this._runQueueRunSelected());
         this._queueSection.addMenuItem(runSelected);
 
+        const playSelected = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");
+        playSelected.connect("activate", () => this._runQueuePlaySelected());
+        this._queueSection.addMenuItem(playSelected);
+
+        const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");
+        copySelected.connect("activate", () => this._runQueueCopySelected());
+        this._queueSection.addMenuItem(copySelected);
+
         const runAll = new PopupMenu.PopupMenuItem("Alle Downloads starten");
         runAll.connect("activate", () => this._runQueueRunAll());
         this._queueSection.addMenuItem(runAll);
@@ -1690,6 +1708,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionInvertSelection = invertSelection;
         this._queueActionResetSelection = resetSelection;
         this._queueActionRunSelected = runSelected;
+        this._queueActionPlaySelected = playSelected;
+        this._queueActionCopySelected = copySelected;
         this._queueActionPreferSelected = preferSelected;
         this._queueActionPutBackSelected = putBackSelected;
         this._queueActionCancelSelected = cancelSelected;
@@ -2157,6 +2177,24 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         );
     }
 
+    _runQueuePlaySelected() {
+        const selectedItems = this._getSelectedQueueItems();
+        if (!selectedItems.length) {
+            this._setStatus("Audio (URL) abspielen: keine Auswahl");
+            return;
+        }
+        this._playItem(selectedItems[0]);
+    }
+
+    _runQueueCopySelected() {
+        const selectedItems = this._getSelectedQueueItems();
+        if (!selectedItems.length) {
+            this._setStatus("Download (URL) kopieren: keine Auswahl");
+            return;
+        }
+        this._copyQueueUrl(selectedItems[0]);
+    }
+
     _runQueuePreferSelected() {
         this._runQueueBatchAction(
             "Markierte Downloads vorziehen",
@@ -2275,6 +2313,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._queueActionRunSelected) {
             this._queueActionRunSelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionPlaySelected) {
+            this._queueActionPlaySelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionCopySelected) {
+            this._queueActionCopySelected.setSensitive(hasSelection);
         }
         if (this._queueActionPreferSelected) {
             this._queueActionPreferSelected.setSensitive(hasSelection);
