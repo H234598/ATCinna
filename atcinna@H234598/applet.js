@@ -197,6 +197,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this._resetFilterProfiles();
         });
         this._filterProfilesMenu.menu.addMenuItem(this._resetFilterProfilesItem);
+        this._clearFilterProfilesItem = new PopupMenu.PopupMenuItem("Alle Filterprofile löschen");
+        this._clearFilterProfilesItem.connect("activate", () => {
+            this._clearFilterProfiles();
+        });
+        this._filterProfilesMenu.menu.addMenuItem(this._clearFilterProfilesItem);
         this._manageFilterProfilesItem = new PopupMenu.PopupMenuItem("Filterprofile in eigenem Fenster anzeigen");
         this._manageFilterProfilesItem.connect("activate", () => {
             this._launchFilterProfilesDialog();
@@ -883,6 +888,29 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             }
             this._refreshFilterProfilesMenu();
             this._setStatus(`Filterprofile wiederhergestellt: ${payload.count || 0}`);
+        });
+    }
+
+    _clearFilterProfiles() {
+        this._setStatus("Filterprofile werden gelöscht ...");
+        this._runHelper(["filter-profile-clear"], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`Filterprofile konnten nicht gelöscht werden: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            let payload = {};
+            try {
+                payload = JSON.parse(stdout || "{}");
+            } catch (error) {
+                this._setStatus(`Filterprofile ungültige Antwort: ${error.message}`);
+                return;
+            }
+            if (payload.status !== "ok") {
+                this._setStatus("Filterprofile: unerwartete Antwort");
+                return;
+            }
+            this._refreshFilterProfilesMenu();
+            this._setStatus(`Filterprofile gelöscht: ${payload.removed || 0}`);
         });
     }
 

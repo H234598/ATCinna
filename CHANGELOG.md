@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.73
+
+- Das Applet-Menü **Filterprofile** enthält jetzt zusätzlich den ATPlayer-nahen Direktpunkt **Alle Filterprofile löschen**.
+- Die neue Aktion nutzt den bestehenden Helper `filter-profile-clear`, aktualisiert danach die Profilliste und meldet die Anzahl gelöschter Profile im Status.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen den neuen Menü- und Handler-Contract; `metadata.json`, `VERSION` und README wurden auf `0.3.73` angehoben.
+
 ## 0.3.72
 
 - Das Applet-Menü **Filterprofile** spricht jetzt die ATPlayer-nahen Direktaktionen klar aus: **Filtereinstellungen in neuem Filterprofil speichern**, **Filterprofile sortieren**, **Alle Filterprofile wieder herstellen** und **Filterprofile in eigenem Fenster anzeigen**.

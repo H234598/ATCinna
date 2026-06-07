@@ -245,12 +245,20 @@ checks = {
         r"this\._resetFilterProfilesItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Alle Filterprofile wieder herstellen['\"]\s*\)",
         re.S,
     ),
+    "filter profile clear label is created": re.compile(
+        r"this\._clearFilterProfilesItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Alle Filterprofile löschen['\"]\s*\)",
+        re.S,
+    ),
     "filter profile sort handler is wired": re.compile(
         r"this\._sortFilterProfilesItem\.connect\s*\(\s*['\"]activate['\"]\s*,\s*\(\s*\)\s*=>\s*\{\s*this\._sortFilterProfiles\s*\(\s*\)\s*;\s*\}\)",
         re.S,
     ),
     "filter profile reset handler is wired": re.compile(
         r"this\._resetFilterProfilesItem\.connect\s*\(\s*['\"]activate['\"]\s*,\s*\(\s*\)\s*=>\s*\{\s*this\._resetFilterProfiles\s*\(\s*\)\s*;\s*\}\)",
+        re.S,
+    ),
+    "filter profile clear handler is wired": re.compile(
+        r"this\._clearFilterProfilesItem\.connect\s*\(\s*['\"]activate['\"]\s*,\s*\(\s*\)\s*=>\s*\{\s*this\._clearFilterProfiles\s*\(\s*\)\s*;\s*\}\)",
         re.S,
     ),
 }
@@ -387,7 +395,7 @@ for applet_queue_entry_action in 'const queueEntryResetSelection = new PopupMenu
         exit 1
     fi
 done
-for applet_label in "Hilfedialog" "Anleitung im Web" "Blacklist verwalten" "Filtereinstellungen in neuem Filterprofil speichern" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Filterprofile in eigenem Fenster anzeigen" "Alle Programmeinstellungen zurücksetzen" "Gibt's ein Update?" "Über dieses Programm"; do
+for applet_label in "Hilfedialog" "Anleitung im Web" "Blacklist verwalten" "Filtereinstellungen in neuem Filterprofil speichern" "Filterprofile sortieren" "Alle Filterprofile wieder herstellen" "Alle Filterprofile löschen" "Filterprofile in eigenem Fenster anzeigen" "Alle Programmeinstellungen zurücksetzen" "Gibt's ein Update?" "Über dieses Programm"; do
     if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${applet_label}\")" "$APPLET_JS"; then
         echo "ERROR: installed help menu label is missing: ${applet_label}"
         exit 1
@@ -433,7 +441,7 @@ if ! rg -q -F '"download-run"' "$HELPER"; then
     echo "ERROR: installed helper action is missing: download-run"
     exit 1
 fi
-for helper_action in "download-error-list" "download-error-clear" "download-folder-history-list" "download-folder-history-clear" "filter-profile-sort" "filter-profile-reset"; do
+for helper_action in "download-error-list" "download-error-clear" "download-folder-history-list" "download-folder-history-clear" "filter-profile-clear" "filter-profile-sort" "filter-profile-reset"; do
     if ! rg -q -F "${helper_action}" "$HELPER"; then
         echo "ERROR: installed helper action is missing: ${helper_action}"
         exit 1
