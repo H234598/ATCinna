@@ -665,6 +665,19 @@ if ! rg -q -F 'action: (value) => this._xdgOpen(value)' "$APPLET_JS"; then
     echo "ERROR: info section clickable rows are not wired to _xdgOpen"
     STATUS=1
 fi
+for info_date_contract in \
+    '["Datum", safeItem.date]' \
+    '["Zeit", safeItem.time]' \
+    '["Dauer", safeItem.duration]'; do
+    if ! rg -q -F "${info_date_contract}" "$APPLET_JS"; then
+        echo "ERROR: info section date/time/duration contract is missing: ${info_date_contract}"
+        STATUS=1
+    fi
+done
+if rg -q -F '["Datum/Uhrzeit/Dauer"' "$APPLET_JS"; then
+    echo "ERROR: combined info section date/time/duration row is still present"
+    STATUS=1
+fi
 for info_state_contract in \
     '_yesNoInfoValue(value)' \
     'return value ? "Ja" : "Nein";' \

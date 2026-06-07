@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.83
+
+- Audioinformation zeigt **Datum**, **Zeit** und **Dauer** jetzt als getrennte ATPlayer-nahe Infozeilen statt als kombinierte Zeile.
+- URL und Website bleiben die einzigen klickbaren Infozeilen; es wurden keine Helper-, Store- oder Settings-Pfade geändert.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen die getrennten Infozeilen und verbieten die alte kombinierte Zeile; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.83` angehoben.
+
 ## 0.3.82
 
 - **Über dieses Programm** zeigt jetzt ATPlayer-nahe konkrete Pfade für **Audioliste** und **Einstellungen**.
