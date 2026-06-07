@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.38
+
+- ATPlayer-nahe Queue-Batch-Aktion **Markierte Downloads starten** im Warteschlangen-Menü ergänzt.
+- Die Aktion nutzt die vorhandene sichtbare Queue-Auswahl und startet jeden markierten wartenden Eintrag über den bestehenden `download-run --url`-Pfad.
+- Source- und Installationschecks schützen Label, Handler und Menüvertrag.
+- Versionssprung auf `0.3.38`; `metadata.json`, README und Plan angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.37
 
 - Linksklick-Pfad gehärtet: `on_applet_clicked(event)` akzeptiert defensiv nur Button 1 und öffnet das Popup-Menü deterministisch.

@@ -1630,6 +1630,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         runNext.connect("activate", () => this._runQueueRunNext());
         this._queueSection.addMenuItem(runNext);
 
+        const runSelected = new PopupMenu.PopupMenuItem("Markierte Downloads starten");
+        runSelected.connect("activate", () => this._runQueueRunSelected());
+        this._queueSection.addMenuItem(runSelected);
+
         const runAll = new PopupMenu.PopupMenuItem("Alle Downloads starten");
         runAll.connect("activate", () => this._runQueueRunAll());
         this._queueSection.addMenuItem(runAll);
@@ -1677,6 +1681,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionSelectAll = selectAll;
         this._queueActionInvertSelection = invertSelection;
         this._queueActionResetSelection = resetSelection;
+        this._queueActionRunSelected = runSelected;
         this._queueActionCancelSelected = cancelSelected;
         this._queueActionRemoveSelected = removeSelected;
         this._updateQueueSelectionActionState();
@@ -2134,6 +2139,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._runQueueList();
     }
 
+    _runQueueRunSelected() {
+        this._runQueueBatchAction(
+            "Markierte Downloads starten",
+            this._getSelectedQueueItems(),
+            (item, callback) => this._runQueueRunItem(item, callback)
+        );
+    }
+
     _runQueueCancelSelected() {
         this._runQueueBatchAction(
             "Ausgewählte Downloads stoppen",
@@ -2233,6 +2246,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._queueActionResetSelection) {
             this._queueActionResetSelection.setSensitive(hasSelection);
+        }
+        if (this._queueActionRunSelected) {
+            this._queueActionRunSelected.setSensitive(hasSelection);
         }
         if (this._queueActionCancelSelected) {
             this._queueActionCancelSelected.setSensitive(hasSelection);
