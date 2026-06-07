@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.79
+
+- Direktes Hauptmenü-Untermenü **Bookmarks** ergänzt.
+- Die ATPlayer-nahen Aktionen **Neue Bookmarks anlegen**, **Bookmarks löschen** und **Alle angelegten Bookmarks löschen** nutzen die bestehenden Bookmark-Handler ohne Helper- oder Speicherlogikänderung.
+- **Neue Bookmarks anlegen** und **Bookmarks löschen** folgen im neuen Untermenü derselben Auswahl-Sensitivity wie die vorhandenen Top-Level-Trefferaktionen.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen Submenü, Handler-Wiring und Sensitivity; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.79` angehoben.
+
 ## 0.3.78
 
 - Direkten ATPlayer-nahen Menüschalter **Farb-Modus-1** ergänzt.

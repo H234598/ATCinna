@@ -761,6 +761,56 @@ for bookmark_filter_handler in "_toggleBookmarksFilter" "_filterSnapshot" "_appl
         STATUS=1
     fi
 done
+python3 - "$APPLET_JS" <<'PY' || STATUS=1
+import re
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1]).read_text(encoding="utf-8")
+checks = {
+    "Bookmarks submenu is created": re.compile(
+        r"this\._bookmarksMenu\s*=\s*new\s+PopupMenu\.PopupSubMenuMenuItem\s*\(\s*['\"]Bookmarks['\"]\s*\)",
+        re.S,
+    ),
+    "Bookmarks add action is wired": re.compile(
+        r"this\._bookmarksAddSelectedItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Neue Bookmarks anlegen['\"]\s*\)[\s\S]*?this\._bookmarksAddSelectedItem\.connect\s*\(\s*['\"]activate['\"][\s\S]*?this\._runResultBookmarkSelected\s*\(\s*\)",
+        re.S,
+    ),
+    "Bookmarks remove action is wired": re.compile(
+        r"this\._bookmarksRemoveSelectedItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Bookmarks löschen['\"]\s*\)[\s\S]*?this\._bookmarksRemoveSelectedItem\.connect\s*\(\s*['\"]activate['\"][\s\S]*?this\._runResultRemoveBookmarksSelected\s*\(\s*\)",
+        re.S,
+    ),
+    "Bookmarks clear action is wired": re.compile(
+        r"this\._bookmarksClearItem\s*=\s*new\s+PopupMenu\.PopupMenuItem\s*\(\s*['\"]Alle angelegten Bookmarks löschen['\"]\s*\)[\s\S]*?this\._bookmarksClearItem\.connect\s*\(\s*['\"]activate['\"][\s\S]*?this\._runBookmarkClear\s*\(\s*\)",
+        re.S,
+    ),
+    "Bookmarks submenu is added to the main menu": re.compile(
+        r"this\.menu\.addMenuItem\s*\(\s*this\._bookmarksMenu\s*\)",
+        re.S,
+    ),
+    "Bookmarks add action starts disabled": re.compile(
+        r"this\._bookmarksAddSelectedItem\.setSensitive\s*\(\s*false\s*\)",
+        re.S,
+    ),
+    "Bookmarks remove action starts disabled": re.compile(
+        r"this\._bookmarksRemoveSelectedItem\.setSensitive\s*\(\s*false\s*\)",
+        re.S,
+    ),
+    "Bookmarks add action follows result selection sensitivity": re.compile(
+        r"if\s*\(\s*this\._bookmarksAddSelectedItem\s*\)\s*\{[\s\S]*?this\._bookmarksAddSelectedItem\.setSensitive\s*\(\s*hasSelection\s*\)",
+        re.S,
+    ),
+    "Bookmarks remove action follows result selection sensitivity": re.compile(
+        r"if\s*\(\s*this\._bookmarksRemoveSelectedItem\s*\)\s*\{[\s\S]*?this\._bookmarksRemoveSelectedItem\.setSensitive\s*\(\s*hasSelection\s*\)",
+        re.S,
+    ),
+}
+missing = [description for description, pattern in checks.items() if not pattern.search(source)]
+if missing:
+    for description in missing:
+        print(f"ERROR: applet Bookmarks submenu contract violation: {description}")
+    raise SystemExit(1)
+PY
 if ! rg -q -F '_addHistoryActions' "$APPLET_JS" || ! rg -q -F '_runHistoryRemove' "$APPLET_JS"; then
     echo "ERROR: applet history mark/unmark handlers are missing"
     STATUS=1

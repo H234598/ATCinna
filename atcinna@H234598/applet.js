@@ -239,6 +239,28 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._filterSection.addMenuItem(this._filterProfilesMenu);
         this.menu.addMenuItem(this._filterSection);
 
+        this._bookmarksMenu = new PopupMenu.PopupSubMenuMenuItem("Bookmarks");
+        this._bookmarksAddSelectedItem = new PopupMenu.PopupMenuItem("Neue Bookmarks anlegen");
+        this._bookmarksAddSelectedItem.connect("activate", () => {
+            this._runResultBookmarkSelected();
+        });
+        this._bookmarksAddSelectedItem.setSensitive(false);
+        this._bookmarksMenu.menu.addMenuItem(this._bookmarksAddSelectedItem);
+
+        this._bookmarksRemoveSelectedItem = new PopupMenu.PopupMenuItem("Bookmarks löschen");
+        this._bookmarksRemoveSelectedItem.connect("activate", () => {
+            this._runResultRemoveBookmarksSelected();
+        });
+        this._bookmarksRemoveSelectedItem.setSensitive(false);
+        this._bookmarksMenu.menu.addMenuItem(this._bookmarksRemoveSelectedItem);
+
+        this._bookmarksClearItem = new PopupMenu.PopupMenuItem("Alle angelegten Bookmarks löschen");
+        this._bookmarksClearItem.connect("activate", () => {
+            this._runBookmarkClear();
+        });
+        this._bookmarksMenu.menu.addMenuItem(this._bookmarksClearItem);
+        this.menu.addMenuItem(this._bookmarksMenu);
+
         this._openSearchDialogItem = new PopupMenu.PopupMenuItem("Suche öffnen");
         this._openSearchDialogItem.connect("activate", () => {
             this._launchSearchDialog();
@@ -2105,6 +2127,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._resultActionRemoveBookmarksSelected) {
             this._resultActionRemoveBookmarksSelected.setSensitive(hasSelection);
+        }
+        if (this._bookmarksAddSelectedItem) {
+            this._bookmarksAddSelectedItem.setSensitive(hasSelection);
+        }
+        if (this._bookmarksRemoveSelectedItem) {
+            this._bookmarksRemoveSelectedItem.setSensitive(hasSelection);
         }
     }
 

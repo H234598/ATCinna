@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.78`.
+- `VERSION` is `0.3.79`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -46,6 +46,13 @@
   - Keep the color mode independent from `system-dark-theme` while allowing both CSS classes to combine.
   - Include the new class and setting wiring in `scripts/check.sh` and `scripts/validate-installed.sh`.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.78`.
+
+- [x] **Task 79: Add direct Bookmarks submenu (0.3.79)**
+  - Add top-level popup submenu **Bookmarks** in `atcinna@H234598/applet.js`.
+  - Wire **Neue Bookmarks anlegen**, **Bookmarks löschen**, and **Alle angelegten Bookmarks löschen** to the existing `_runResultBookmarkSelected`, `_runResultRemoveBookmarksSelected`, and `_runBookmarkClear` handlers.
+  - Keep the two selected-result actions disabled without a visible selection and update them through the same selection-state path as the existing Top-Level result actions.
+  - Include submenu, handler wiring, and sensitivity checks in `scripts/check.sh` and `scripts/validate-installed.sh`.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.79`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 
