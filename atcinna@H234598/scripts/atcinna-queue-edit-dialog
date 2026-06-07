@@ -367,7 +367,7 @@ def _select_download_folder(parent_window, folder_entry, label_widget, gtk_modul
         dialog.destroy()
 
 
-def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website, file_name_template, info_file, start_now=False):
+def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website, file_name, file_name_template, info_file, start_now=False):
     try:
         import gi
 
@@ -451,6 +451,8 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     duration_entry.set_text(duration)
     website_entry = Gtk.Entry()
     website_entry.set_text(website)
+    file_name_entry = Gtk.Entry()
+    file_name_entry.set_text(file_name)
     file_name_template_entry = Gtk.Entry()
     file_name_template_entry.set_text(file_name_template)
 
@@ -494,7 +496,8 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
         ("Uhrzeit", time_entry, 6),
         ("Dauer", duration_entry, 7),
         ("Website", website_entry, 8),
-        ("Dateinamensvorlage", file_name_template_entry, 9),
+        ("Dateiname", file_name_entry, 9),
+        ("Dateinamensvorlage", file_name_template_entry, 10),
     ]:
         label = Gtk.Label(label=f"{label_text}:", xalign=0)
         label.set_hexpand(False)
@@ -502,11 +505,11 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
         grid.attach(widget, 1, row, 1, 1)
 
     description_label = Gtk.Label(label="Beschreibung:", xalign=0)
-    grid.attach(description_label, 0, 10, 1, 1)
-    grid.attach(description_scroller, 1, 10, 1, 1)
-    grid.attach(info_file_checkbox, 1, 11, 1, 1)
-    grid.attach(start_mode_label, 0, 12, 1, 1)
-    grid.attach(start_mode_row, 1, 12, 1, 1)
+    grid.attach(description_label, 0, 11, 1, 1)
+    grid.attach(description_scroller, 1, 11, 1, 1)
+    grid.attach(info_file_checkbox, 1, 12, 1, 1)
+    grid.attach(start_mode_label, 0, 13, 1, 1)
+    grid.attach(start_mode_row, 1, 13, 1, 1)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     root.pack_start(actions, False, False, 0)
@@ -526,6 +529,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
         "time": time_entry,
         "duration": duration_entry,
         "website": website_entry,
+        "file_name": file_name_entry,
         "file_name_template": file_name_template_entry,
         "description": description_view,
         "info_file": info_file_checkbox,
@@ -544,6 +548,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
             f"--duration={_collect_field(controls['duration'])}",
             f"--description={_text_from_buffer(controls['description'])}",
             f"--website={_collect_field(controls['website'])}",
+            f"--download-file-name={_collect_field(controls['file_name'])}",
             f"--download-file-name-template={_collect_field(controls['file_name_template'])}",
             f"--info-file={'true' if controls['info_file'].get_active() else 'false'}",
         ]
@@ -606,6 +611,7 @@ def main():
     parser.add_argument("--duration", default="", help="Duration")
     parser.add_argument("--description", default="", help="Description")
     parser.add_argument("--website", default="", help="Website")
+    parser.add_argument("--download-file-name", default="", help="Download file name")
     parser.add_argument("--download-file-name-template", default="", help="Download file name template")
     parser.add_argument("--info-file", default=None, help="Whether to write metadata info file")
     parser.add_argument("--start-now", default="false", help="Start updated queue item immediately")
@@ -631,6 +637,7 @@ def main():
         args.duration,
         args.description,
         args.website,
+        args.download_file_name,
         args.download_file_name_template,
         info_file,
         _parse_bool_arg(args.start_now, "start-now"),

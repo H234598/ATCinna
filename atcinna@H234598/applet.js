@@ -2796,6 +2796,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             `--duration=${item.duration || ""}`,
             `--description=${item.description || ""}`,
             `--website=${item.website || ""}`,
+            `--download-file-name=${item.download_file_name || ""}`,
             `--download-file-name-template=${item.download_file_name_template || this.downloadFileNameTemplate || ""}`,
             `--info-file=${item.info_file === true ? "true" : "false"}`,
             "--start-now=false",

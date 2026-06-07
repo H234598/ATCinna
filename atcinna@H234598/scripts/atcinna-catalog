@@ -668,6 +668,7 @@ def _entry_from_args(args):
         "description": _normalize_entry_value(getattr(args, "description", "")),
         "url": _normalize_entry_value(args.url),
         "website": _normalize_entry_value(args.website),
+        "download_file_name": _normalize_download_file_name(getattr(args, "download_file_name", ""), getattr(args, "url", "")),
         "download_file_name_template": _normalize_download_file_name_template(getattr(args, "download_file_name_template", "")),
         "info_file": _parse_bool_arg(getattr(args, "info_file", None), "info-file") if getattr(args, "info_file", None) is not None else False,
         "timestamp": int(time.time()),
@@ -1292,6 +1293,7 @@ def _normalize_queue_entry(entry):
         "path": _normalize_entry_value(entry.get("path")),
         "error": _normalize_entry_value(entry.get("error")),
         "info_file": _normalize_bool_value(entry.get("info_file"), False),
+        "download_file_name": _normalize_download_file_name(entry.get("download_file_name", ""), entry.get("url", "")),
         "download_file_name_template": _normalize_download_file_name_template(entry.get("download_file_name_template", "")),
     }
 
@@ -1415,6 +1417,26 @@ def _download_file_name_hash(url):
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:DOWNLOAD_FILE_NAME_URL_HASH_LEN]
 
 
+def _download_file_suffix(url):
+    parsed = urlparse(_normalize_entry_value(url))
+    return _safe_download_template_field(Path(unquote(parsed.path or "")).suffix.lstrip(".")) or "mp3"
+
+
+def _normalize_download_file_name(raw_name, url):
+    name = _normalize_entry_value(raw_name)
+    if name == "":
+        return ""
+    if "\x00" in name or "/" in name or "\\" in name or name in {".", ".."}:
+        die("invalid download file name")
+
+    file_name = _safe_filename(name)
+    if not file_name or file_name in {".", "..", "atcinnaradio"}:
+        die("invalid download file name")
+    if Path(file_name).suffix == "":
+        file_name = f"{file_name}.{_download_file_suffix(url)}"
+    return _safe_filename(file_name)
+
+
 def _download_template_values(url, item):
     parsed = urlparse(url)
     path_name = unquote(parsed.path or "")
@@ -1430,9 +1452,37 @@ def _download_template_values(url, item):
     }
 
 
+def _deduplicate_destination(folder_path, file_name):
+    destination = folder_path / file_name
+    try:
+        destination.resolve().relative_to(folder_path.resolve())
+    except ValueError:
+        die("invalid download file name")
+
+    if not destination.parent.exists():
+        die("download folder does not exist")
+
+    if destination.exists():
+        stem = Path(file_name).stem
+        extension = Path(file_name).suffix
+        counter = 1
+        while destination.exists():
+            destination = folder_path / f"{stem}_{counter}{extension}"
+            counter += 1
+
+    return str(destination)
+
+
+def _render_direct_download_file_name(url, folder, raw_name):
+    file_name = _normalize_download_file_name(raw_name, url)
+    if not file_name:
+        return ""
+    return _deduplicate_destination(folder, file_name)
+
+
 def _render_download_file_name(url, folder, item, template):
     parsed = urlparse(url)
-    parsed_suffix = _safe_download_template_field(Path(unquote(parsed.path or "")).suffix.lstrip(".")) or "mp3"
+    parsed_suffix = _download_file_suffix(url)
 
     template = _normalize_download_file_name_template(template)
     tokens = _download_template_values(url, item)
@@ -1461,31 +1511,16 @@ def _render_download_file_name(url, folder, item, template):
     if Path(file_name).suffix == "":
         file_name = f"{file_name}.{parsed_suffix}"
 
-    folder_path = folder
-    destination = folder_path / file_name
-    try:
-        destination.resolve().relative_to(folder_path.resolve())
-    except ValueError:
-        die("invalid download file name")
-
-    if not destination.parent.exists():
-        die("download folder does not exist")
-
-    if destination.exists():
-        stem = Path(file_name).stem
-        extension = Path(file_name).suffix
-        counter = 1
-        while destination.exists():
-            destination = folder_path / f"{stem}_{counter}{extension}"
-            counter += 1
-
-    return str(destination)
+    return _deduplicate_destination(folder, file_name)
 
 
 def _download_file_path(url, folder, item):
     folder_path = folder
     if isinstance(folder, str):
         folder_path = Path(folder).expanduser()
+    direct_path = _render_direct_download_file_name(url, folder_path, item.get("download_file_name", ""))
+    if direct_path:
+        return direct_path
     return _render_download_file_name(url, folder_path, item, item.get("download_file_name_template", "")) or ""
 
 
@@ -1669,6 +1704,12 @@ def _coerce_update_download_file_name_template_field(value):
     return _normalize_download_file_name_template(value)
 
 
+def _coerce_update_download_file_name_field(value, url):
+    if value is None:
+        return None
+    return _normalize_download_file_name(value, url)
+
+
 def action_download_update(args):
     _validate_and_normalize_url("url", args.url)
     target = _normalize_entry_value(args.url)
@@ -1684,6 +1725,7 @@ def action_download_update(args):
         "description": _coerce_update_field(args.description),
         "website": _coerce_update_field(args.website),
         "folder": _coerce_update_field(args.folder),
+        "download_file_name": _coerce_update_download_file_name_field(args.download_file_name, target),
         "download_file_name_template": _coerce_update_download_file_name_template_field(args.download_file_name_template),
         "info_file": _coerce_update_bool_field(args.info_file),
     }
@@ -1733,6 +1775,9 @@ def action_download_update(args):
                 entry["website"] = updates["website"]
             if updates["folder"] is not None:
                 entry["folder"] = updates["folder"]
+                changed_path = True
+            if updates["download_file_name"] is not None:
+                entry["download_file_name"] = updates["download_file_name"]
                 changed_path = True
             if updates["download_file_name_template"] is not None:
                 entry["download_file_name_template"] = updates["download_file_name_template"]
@@ -2648,6 +2693,7 @@ def parse_args():
     download.add_argument("--folder", default="", help="Download folder")
     download.add_argument("--website", default="", help="Optional website URL")
     download.add_argument("--info-file", default="false", help="Whether to write metadata info file")
+    download.add_argument("--download-file-name", default="", help="Explicit safe download file name")
     download.add_argument("--download-file-name-template", default="", help="ATPlayer-style download file name template")
 
     download_enqueue = sub.add_parser("download-enqueue", help="Add media URL to download queue")
@@ -2663,6 +2709,7 @@ def parse_args():
     download_enqueue.add_argument("--website", default="", help="Optional website URL")
     download_enqueue.add_argument("--folder", default="", help="Download folder")
     download_enqueue.add_argument("--info-file", default="false", help="Whether to write metadata info file")
+    download_enqueue.add_argument("--download-file-name", default="", help="Explicit safe download file name")
     download_enqueue.add_argument("--download-file-name-template", default="", help="ATPlayer-style download file name template")
 
     sub.add_parser("download-list", help="List queue entries")
@@ -2695,6 +2742,7 @@ def parse_args():
     download_update.add_argument("--description", default=None, help="Optional description")
     download_update.add_argument("--folder", default=None, help="Optional download folder")
     download_update.add_argument("--website", default=None, help="Optional website URL")
+    download_update.add_argument("--download-file-name", default=None, help="Optional explicit safe download file name")
     download_update.add_argument("--download-file-name-template", default=None, help="Optional ATPlayer-style download file name template")
     download_update.add_argument("--info-file", default=None, help="Optional whether to write metadata info file")
     sub.add_parser("download-undo", help="Restore last removed queue entries")

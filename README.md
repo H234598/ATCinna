@@ -60,6 +60,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Im Queue-Edit-Dialog wurde der Zielordnerbereich um den ATPlayer-nahen Button **Pfad auswählen** ergänzt, der den GTK3-Ordnerdialog (`SELECT_FOLDER`) für lokale Ordner öffnet.
 - Der Queue-Edit-Dialog bietet zusätzlich **Pfad vorschlagen**: der Button setzt den Zielordner auf den XDG-Downloadordner, `~/Downloads` oder das Home-Verzeichnis und nutzt einen vorhandenen Themen-Unterordner nur, wenn er bereits existiert.
 - Unter der Zielordnerzeile zeigt der Queue-Edit-Dialog jetzt nur ein deutsches Freispeicherlabel im Stil `[ noch frei: 12.3 GB ]` für den aktuell gewählten oder vorgeschlagenen Pfad an; die Anzeige wird beim Öffnen des Dialogs, nach Pfad-Auswahl, nach Pfad-Vorschlag und bei manueller Pfadeingabe aktualisiert, bei ungültigem Pfad bleibt sie leer.
+- Im Queue-Edit-Dialog kann zusätzlich ein direkter **Dateiname** pro Queue-Eintrag gesetzt werden; `download-update --download-file-name=...` validiert ihn gegen Pfadseparatoren und nutzt ihn beim Download vor der Vorlage.
 - Im Queue-Edit-Dialog kann die **Dateinamensvorlage** pro Queue-Eintrag gepflegt und geändert werden; die Änderung wird per `download-update --download-file-name-template=...` im Queue-Eintrag persistiert und wird beim Download verwendet.
 - Der Queue-Edit-Dialog bietet die Startentscheidung **noch nicht starten** (Default) oder **sofort starten**; bei **sofort starten** ruft das Applet nach erfolgreichem Speichern `_runQueueRunItem(item)` auf, um den Eintrag direkt zu starten.
 - Der Queue-Edit-Dialog besitzt zusätzlich die per-Download-Option **Infodatei anlegen: "Name.txt"**. Der Applet-Aufruf von „Download ändern“ übergibt den aktuellen `item.info_file`-Wert als `--info-file=true|false`, und `download-update` aktualisiert das Queue-Feld entsprechend.
@@ -73,7 +74,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.70`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.71`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

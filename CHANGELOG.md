@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.71
+
+- Queue-Einträge unterstützen jetzt einen direkten `download_file_name`, der per `download --download-file-name`, `download-enqueue --download-file-name` und `download-update --download-file-name` gesetzt werden kann.
+- Der Queue-Edit-Dialog zeigt ein eigenes Feld **Dateiname** und übergibt es an den Helper; ein gesetzter direkter Dateiname hat beim Download Vorrang vor der Dateinamensvorlage.
+- Dateinamen werden gegen NUL, Pfadseparatoren, `.` und `..` validiert, sicher normalisiert, bei fehlender Endung ergänzt und im Zielordner dedupliziert; Checks und Installvalidierung decken Positiv- und Negativpfade ab.
+- Versionssprung auf `0.3.71`; `metadata.json`, `VERSION`, `README.md`, `CHANGELOG.md`, Helper, Applet, Queue-Edit-Dialog und Checks aktualisiert.
+
 ## 0.3.70
 
 - Der Queue-Edit-Dialog zeigt unter der Zielordnerzeile jetzt nur ein deutsches Freispeicherlabel im Stil `[ noch frei: 12.3 GB ]` an; bei ungültigem Pfad bleibt die Anzeige leer.

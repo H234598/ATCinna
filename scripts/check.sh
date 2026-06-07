@@ -857,6 +857,10 @@ if ! rg -q -F -- '--download-file-name-template=' "$APPLET_JS"; then
     echo "ERROR: applet queue edit dialog call is missing --download-file-name-template argument"
     STATUS=1
 fi
+if ! rg -q -F -- '--download-file-name=' "$APPLET_JS"; then
+    echo "ERROR: applet queue edit dialog call is missing --download-file-name argument"
+    STATUS=1
+fi
 if ! rg -q -F 'Infodatei anlegen: "Name.txt"' "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Infodatei anlegen: \"Name.txt\""
     STATUS=1
@@ -875,6 +879,10 @@ if ! rg -q -F "Startzeitpunkt:" "$QUEUE_EDIT_DIALOG"; then
 fi
 if ! rg -q -F "Dateinamensvorlage" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Dateinamensvorlage"
+    STATUS=1
+fi
+if ! rg -q -F '("Dateiname",' "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: Dateiname"
     STATUS=1
 fi
 if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
@@ -905,12 +913,20 @@ if ! rg -q -F -- "--download-file-name-template" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog argument is missing: --download-file-name-template"
     STATUS=1
 fi
+if ! rg -q -F 'parser.add_argument("--download-file-name"' "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog argument is missing: --download-file-name"
+    STATUS=1
+fi
 if ! rg -q -F -- "--start-now" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog argument is missing: --start-now"
     STATUS=1
 fi
 if ! rg -q -F 'download_update.add_argument("--download-file-name-template"' "$HELPER"; then
     echo "ERROR: helper download-update parser is missing --download-file-name-template"
+    STATUS=1
+fi
+if ! rg -q -F 'download_update.add_argument("--download-file-name"' "$HELPER"; then
+    echo "ERROR: helper download-update parser is missing --download-file-name"
     STATUS=1
 fi
 if ! python3 - "$QUEUE_EDIT_DIALOG" "$TMP_DIR" <<'PY'; then
@@ -2052,6 +2068,7 @@ mkdir -p "$QUEUE_DOWNLOAD_DIR" "$QUEUE_HTTP_DIR"
 printf 'queued audio fixture\n' > "$QUEUE_HTTP_DIR/audio-one.mp3"
 printf 'queued audio fixture two\n' > "$QUEUE_HTTP_DIR/audio-two.mp3"
 printf 'queued audio fixture info\n' > "$QUEUE_HTTP_DIR/audio-info.mp3"
+printf 'queued audio fixture direct\n' > "$QUEUE_HTTP_DIR/audio-direct.mp3"
 python3 - "$QUEUE_HTTP_DIR" "$TMP_DIR/http-server.port" >"$TMP_DIR/http-server.log" 2>&1 <<'PY' &
 import functools
 import http.server
@@ -2093,6 +2110,7 @@ fi
 QUEUE_URL_ONE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-one.mp3"
 QUEUE_URL_TWO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3"
 QUEUE_URL_INFO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-info.mp3"
+QUEUE_URL_DIRECT="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-direct.mp3"
 QUEUE_URL_THREE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-three.mp3"
 QUEUE_URL_TEMPLATE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3?template-check"
 
@@ -2197,6 +2215,25 @@ if ! echo "$DOWNLOAD_DEFAULT_TEMPLATE" | jq -e '.status == "ok" and (.path | tes
     echo "$DOWNLOAD_DEFAULT_TEMPLATE"
     exit 1
 fi
+DOWNLOAD_DIRECT_NAME="$(python3 "$HELPER" download \
+    --title "Download Direct Name" \
+    --url "$QUEUE_URL_DIRECT" \
+    --folder "$QUEUE_DOWNLOAD_DIR" \
+    --download-file-name "Mein Track")"
+if ! echo "$DOWNLOAD_DIRECT_NAME" | jq -e '.status == "ok" and (.path | endswith("/Mein_Track.mp3"))' >/dev/null; then
+    echo "ERROR: download explicit file name was not applied"
+    echo "$DOWNLOAD_DIRECT_NAME"
+    exit 1
+fi
+if python3 "$HELPER" download-enqueue --title "Invalid Direct Name" --url "$QUEUE_URL_DIRECT?invalid-name" --folder "$QUEUE_DOWNLOAD_DIR" --download-file-name "../bad.mp3" >"$TMP_DIR/download-invalid-file-name.out" 2>&1; then
+    echo "ERROR: download-enqueue should fail for invalid explicit file name"
+    exit 1
+fi
+if ! jq -e '.status == "error" and .message == "invalid download file name"' "$TMP_DIR/download-invalid-file-name.out" >/dev/null 2>&1; then
+    echo "ERROR: invalid explicit file name did not return expected error"
+    cat "$TMP_DIR/download-invalid-file-name.out"
+    exit 1
+fi
 
 QUEUE_ADD_ONE="$(python3 "$HELPER" download-enqueue --title "Queue One" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR" --download-file-name-template "%T.%S")"
 if ! echo "$QUEUE_ADD_ONE" | jq -e '.status == "ok"' >/dev/null; then
@@ -2291,6 +2328,30 @@ QUEUE_TEMPLATE_BASENAME="${QUEUE_TEMPLATE_PATH##*/}"
 if [[ "$QUEUE_TEMPLATE_BASENAME" != "VorlageSender-Vorlage_Thema-Queue_Vorlage.mp3" ]]; then
     echo "ERROR: queue template was not applied during queue download"
     echo "$QUEUE_TEMPLATE_PATH"
+    exit 1
+fi
+QUEUE_DIRECT_ENQUEUE="$(python3 "$HELPER" download-enqueue --title "Queue Direct" --url "$QUEUE_URL_DIRECT?queue-direct" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_DIRECT_ENQUEUE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: download-enqueue direct-name fixture failed"
+    echo "$QUEUE_DIRECT_ENQUEUE"
+    exit 1
+fi
+QUEUE_DIRECT_UPDATE="$(python3 "$HELPER" download-update --url "$QUEUE_URL_DIRECT?queue-direct" --download-file-name "Bearbeiteter Name")"
+if ! echo "$QUEUE_DIRECT_UPDATE" | jq -e '.status == "ok" and .updated == 1' >/dev/null; then
+    echo "ERROR: download-update failed for explicit download-file-name"
+    echo "$QUEUE_DIRECT_UPDATE"
+    exit 1
+fi
+QUEUE_DIRECT_LIST="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_DIRECT_LIST" | jq -e --arg d "$QUEUE_URL_DIRECT?queue-direct" '.results | map(select(.url == $d and .download_file_name == "Bearbeiteter_Name.mp3")) | length == 1' >/dev/null; then
+    echo "ERROR: download-update did not persist explicit download-file-name"
+    echo "$QUEUE_DIRECT_LIST"
+    exit 1
+fi
+QUEUE_DIRECT_RUN="$(python3 "$HELPER" download-run --url "$QUEUE_URL_DIRECT?queue-direct")"
+if ! echo "$QUEUE_DIRECT_RUN" | jq -e '.status == "ok" and .result.status == "finished" and (.result.path | endswith("/Bearbeiteter_Name.mp3"))' >/dev/null; then
+    echo "ERROR: download-run did not use explicit download-file-name"
+    echo "$QUEUE_DIRECT_RUN"
     exit 1
 fi
 if ! echo "$QUEUE_LIST_AFTER_UPDATE" | jq -e --arg one "$QUEUE_URL_ONE" --argjson before "$QUEUE_INDEX_ONE_BEFORE" '.results | map(.url) | index($one) == $before' >/dev/null; then
@@ -2523,7 +2584,7 @@ if ! jq -e '.status == "error" and .message == "url is required unless --all or 
     exit 1
 fi
 QUEUE_CLEAR="$(python3 "$HELPER" download-clear)"
-if ! echo "$QUEUE_CLEAR" | jq -e '.status == "ok" and .removed == 4' >/dev/null; then
+if ! echo "$QUEUE_CLEAR" | jq -e '.status == "ok" and .removed == 5' >/dev/null; then
     echo "ERROR: download-clear did not remove finished/cancelled entries"
     echo "$QUEUE_CLEAR"
     exit 1
