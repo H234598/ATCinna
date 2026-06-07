@@ -1742,6 +1742,9 @@ def action_download_trash_file(args):
         if target_entry is None:
             die("url not found in queue")
 
+        if target_entry.get("status") == "running":
+            die("running queue entry cannot be trashed")
+
         raw_path = _normalize_entry_value(target_entry.get("path"))
         if not raw_path:
             die("path is required")
@@ -1773,9 +1776,24 @@ def action_download_trash_file(args):
         if not gio:
             die("gio not found")
 
+        files_to_trash = [resolved_file]
+        info_file_path = Path(_to_info_file_path(resolved_file))
+        if info_file_path.exists() and info_file_path != resolved_file:
+            try:
+                resolved_info_file = info_file_path.resolve(strict=True)
+            except FileNotFoundError:
+                resolved_info_file = None
+
+            if (
+                resolved_info_file
+                and resolved_info_file.is_file()
+                and _path_within_folder(resolved_info_file, folder_path)
+            ):
+                files_to_trash.append(resolved_info_file)
+
         try:
             completed = subprocess.run(
-                [gio, "trash", str(resolved_file)],
+                [gio, "trash", *[str(file_to_trash) for file_to_trash in files_to_trash]],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 check=False,

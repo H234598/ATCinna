@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.56
+
+- `download-trash-file` bricht jetzt explizit bei `running`-Queue-Einträgen mit klarer JSON-Fehlermeldung ab und verschiebt bei Erfolg optional die zugehörige `.txt`-Infodatei zusammen mit der Audiodatei in den Papierkorb.
+- Applet-Queue-Kontext deaktiviert die Aktion **Gespeichertes Audio (Datei) löschen** für `running`-Einträge, damit ein aktiver Download nicht währenddessen gelöscht werden kann.
+- `scripts/check.sh` ergänzt funktionale Tests für `running`-Blockade bei `download-trash-file` sowie den gemeinsamen Trash-Vorgang inkl. `.txt`-Infodatei.
+- Versionssprung auf `0.3.56`; `metadata.json`, `README`, `VERSION` und `scripts/check.sh` aktualisiert.
+
 ## 0.3.55
 
 - Optionales Hilfsdatei-Verhalten ergänzt: `download-info-file` im Applet und `--info-file` im Helper für direkte und Queue-Downloads, mit robuster, atomarer Speicherung der ATPlayer-nahen Text-Infodatei (Metadaten neben der Audio-Datei).

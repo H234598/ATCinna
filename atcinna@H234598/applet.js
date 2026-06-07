@@ -2285,7 +2285,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             row.menu.addMenuItem(openFile);
 
             const trashFile = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) löschen");
-            trashFile.connect("activate", () => this._runQueueTrashFile(item));
+            if (status === "running") {
+                trashFile.label.text = "Download läuft (nicht löschbar)";
+                trashFile.setSensitive(false);
+            } else {
+                trashFile.connect("activate", () => this._runQueueTrashFile(item));
+            }
             row.menu.addMenuItem(trashFile);
 
             const openFolder = new PopupMenu.PopupMenuItem("Zielordner öffnen");

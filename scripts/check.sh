@@ -2295,6 +2295,9 @@ else
     mkdir -p "$QUEUE_TRASH_AUDIO_DIR" "$QUEUE_TRASH_OUTSIDE_DIR" "$QUEUE_TRASH_XDG_DATA_HOME/atcinna@H234598"
 
     printf 'trashable fixture\n' > "$QUEUE_TRASH_AUDIO_DIR/audio-trash.mp3"
+    printf 'candidate info fixture\n' > "$QUEUE_TRASH_AUDIO_DIR/audio-trash.txt"
+    printf 'running fixture\n' > "$QUEUE_TRASH_AUDIO_DIR/audio-running.mp3"
+    printf 'running info fixture\n' > "$QUEUE_TRASH_AUDIO_DIR/audio-running.txt"
     printf 'outside fixture\n' > "$QUEUE_TRASH_OUTSIDE_DIR/audio-outside.mp3"
     cat > "$QUEUE_TRASH_XDG_DATA_HOME/atcinna@H234598/download-queue.json" <<JSON
 [
@@ -2309,6 +2312,19 @@ else
     "timestamp": 100,
     "status": "finished",
     "path": "$QUEUE_TRASH_AUDIO_DIR/audio-trash.mp3",
+    "error": ""
+  },
+  {
+    "title": "Running candidate",
+    "sender": "",
+    "genre": "",
+    "topic": "",
+    "url": "https://example.com/trash/running",
+    "website": "",
+    "folder": "$QUEUE_TRASH_AUDIO_DIR",
+    "timestamp": 103,
+    "status": "running",
+    "path": "$QUEUE_TRASH_AUDIO_DIR/audio-running.mp3",
     "error": ""
   },
   {
@@ -2361,20 +2377,47 @@ JSON
         exit 1
     fi
 
+    QUEUE_TRASH_RUNNING_REJECT="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-trash-file --url "https://example.com/trash/running" 2>&1 || true)"
+    if ! echo "$QUEUE_TRASH_RUNNING_REJECT" | jq -e '.status == "error" and .message == "running queue entry cannot be trashed"' >/dev/null; then
+        echo "ERROR: download-trash-file should reject running queue entry"
+        echo "$QUEUE_TRASH_RUNNING_REJECT"
+        exit 1
+    fi
+    if [ ! -f "$QUEUE_TRASH_AUDIO_DIR/audio-running.mp3" ]; then
+        echo "ERROR: running file must remain after blocked trash attempt"
+        exit 1
+    fi
+    if [ ! -f "$QUEUE_TRASH_AUDIO_DIR/audio-running.txt" ]; then
+        echo "ERROR: running info file must remain after blocked trash attempt"
+        exit 1
+    fi
+    QUEUE_LIST_AFTER_RUNNING_TRASH_REJECT="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-list)"
+    if ! echo "$QUEUE_LIST_AFTER_RUNNING_TRASH_REJECT" | jq -e '.results | map(select(.url=="https://example.com/trash/running")) | length == 1' >/dev/null; then
+        echo "ERROR: running queue entry should remain in list after blocked trash attempt"
+        echo "$QUEUE_LIST_AFTER_RUNNING_TRASH_REJECT"
+        exit 1
+    fi
+
+    QUEUE_TRASH_GIO_SUPPORTED=1
     QUEUE_TRASH_RESULT="$(XDG_DATA_HOME="$QUEUE_TRASH_XDG_DATA_HOME" python3 "$HELPER" download-trash-file --url "https://example.com/trash/candidate" 2>&1 || true)"
     if ! echo "$QUEUE_TRASH_RESULT" | jq -e '.status == "ok" and .trashed == true' >/dev/null; then
         if echo "$QUEUE_TRASH_RESULT" | jq -e '.status == "error" and (.message | test("not supported|across filesystem boundaries|not supported by"))' >/dev/null 2>&1; then
             echo "WARN: gio trash backend unsupported in this environment; skipping valid trash validation"
-            rm -rf "$QUEUE_TRASH_BASE"
+            QUEUE_TRASH_GIO_SUPPORTED=0
         else
             echo "ERROR: download-trash-file should trash file for valid queue entry"
             echo "$QUEUE_TRASH_RESULT"
             rm -rf "$QUEUE_TRASH_BASE"
             exit 1
         fi
-    else
+    elif [ "$QUEUE_TRASH_GIO_SUPPORTED" -eq 1 ]; then
         if [ -f "$QUEUE_TRASH_AUDIO_DIR/audio-trash.mp3" ]; then
             echo "ERROR: queued file still exists after successful download-trash-file"
+            rm -rf "$QUEUE_TRASH_BASE"
+            exit 1
+        fi
+        if [ -f "$QUEUE_TRASH_AUDIO_DIR/audio-trash.txt" ]; then
+            echo "ERROR: queue info file still exists after successful download-trash-file"
             rm -rf "$QUEUE_TRASH_BASE"
             exit 1
         fi
