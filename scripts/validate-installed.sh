@@ -443,6 +443,16 @@ for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "inver
         exit 1
     fi
 done
+if ! rg -q -F "Pfad auswählen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog label is missing: Pfad auswählen"
+    exit 1
+fi
+for queue_edit_dialog_handler in "_select_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder"; do
+    if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
+        echo "ERROR: installed queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
+        exit 1
+    fi
+done
 
 QUEUE_EDIT_DIALOG_SELF_TEST="$(python3 "$QUEUE_EDIT_DIALOG" --self-test)"
 if ! echo "$QUEUE_EDIT_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean") and .helper != ""' >/dev/null; then

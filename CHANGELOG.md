@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.63
+
+- ATPlayer-naher Dialogpfad-Button ergänzt: Der Queue-Edit-Dialog (`atcinna-queue-edit-dialog`) bietet jetzt den Button **Pfad auswählen** auf Basis eines GTK3-`FileChooserDialog` mit `SELECT_FOLDER` für die Zielordner-Auswahl.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen nun zusätzlich den neuen Dialog-Label-/GTK-Contract im Queue-Edit-Dialog (`Pfad auswählen`, `Gtk.FileChooserDialog`, `Gtk.FileChooserAction.SELECT_FOLDER`, `get_filename`).
+- Versionssprung auf `0.3.63`; `metadata.json`, `VERSION`, `README.md` und Queue-Edit-Dialog aktualisiert.
+
 ## 0.3.62
 
 - ATPlayer-nahe Download-Dateinamensvorlage ergänzt: neues Applet-Setting `download-file-name-template` mit Default `%t-%T-%Z.mp4`.

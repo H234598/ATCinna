@@ -813,6 +813,16 @@ for blacklist_dialog_handler in "_set_all_rule_checks" "select_all_rules" "inver
         STATUS=1
     fi
 done
+if ! rg -q -F "Pfad auswählen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: Pfad auswählen"
+    STATUS=1
+fi
+for queue_edit_dialog_handler in "_select_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder"; do
+    if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
+        echo "ERROR: queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
+        STATUS=1
+    fi
+done
 
 node --check "$APPLET_JS" >/dev/null
 

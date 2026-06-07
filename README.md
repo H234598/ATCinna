@@ -56,6 +56,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
 - Das Script `atcinna@H234598/scripts/atcinna-blacklist-dialog` nutzt `atcinna-catalog` als Backend. Es listet Regeln inkl. `active`/`topic_exact`/`theme_title`, erlaubt neue Regeln anzulegen, übernimmt eine aktivierte Regel ins Formular und bietet sichere Aktionen für Auswahl, markierte Regel-Entfernung, Gelöschte wieder anlegen, Putzen leerer/doppelter Regeln und Komplett-Löschung mit GTK-Bestätigung.
 - Das Script `atcinna@H234598/scripts/atcinna-queue-edit-dialog` bietet einen optionalen GTK-Dialog fuer **Download ändern** und nutzt `download-update` im Helper.
+- Im Queue-Edit-Dialog wurde der Zielordnerbereich um den ATPlayer-nahen Button **Pfad auswählen** ergänzt, der den GTK3-Ordnerdialog (`SELECT_FOLDER`) für lokale Ordner öffnet.
 - Headless-Selbsttest für die Dialoge: `python3 atcinna@H234598/scripts/atcinna-search-dialog --self-test`, `python3 atcinna@H234598/scripts/atcinna-queue-edit-dialog --self-test`, `python3 atcinna@H234598/scripts/atcinna-blacklist-dialog --self-test` und `python3 atcinna@H234598/scripts/atcinna-filter-profiles-dialog --self-test` melden `gtk3: true/false`; das Applet bleibt auch ohne GTK3 über die interne Popup-Suche nutzbar.
 
 ## Installation (lokal)
@@ -65,7 +66,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.62`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.63`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`
