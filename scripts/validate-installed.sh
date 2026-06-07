@@ -278,7 +278,7 @@ for applet_label in "Hilfedialog" "Anleitung im Web" "Blacklist verwalten" "Alle
         exit 1
     fi
 done
-for applet_top_action in 'const playSelected = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");' 'const editSelected = new PopupMenu.PopupMenuItem("Download ändern");' 'const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");'; do
+for applet_top_action in 'const playSelected = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");' 'const playStoredSelected = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) abspielen");' 'const editSelected = new PopupMenu.PopupMenuItem("Download ändern");' 'const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");'; do
     if ! rg -q -F "${applet_top_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue top-level selected media action is missing: ${applet_top_action}"
         exit 1
@@ -290,7 +290,7 @@ for applet_result_entry_action in 'const resultEntryResetSelection = new PopupMe
         exit 1
     fi
 done
-for applet_symbol in "_runQueuePlaySelected" "_runQueueEditSelected" "_runQueueCopySelected" "_runQueueRunSelected" "_runQueuePreferSelected" "_runQueuePutBackSelected" "_queueActionRunSelected" "_queueActionPlaySelected" "_queueActionEditSelected" "_queueActionCopySelected" "_queueActionPreferSelected" "_queueActionPutBackSelected"; do
+for applet_symbol in "_runQueuePlaySelected" "_runQueueOpenStoredSelected" "_runQueueEditSelected" "_runQueueCopySelected" "_runQueueRunSelected" "_runQueuePreferSelected" "_runQueuePutBackSelected" "_queueActionRunSelected" "_queueActionPlaySelected" "_queueActionPlayStoredSelected" "_queueActionEditSelected" "_queueActionCopySelected" "_queueActionPreferSelected" "_queueActionPutBackSelected"; do
     if ! rg -q -F "${applet_symbol}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue selected-run wiring is missing: ${applet_symbol}"
         exit 1

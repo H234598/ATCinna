@@ -371,13 +371,13 @@ for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen"
         STATUS=1
     fi
 done
-for queue_selected_action in 'const runSelected = new PopupMenu.PopupMenuItem("Downloads starten");' 'const preferSelected = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBackSelected = new PopupMenu.PopupMenuItem("Downloads zurückstellen");' 'const cancelSelected = new PopupMenu.PopupMenuItem("Downloads stoppen");' 'const removeSelected = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");'; do
+for queue_selected_action in 'const runSelected = new PopupMenu.PopupMenuItem("Downloads starten");' 'const playStoredSelected = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) abspielen");' 'const editSelected = new PopupMenu.PopupMenuItem("Download ändern");' 'const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");' 'const preferSelected = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBackSelected = new PopupMenu.PopupMenuItem("Downloads zurückstellen");' 'const cancelSelected = new PopupMenu.PopupMenuItem("Downloads stoppen");' 'const removeSelected = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");'; do
     if ! rg -q -F "${queue_selected_action}" "$APPLET_JS"; then
         echo "ERROR: applet queue selected action label is missing: ${queue_selected_action}"
         STATUS=1
     fi
 done
-for queue_top_action in 'const playSelected = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");' 'const editSelected = new PopupMenu.PopupMenuItem("Download ändern");' 'const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");'; do
+for queue_top_action in 'const playSelected = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");' 'const playStoredSelected = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) abspielen");' 'const editSelected = new PopupMenu.PopupMenuItem("Download ändern");' 'const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");'; do
     if ! rg -q -F "${queue_top_action}" "$APPLET_JS"; then
         echo "ERROR: applet queue top-level selected media action is missing: ${queue_top_action}"
         STATUS=1
@@ -413,7 +413,7 @@ for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_se
         STATUS=1
     fi
 done
-for queue_selection_handler in "_queueSelectionItems" "_queueItemsCache" "_queueActionRunSelected" "_queueActionPlaySelected" "_queueActionEditSelected" "_queueActionCopySelected" "_queueActionPreferSelected" "_queueActionPutBackSelected" "_runQueueSelectAll" "_runQueueInvertSelection" "_runQueueResetSelection" "_runQueueToggleSelection" "_runQueueRunSelected" "_runQueuePlaySelected" "_runQueueEditSelected" "_runQueueCopySelected" "_runQueuePreferSelected" "_runQueuePutBackSelected" "_runQueueCancelSelected" "_runQueueRemoveSelected" "_runQueueBatchAction" "_getSelectedQueueItems" "_queueItemKey" "_updateQueueSelectionActionState"; do
+for queue_selection_handler in "_queueSelectionItems" "_queueItemsCache" "_queueActionRunSelected" "_queueActionPlaySelected" "_queueActionPlayStoredSelected" "_queueActionEditSelected" "_queueActionCopySelected" "_queueActionPreferSelected" "_queueActionPutBackSelected" "_runQueueSelectAll" "_runQueueInvertSelection" "_runQueueResetSelection" "_runQueueToggleSelection" "_runQueueRunSelected" "_runQueuePlaySelected" "_runQueueOpenStoredSelected" "_runQueueEditSelected" "_runQueueCopySelected" "_runQueuePreferSelected" "_runQueuePutBackSelected" "_runQueueCancelSelected" "_runQueueRemoveSelected" "_runQueueBatchAction" "_getSelectedQueueItems" "_queueItemKey" "_updateQueueSelectionActionState"; do
     if ! rg -q -F "${queue_selection_handler}" "$APPLET_JS"; then
         echo "ERROR: applet queue selection handler is missing: ${queue_selection_handler}"
         STATUS=1

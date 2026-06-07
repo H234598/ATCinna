@@ -73,6 +73,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionResetSelection = null;
         this._queueActionRunSelected = null;
         this._queueActionPlaySelected = null;
+        this._queueActionPlayStoredSelected = null;
         this._queueActionEditSelected = null;
         this._queueActionCopySelected = null;
         this._queueActionPreferSelected = null;
@@ -1803,6 +1804,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         playSelected.connect("activate", () => this._runQueuePlaySelected());
         this._queueSection.addMenuItem(playSelected);
 
+        const playStoredSelected = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) abspielen");
+        playStoredSelected.connect("activate", () => this._runQueueOpenStoredSelected());
+        this._queueSection.addMenuItem(playStoredSelected);
+
         const editSelected = new PopupMenu.PopupMenuItem("Download ändern");
         editSelected.connect("activate", () => this._runQueueEditSelected());
         this._queueSection.addMenuItem(editSelected);
@@ -1868,6 +1873,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionResetSelection = resetSelection;
         this._queueActionRunSelected = runSelected;
         this._queueActionPlaySelected = playSelected;
+        this._queueActionPlayStoredSelected = playStoredSelected;
         this._queueActionEditSelected = editSelected;
         this._queueActionCopySelected = copySelected;
         this._queueActionPreferSelected = preferSelected;
@@ -2350,6 +2356,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._playItem(selectedItems[0]);
     }
 
+    _runQueueOpenStoredSelected() {
+        const selectedItems = this._getSelectedQueueItems();
+        if (!selectedItems.length) {
+            this._setStatus("Gespeichertes Audio (Datei) abspielen: keine Auswahl");
+            return;
+        }
+        this._openQueueFile(selectedItems[0]);
+    }
+
     _runQueueEditSelected() {
         const selectedItems = this._getSelectedQueueItems();
         if (!selectedItems.length) {
@@ -2496,6 +2511,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._queueActionPlaySelected) {
             this._queueActionPlaySelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionPlayStoredSelected) {
+            this._queueActionPlayStoredSelected.setSensitive(hasSelection);
         }
         if (this._queueActionEditSelected) {
             this._queueActionEditSelected.setSensitive(hasSelection);

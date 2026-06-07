@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.53
+
+- ATPlayer-nahes Queue-Top-Level ergänzt: **Gespeichertes Audio (Datei) abspielen** für die erste markierte Queue-Auswahl.
+- Die neue Aktion nutzt bestehende Logik: `this._openQueueFile(first)` auf dem ausgewählten Queue-Eintrag, inklusive klarer Status bei leerer Auswahl.
+- Keine neuen Shell-/Backend-Pfade wurden eingeführt; bestehende Datei-Pfad- und Queue-Routinen werden wiederverwendet.
+- Versionssprung auf `0.3.53`; `metadata.json`, `VERSION`, README, Plan, `scripts/check.sh` und `scripts/validate-installed.sh` aktualisiert.
+- ATPlayer-Parität bleibt offen (Datei-Abspielflow nur top-level erweitert; weitere Queue-/Workflow-Lücken bleiben offen).
+
 ## 0.3.52
 
 - Treffer-Untermenüs erhalten die neue ATPlayer-nahe Kontextaktion **Tabelle zurücksetzen**, die `this._runResultResetSelection()` für die Treffer-Zeilenauswahl aufruft.
