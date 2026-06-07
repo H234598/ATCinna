@@ -228,13 +228,13 @@ for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffe
         exit 1
     fi
 done
-for applet_label in "Download starten" "Downloads aktualisieren" "Markierte Downloads starten" "Liste der Downloads aufräumen"; do
+for applet_label in "Download starten" "Downloads aktualisieren" "Markierte Downloads starten" "Markierte Downloads vorziehen" "Markierte Downloads zurückstellen" "Liste der Downloads aufräumen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
         exit 1
     fi
 done
-for applet_symbol in "_runQueueRunSelected" "_queueActionRunSelected"; do
+for applet_symbol in "_runQueueRunSelected" "_runQueuePreferSelected" "_runQueuePutBackSelected" "_queueActionRunSelected" "_queueActionPreferSelected" "_queueActionPutBackSelected"; do
     if ! rg -q -F "${applet_symbol}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue selected-run wiring is missing: ${applet_symbol}"
         exit 1

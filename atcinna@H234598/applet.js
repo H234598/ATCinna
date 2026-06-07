@@ -1658,6 +1658,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         resetSelection.connect("activate", () => this._runQueueResetSelection());
         this._queueSection.addMenuItem(resetSelection);
 
+        const preferSelected = new PopupMenu.PopupMenuItem("Markierte Downloads vorziehen");
+        preferSelected.connect("activate", () => this._runQueuePreferSelected());
+        this._queueSection.addMenuItem(preferSelected);
+
+        const putBackSelected = new PopupMenu.PopupMenuItem("Markierte Downloads zurückstellen");
+        putBackSelected.connect("activate", () => this._runQueuePutBackSelected());
+        this._queueSection.addMenuItem(putBackSelected);
+
         const cancelSelected = new PopupMenu.PopupMenuItem("Ausgewählte Downloads stoppen");
         cancelSelected.connect("activate", () => this._runQueueCancelSelected());
         this._queueSection.addMenuItem(cancelSelected);
@@ -1682,6 +1690,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionInvertSelection = invertSelection;
         this._queueActionResetSelection = resetSelection;
         this._queueActionRunSelected = runSelected;
+        this._queueActionPreferSelected = preferSelected;
+        this._queueActionPutBackSelected = putBackSelected;
         this._queueActionCancelSelected = cancelSelected;
         this._queueActionRemoveSelected = removeSelected;
         this._updateQueueSelectionActionState();
@@ -2147,6 +2157,22 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         );
     }
 
+    _runQueuePreferSelected() {
+        this._runQueueBatchAction(
+            "Markierte Downloads vorziehen",
+            this._getSelectedQueueItems(),
+            (item, callback) => this._runQueuePrefer(item, callback)
+        );
+    }
+
+    _runQueuePutBackSelected() {
+        this._runQueueBatchAction(
+            "Markierte Downloads zurückstellen",
+            this._getSelectedQueueItems(),
+            (item, callback) => this._runQueuePutBack(item, callback)
+        );
+    }
+
     _runQueueCancelSelected() {
         this._runQueueBatchAction(
             "Ausgewählte Downloads stoppen",
@@ -2249,6 +2275,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._queueActionRunSelected) {
             this._queueActionRunSelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionPreferSelected) {
+            this._queueActionPreferSelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionPutBackSelected) {
+            this._queueActionPutBackSelected.setSensitive(hasSelection);
         }
         if (this._queueActionCancelSelected) {
             this._queueActionCancelSelected.setSensitive(hasSelection);
@@ -2419,63 +2451,99 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     }
 
     _runQueuePrefer(item) {
-        const url = item.url || "";
+        const callback = arguments.length > 1 ? arguments[1] : null;
+        const url = this._normalizeQueueItemUrl(item);
         if (!url) {
             this._setStatus("queue-prefer fehlgeschlagen: keine URL");
+            if (callback) {
+                callback(false, 0);
+            }
             return;
         }
-        this._setStatus(`ziehe vor: ${item.title || "Eintrag"}`);
+        const title = item && item.title ? item.title : "Eintrag";
+        this._setStatus(`ziehe vor: ${title}`);
         this._runHelper([
             "download-prefer",
             `--url=${url}`
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download-prefer fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse(stdout || "{}");
                 if (payload.status !== "ok") {
                     this._setStatus("download-prefer: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
                 }
                 if (!payload.moved) {
                     this._setStatus("Eintrag konnte nicht vorgezogen werden");
                 }
-                this._runQueueList();
+                if (callback) {
+                    callback(true, payload.moved ? 1 : 0);
+                } else {
+                    this._runQueueList();
+                }
             } catch (error) {
                 this._setStatus(`download-prefer ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }
 
     _runQueuePutBack(item) {
-        const url = item.url || "";
+        const callback = arguments.length > 1 ? arguments[1] : null;
+        const url = this._normalizeQueueItemUrl(item);
         if (!url) {
             this._setStatus("queue-put-back fehlgeschlagen: keine URL");
+            if (callback) {
+                callback(false, 0);
+            }
             return;
         }
-        this._setStatus(`stelle zurück: ${item.title || "Eintrag"}`);
+        const title = item && item.title ? item.title : "Eintrag";
+        this._setStatus(`stelle zurück: ${title}`);
         this._runHelper([
             "download-put-back",
             `--url=${url}`
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download-put-back fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                if (callback) {
+                    callback(false, 0);
+                }
                 return;
             }
             try {
                 const payload = JSON.parse(stdout || "{}");
                 if (payload.status !== "ok") {
                     this._setStatus("download-put-back: unerwartete Antwort");
+                    if (callback) {
+                        callback(false, 0);
+                    }
                     return;
                 }
                 if (!payload.moved) {
                     this._setStatus("Eintrag konnte nicht zurückgestellt werden");
                 }
-                this._runQueueList();
+                if (callback) {
+                    callback(true, payload.moved ? 1 : 0);
+                } else {
+                    this._runQueueList();
+                }
             } catch (error) {
                 this._setStatus(`download-put-back ungültige Antwort: ${error.message}`);
+                if (callback) {
+                    callback(false, 0);
+                }
             }
         });
     }

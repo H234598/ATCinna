@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.39
+
+- ATPlayer-nahe Queue-Batch-Aktionen **Markierte Downloads vorziehen** und **Markierte Downloads zurückstellen** ergänzt.
+- Die Aktionen nutzen die vorhandene sichtbare Queue-Auswahl und die bestehenden Helper-Pfade `download-prefer --url` und `download-put-back --url`.
+- `Vorziehen`/`Zurückstellen` sind callback-fähig, damit Batch-Aktionen genau einmal am Ende die Queue aktualisieren.
+- Versionssprung auf `0.3.39`; `metadata.json`, README, Checks und Plan angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.38
 
 - ATPlayer-nahe Queue-Batch-Aktion **Markierte Downloads starten** im Warteschlangen-Menü ergänzt.
