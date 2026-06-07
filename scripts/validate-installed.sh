@@ -434,6 +434,17 @@ if ! rg -q -F 'action: (value) => this._xdgOpen(value)' "$APPLET_JS"; then
     echo "ERROR: installed applet info metadata action is not wired to _xdgOpen"
     exit 1
 fi
+for info_state_contract in \
+    '_yesNoInfoValue(value)' \
+    'return value ? "Ja" : "Nein";' \
+    'text === "ja"' \
+    '["Neu", this._yesNoInfoValue(safeItem.is_new)]' \
+    '["Podcast", this._yesNoInfoValue(safeItem.podcast)]'; do
+    if ! rg -q -F "${info_state_contract}" "$APPLET_JS"; then
+        echo "ERROR: installed applet info new/podcast status contract is missing: ${info_state_contract}"
+        exit 1
+    fi
+done
 if ! rg -q -F 'const isTuple = Array.isArray(field);' "$APPLET_JS"; then
     echo "ERROR: installed applet info renderer does not support field metadata"
     exit 1

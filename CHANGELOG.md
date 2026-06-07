@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.80
+
+- Audioinformation zeigt jetzt ATPlayer-nahe Zustandszeilen **Neu** und **Podcast**.
+- Die Zustände kommen direkt aus den vorhandenen Katalogfeldern `is_new` und `podcast` und werden robust als **Ja**/**Nein** angezeigt, sodass auch `false` sichtbar bleibt.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen die neuen Infozeilen und die Ja/Nein-Normalisierung; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.80` angehoben.
+
 ## 0.3.79
 
 - Direktes Hauptmenü-Untermenü **Bookmarks** ergänzt.

@@ -3886,6 +3886,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
     }
 
+    _yesNoInfoValue(value) {
+        if (typeof value === "boolean") {
+            return value ? "Ja" : "Nein";
+        }
+        const text = this._toTrimmed(String(value)).toLowerCase();
+        return text === "1" || text === "true" || text === "yes" || text === "ja" || text === "on" ? "Ja" : "Nein";
+    }
+
     _setInfoSection(item) {
         if (!this._infoSection) {
             return;
@@ -3898,6 +3906,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             ["Genre", safeItem.genre],
             ["Thema", safeItem.topic],
             ["Datum/Uhrzeit/Dauer", `${safeItem.date || ""} ${safeItem.time || ""} ${safeItem.duration || ""}`.trim().replace(/\s+/g, " ")],
+            ["Neu", this._yesNoInfoValue(safeItem.is_new)],
+            ["Podcast", this._yesNoInfoValue(safeItem.podcast)],
             ["Beschreibung", safeItem.description],
             {
                 label: "URL",

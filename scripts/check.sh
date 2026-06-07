@@ -627,6 +627,17 @@ if ! rg -q -F 'action: (value) => this._xdgOpen(value)' "$APPLET_JS"; then
     echo "ERROR: info section clickable rows are not wired to _xdgOpen"
     STATUS=1
 fi
+for info_state_contract in \
+    '_yesNoInfoValue(value)' \
+    'return value ? "Ja" : "Nein";' \
+    'text === "ja"' \
+    '["Neu", this._yesNoInfoValue(safeItem.is_new)]' \
+    '["Podcast", this._yesNoInfoValue(safeItem.podcast)]'; do
+    if ! rg -q -F "${info_state_contract}" "$APPLET_JS"; then
+        echo "ERROR: info section new/podcast status contract is missing: ${info_state_contract}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F '.atcinna-dark-surface' "$APPLET_DIR/stylesheet.css"; then
     echo "ERROR: stylesheet is missing atcinna-dark-surface class"
     STATUS=1
