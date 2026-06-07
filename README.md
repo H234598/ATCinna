@@ -56,6 +56,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
 - Das Script `atcinna@H234598/scripts/atcinna-blacklist-dialog` nutzt `atcinna-catalog` als Backend. Es listet Regeln inkl. `active`/`topic_exact`/`theme_title`, erlaubt neue Regeln anzulegen, übernimmt eine aktivierte Regel ins Formular und bietet sichere Aktionen für Auswahl, markierte Regel-Entfernung, Gelöschte wieder anlegen, Putzen leerer/doppelter Regeln und Komplett-Löschung mit GTK-Bestätigung.
 - Das Script `atcinna@H234598/scripts/atcinna-queue-edit-dialog` bietet einen optionalen GTK-Dialog fuer **Download ändern** und nutzt `download-update` im Helper.
+- Im Queue-Edit-Dialog gibt es den zusätzlichen Button **URL öffnen**, der die aktuelle Audio-URL per sicherem `xdg-open` aufruft.
 - Im Queue-Edit-Dialog wurde der Zielordnerbereich um den ATPlayer-nahen Button **Pfad auswählen** ergänzt, der den GTK3-Ordnerdialog (`SELECT_FOLDER`) für lokale Ordner öffnet.
 - Der Queue-Edit-Dialog bietet zusätzlich **Pfad vorschlagen**: der Button setzt den Zielordner auf den XDG-Downloadordner, `~/Downloads` oder das Home-Verzeichnis und nutzt einen vorhandenen Themen-Unterordner nur, wenn er bereits existiert.
 - Im Queue-Edit-Dialog kann die **Dateinamensvorlage** pro Queue-Eintrag gepflegt und geändert werden; die Änderung wird per `download-update --download-file-name-template=...` im Queue-Eintrag persistiert und wird beim Download verwendet.
@@ -71,7 +72,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.68`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.69`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

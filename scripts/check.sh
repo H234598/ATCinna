@@ -833,6 +833,22 @@ if ! rg -q -F "Pfad vorschlagen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Pfad vorschlagen"
     STATUS=1
 fi
+if ! rg -q -F "URL öffnen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: URL öffnen"
+    STATUS=1
+fi
+if ! rg -q -F "_run_open_url" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog URL action handler is missing: _run_open_url"
+    STATUS=1
+fi
+if ! rg -q -F "_xdg_open" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog URL action is missing: _xdg_open"
+    STATUS=1
+fi
+if ! rg -q -F "subprocess.Popen" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog URL action must launch xdg-open without blocking"
+    STATUS=1
+fi
 if ! rg -q -F -- '--info-file=' "$APPLET_JS"; then
     echo "ERROR: applet queue edit dialog call is missing --info-file argument"
     STATUS=1
@@ -865,7 +881,7 @@ if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Liste der Pfade löschen"
     STATUS=1
 fi
-for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear"; do
+for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "_load_folder_history" "_folder_history_choices" "_clear_folder_history" "_run_open_url" "_xdg_open" "subprocess.Popen" "set_selectable" "set_max_width_chars" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()" "Gtk.ComboBoxText.new_with_entry" "remove_all()" "download-folder-history-list" "download-folder-history-clear" "xdg-open"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         STATUS=1

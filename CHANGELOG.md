@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.69
+
+- Queue-Edit-Dialog ergänzt um eine ATPlayer-nahe Aktion zum Öffnen der aktuellen Audio-URL: Button `URL öffnen` führt die vorhandene sichere URL-Validierung mit sicherem `xdg-open`-Aufruf (als Argumentliste) aus.
+- Statische Checks (`scripts/check.sh`) und Install-Validierung (`scripts/validate-installed.sh`) wurden auf die neue URL-Öffner-Interaktion im Queue-Edit-Dialog erweitert.
+- Versionssprung auf `0.3.69`; `metadata.json`, `VERSION`, `README.md` und `CHANGELOG.md` aktualisiert.
+
 ## 0.3.68
 
 - Queue-Edit-Dialog mit Startentscheidung ergänzt: neue Optionen **noch nicht starten** (Default) und **sofort starten** (direct start) sowie JSON-Feld `start_now` in der Dialogausgabe.

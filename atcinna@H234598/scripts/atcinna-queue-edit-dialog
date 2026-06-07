@@ -151,6 +151,21 @@ def _load_queue_info_file(url):
     return None
 
 
+def _xdg_open(uri):
+    if not _is_http_url(uri):
+        raise ValueError("unzulässiges URL-Schema")
+    try:
+        subprocess.Popen(
+            ["xdg-open", uri],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+        )
+    except OSError as exc:
+        raise RuntimeError(f"xdg-open failed: {exc}") from exc
+
+
 def _self_test():
     gtk_available = True
     gtk_error = ""
@@ -329,9 +344,26 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     window.add(root)
 
-    info = Gtk.Label(label=f"URL: {url}", xalign=0)
-    info.set_line_wrap(True)
-    root.pack_start(info, False, False, 0)
+    def _run_open_url(uri, status_label):
+        try:
+            _xdg_open(uri)
+            status_label.set_text("URL geöffnet")
+        except Exception as exc:
+            status_label.set_text(f"URL öffnen fehlgeschlagen: {exc}")
+
+    url_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    url_label = Gtk.Label(label="URL:", xalign=0)
+    url_label.set_hexpand(False)
+    url_value = Gtk.Label(label=url, xalign=0)
+    url_value.set_line_wrap(True)
+    url_value.set_selectable(True)
+    url_value.set_width_chars(48)
+    url_value.set_max_width_chars(72)
+    open_button = Gtk.Button(label="URL öffnen")
+    url_row.pack_start(url_label, False, False, 0)
+    url_row.pack_start(url_value, True, True, 0)
+    url_row.pack_start(open_button, False, False, 0)
+    root.pack_start(url_row, False, False, 0)
 
     grid = Gtk.Grid(column_spacing=8, row_spacing=6)
     root.pack_start(grid, False, False, 0)
@@ -393,6 +425,11 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     status = Gtk.Label(label="Bereit", xalign=0)
     status.set_line_wrap(True)
     root.pack_start(status, False, False, 0)
+
+    open_button.connect(
+        "clicked",
+        lambda _button: _run_open_url(url, status),
+    )
 
     for label_text, widget, row in [
         ("Titel", title_entry, 0),
