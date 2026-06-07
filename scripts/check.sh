@@ -821,12 +821,24 @@ if ! rg -q -F "Pfad vorschlagen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Pfad vorschlagen"
     STATUS=1
 fi
+if ! rg -q -F -- '--info-file=' "$APPLET_JS"; then
+    echo "ERROR: applet queue edit dialog call is missing --info-file argument"
+    STATUS=1
+fi
+if ! rg -q -F 'Infodatei anlegen: "Name.txt"' "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: Infodatei anlegen: \"Name.txt\""
+    STATUS=1
+fi
 for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_folder" "_proposed_download_folder" "_sanitize_topic_folder_name" "_load_xdg_download_dir" "_default_download_folder" "Gtk.FileChooserDialog" 'Gtk.FileChooserAction.SELECT_FOLDER' "get_filename()" 'ResponseType.OK' "set_current_folder" "is_dir()"; do
     if ! rg -q -F "${queue_edit_dialog_handler}" "$QUEUE_EDIT_DIALOG"; then
         echo "ERROR: queue edit dialog GTK contract is missing: ${queue_edit_dialog_handler}"
         STATUS=1
     fi
 done
+if ! rg -q -F -- "--info-file" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog argument is missing: --info-file"
+    STATUS=1
+fi
 if ! python3 - "$QUEUE_EDIT_DIALOG" "$TMP_DIR" <<'PY'; then
 import os
 import sys
@@ -2143,16 +2155,28 @@ if ! echo "$QUEUE_LIST" | jq -e --arg q "$QUEUE_URL_TWO" '.results | map(select(
     echo "$QUEUE_LIST"
     exit 1
 fi
-QUEUE_UPDATE="$(python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --title "Queue One edited" --folder "$QUEUE_DOWNLOAD_DIR")"
+QUEUE_UPDATE="$(python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --title "Queue One edited" --folder "$QUEUE_DOWNLOAD_DIR" --info-file=true)"
 if ! echo "$QUEUE_UPDATE" | jq -e '.status == "ok" and .updated == 1' >/dev/null; then
     echo "ERROR: download-update failed for queued item"
     echo "$QUEUE_UPDATE"
     exit 1
 fi
 QUEUE_LIST_AFTER_UPDATE="$(python3 "$HELPER" download-list)"
-if ! echo "$QUEUE_LIST_AFTER_UPDATE" | jq -e --arg one "$QUEUE_URL_ONE" '.results | map(select(.url == $one and .title == "Queue One edited" and .folder != "" and .timestamp > 0)) | length == 1' >/dev/null; then
+if ! echo "$QUEUE_LIST_AFTER_UPDATE" | jq -e --arg one "$QUEUE_URL_ONE" '.results | map(select(.url == $one and .title == "Queue One edited" and .folder != "" and .timestamp > 0 and .info_file == true)) | length == 1' >/dev/null; then
     echo "ERROR: download-update did not apply edits"
     echo "$QUEUE_LIST_AFTER_UPDATE"
+    exit 1
+fi
+QUEUE_UPDATE_FALSE="$(python3 "$HELPER" download-update --url "$QUEUE_URL_ONE" --info-file=false)"
+if ! echo "$QUEUE_UPDATE_FALSE" | jq -e '.status == "ok" and .updated == 1' >/dev/null; then
+    echo "ERROR: download-update failed for queued item info-file false"
+    echo "$QUEUE_UPDATE_FALSE"
+    exit 1
+fi
+QUEUE_LIST_AFTER_UPDATE_FALSE="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_LIST_AFTER_UPDATE_FALSE" | jq -e --arg one "$QUEUE_URL_ONE" '.results | map(select(.url == $one and .info_file == false)) | length == 1' >/dev/null; then
+    echo "ERROR: download-update did not clear info_file"
+    echo "$QUEUE_LIST_AFTER_UPDATE_FALSE"
     exit 1
 fi
 if ! echo "$QUEUE_LIST_AFTER_UPDATE" | jq -e --arg one "$QUEUE_URL_ONE" --argjson before "$QUEUE_INDEX_ONE_BEFORE" '.results | map(.url) | index($one) == $before' >/dev/null; then

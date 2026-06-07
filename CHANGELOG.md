@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.65
+
+- Queue-Edit-Dialog erweitert um Checkbox `Infodatei anlegen: "Name.txt"` für per-Download `info_file`.
+- Der Applet-Aufruf von `Download ändern` übergibt `item.info_file` jetzt als `--info-file=true|false`.
+- Der Helper akzeptiert `download-update --info-file true|false`, aktualisiert das Queue-Feld robust und aktualisiert wartende Einträge inkl. Schutz für laufende Einträge.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen nun zusätzlich die UI-/Argument-Contracts für das neue Dialogfeld und ergänzen funktionale Queue-Update-Checks für `info_file`.
+- Versionssprung auf `0.3.65`; `metadata.json`, `VERSION`, `README.md`, Dialog, Applet-Aufruf und Checks aktualisiert.
+
 ## 0.3.64
 
 - ATPlayer-naher Zielordner-Vorschlag ergänzt: Der Queue-Edit-Dialog bietet jetzt **Pfad vorschlagen** neben **Pfad auswählen**.

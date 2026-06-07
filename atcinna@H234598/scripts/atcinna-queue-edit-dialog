@@ -24,6 +24,26 @@ def _is_http_url(value):
         return False
 
 
+def _coerce_bool_value(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return None
+
+
+def _parse_bool_arg(value, field):
+    normalized = _coerce_bool_value(value)
+    if normalized is None:
+        raise RuntimeError(f"{field} must be true or false")
+    return normalized
+
+
 def _run_helper(args):
     process = subprocess.run(
         [str(HELPER_PATH), *args],
@@ -38,6 +58,30 @@ def _run_helper(args):
         return json.loads(process.stdout or "{}")
     except Exception as exc:
         raise RuntimeError(f"invalid helper response: {exc}") from exc
+
+
+def _load_queue_info_file(url):
+    if not _is_http_url(url):
+        return None
+
+    try:
+        payload = _run_helper(["download-list"])
+    except Exception:
+        return None
+
+    if not isinstance(payload, dict) or payload.get("status") != "ok":
+        return None
+
+    normalized_url = str(url).strip()
+    for entry in payload.get("results", []):
+        if not isinstance(entry, dict):
+            continue
+        entry_url = str(entry.get("url", "")).strip()
+        if entry_url != normalized_url:
+            continue
+        return _coerce_bool_value(entry.get("info_file"))
+
+    return None
 
 
 def _self_test():
@@ -187,7 +231,7 @@ def _select_download_folder(parent_window, folder_entry, gtk_module):
         dialog.destroy()
 
 
-def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website):
+def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website, info_file):
     try:
         import gi
 
@@ -224,6 +268,8 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     folder_entry.set_text(folder)
     folder_picker_button = Gtk.Button(label="Pfad auswählen")
     folder_propose_button = Gtk.Button(label="Pfad vorschlagen")
+    info_file_checkbox = Gtk.CheckButton(label='Infodatei anlegen: "Name.txt"')
+    info_file_checkbox.set_active(bool(info_file))
     folder_picker_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     folder_picker_row.pack_start(folder_entry, True, True, 0)
     folder_picker_row.pack_start(folder_picker_button, False, False, 0)
@@ -276,6 +322,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     description_label = Gtk.Label(label="Beschreibung:", xalign=0)
     grid.attach(description_label, 0, 9, 1, 1)
     grid.attach(description_scroller, 1, 9, 1, 1)
+    grid.attach(info_file_checkbox, 1, 10, 1, 1)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     root.pack_start(actions, False, False, 0)
@@ -296,6 +343,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
         "duration": duration_entry,
         "website": website_entry,
         "description": description_view,
+        "info_file": info_file_checkbox,
     }
 
     def do_save(_button):
@@ -311,6 +359,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
             f"--duration={_collect_field(controls['duration'])}",
             f"--description={_text_from_buffer(controls['description'])}",
             f"--website={_collect_field(controls['website'])}",
+            f"--info-file={'true' if controls['info_file'].get_active() else 'false'}",
         ]
         folder_value = _collect_field(controls["folder"])
         if folder_value is not None:
@@ -357,10 +406,16 @@ def main():
     parser.add_argument("--duration", default="", help="Duration")
     parser.add_argument("--description", default="", help="Description")
     parser.add_argument("--website", default="", help="Website")
+    parser.add_argument("--info-file", default=None, help="Whether to write metadata info file")
     args = parser.parse_args()
 
     if args.self_test:
         return _self_test()
+
+    if args.info_file is None:
+        info_file = _load_queue_info_file(args.url) or False
+    else:
+        info_file = _parse_bool_arg(args.info_file, "info-file")
 
     run_dialog(
         args.url,
@@ -374,6 +429,7 @@ def main():
         args.duration,
         args.description,
         args.website,
+        info_file,
     )
     return 0
 

@@ -1574,6 +1574,12 @@ def _coerce_update_field(value):
     return _normalize_entry_value(value)
 
 
+def _coerce_update_bool_field(value):
+    if value is None:
+        return None
+    return _parse_bool_arg(value, "info-file")
+
+
 def action_download_update(args):
     _validate_and_normalize_url("url", args.url)
     target = _normalize_entry_value(args.url)
@@ -1589,6 +1595,7 @@ def action_download_update(args):
         "description": _coerce_update_field(args.description),
         "website": _coerce_update_field(args.website),
         "folder": _coerce_update_field(args.folder),
+        "info_file": _coerce_update_bool_field(args.info_file),
     }
 
     if all(value is None for value in updates.values()):
@@ -1636,6 +1643,8 @@ def action_download_update(args):
             if updates["folder"] is not None:
                 entry["folder"] = updates["folder"]
                 changed_path = True
+            if updates["info_file"] is not None:
+                entry["info_file"] = updates["info_file"]
 
             entry["timestamp"] = int(time.time())
             if entry.get("status") != "finished" and changed_path:
@@ -2587,6 +2596,7 @@ def parse_args():
     download_update.add_argument("--description", default=None, help="Optional description")
     download_update.add_argument("--folder", default=None, help="Optional download folder")
     download_update.add_argument("--website", default=None, help="Optional website URL")
+    download_update.add_argument("--info-file", default=None, help="Optional whether to write metadata info file")
     sub.add_parser("download-undo", help="Restore last removed queue entries")
     sub.add_parser("download-trash-file", help="Move stored queue file to trash").add_argument(
         "--url",

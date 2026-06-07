@@ -2795,7 +2795,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             `--time=${item.time || ""}`,
             `--duration=${item.duration || ""}`,
             `--description=${item.description || ""}`,
-            `--website=${item.website || ""}`
+            `--website=${item.website || ""}`,
+            `--info-file=${item.info_file === true ? "true" : "false"}`
         ];
 
         this._setStatus(`ändere Download: ${item.title || "Eintrag"}`);
