@@ -117,6 +117,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("show-filter-section", "showFilterSection", this._onSectionVisibilityChanged.bind(this));
         this.settings.bind("show-info-section", "showInfoSection", this._onSectionVisibilityChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
+        this.settings.bind("download-info-file", "downloadInfoFile", null);
         this.settings.bind("refresh-mirror", "refreshMirror", null);
         this._activeSearchQuery = this.searchQuery || "";
 
@@ -1076,7 +1077,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "hide-history-filter": false,
             "podcast-filter": "all",
             "show-filter-section": true,
-            "show-info-section": true
+            "show-info-section": true,
+            "download-info-file": false
         };
         const nextSearchQuery = defaults["search-query"];
 
@@ -1101,6 +1103,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.podcastFilter = defaults["podcast-filter"];
             this.showFilterSection = defaults["show-filter-section"];
             this.showInfoSection = defaults["show-info-section"];
+            this.downloadInfoFile = defaults["download-info-file"];
 
             this.settings.setValue("search-query", defaults["search-query"]);
             this.settings.setValue("sender-filter", defaults["sender-filter"]);
@@ -1120,6 +1123,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("podcast-filter", defaults["podcast-filter"]);
             this.settings.setValue("show-filter-section", defaults["show-filter-section"]);
             this.settings.setValue("show-info-section", defaults["show-info-section"]);
+            this.settings.setValue("download-info-file", defaults["download-info-file"]);
 
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
@@ -1886,10 +1890,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     _runDownloadEnqueue(item, callback = null) {
         const folder = this.downloadFolder || "";
         this._setStatus(`in Warteschlange: ${item.title || "Eintrag"}`);
+        const infoFile = this.downloadInfoFile === true;
         this._runHelper([
             "download-enqueue",
             ...this._entryArgs(item),
-            `--folder=${folder}`
+            `--folder=${folder}`,
+            `--info-file=${infoFile ? "true" : "false"}`
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`queue-enqueue fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
@@ -3663,6 +3669,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
     _runDownload(item) {
         const folder = this.downloadFolder || "";
+        const infoFile = this.downloadInfoFile === true;
         this._setStatus(`lade herunter: ${item.title || "Eintrag"}`);
         const url = item.url || "";
         if (!url) {
@@ -3671,9 +3678,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         this._runHelper([
             "download",
-            `--url=${url}`,
+            ...this._entryArgs(item),
             `--folder=${folder}`,
-            `--title=${item.title || ""}`
+            `--info-file=${infoFile ? "true" : "false"}`
         ], (status, stdout, stderr) => {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);

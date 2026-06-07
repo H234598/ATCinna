@@ -596,6 +596,7 @@ def _entry_from_args(args):
         "description": _normalize_entry_value(getattr(args, "description", "")),
         "url": _normalize_entry_value(args.url),
         "website": _normalize_entry_value(args.website),
+        "info_file": _parse_bool_arg(getattr(args, "info_file", None), "info-file") if getattr(args, "info_file", None) is not None else False,
         "timestamp": int(time.time()),
     }
 
@@ -1197,6 +1198,7 @@ def _normalize_queue_entry(entry):
         "status": status,
         "path": _normalize_entry_value(entry.get("path")),
         "error": _normalize_entry_value(entry.get("error")),
+        "info_file": _normalize_bool_value(entry.get("info_file"), False),
     }
 
 
@@ -1279,6 +1281,71 @@ def _download_to_file(url, folder, title):
         timeout=120,
     )
     return str(destination)
+
+
+def _to_info_file_path(destination):
+    return str(Path(destination).with_suffix(".txt"))
+
+
+def _info_file_lines(item):
+    description = _normalize_entry_value(item.get("description"))
+    wrapped_description = []
+    line = ""
+    for word in description.split():
+        next_line = f"{line} {word}".strip()
+        if len(next_line) > 55 and line:
+            wrapped_description.append(line)
+            line = word
+        else:
+            line = next_line
+    if line:
+        wrapped_description.append(line)
+
+    return [
+        f"Sender:        {_normalize_entry_value(item.get('sender'))}",
+        f"Genre:         {_normalize_entry_value(item.get('genre'))}",
+        f"Thema:         {_normalize_entry_value(item.get('topic'))}",
+        "",
+        f"Titel:         {_normalize_entry_value(item.get('title'))}",
+        "",
+        f"Datum:         {_normalize_entry_value(item.get('date'))}",
+        f"Zeit:          {_normalize_entry_value(item.get('time'))}",
+        f"Dauer:         {_normalize_entry_value(item.get('duration'))}",
+        "",
+        "Website:",
+        _normalize_entry_value(item.get("website")),
+        "",
+        "URL:",
+        _normalize_entry_value(item.get("url")),
+        "",
+        *wrapped_description,
+        "",
+    ]
+
+
+def _write_info_file(destination, item):
+    return _store_text_lines(Path(_to_info_file_path(destination)), _info_file_lines(item))
+
+
+def _remove_file_if_exists(path):
+    target = Path(path)
+    if target.exists() and target.is_file():
+        try:
+            target.unlink()
+        except OSError:
+            pass
+
+
+def _download_with_info(item, folder):
+    destination = _download_to_file(item.get("url", ""), folder, item.get("title", ""))
+    try:
+        if item.get("info_file", False):
+            _write_info_file(destination, item)
+    except Exception:
+        _remove_file_if_exists(destination)
+        _remove_file_if_exists(_to_info_file_path(destination))
+        raise
+    return destination
 
 
 def _resolve_download_folder(folder):
@@ -1576,15 +1643,22 @@ def _run_claimed_download(entry):
     download_status = "finished"
     destination = ""
     error = ""
+    cleanup_destination = ""
     try:
         folder = _resolve_download_folder(entry.get("folder", ""))
-        destination = _download_to_file(entry.get("url", ""), folder, entry.get("title", ""))
+        destination = _download_with_info(entry, folder)
+        cleanup_destination = destination
     except subprocess.CalledProcessError as exc:
         download_status = "error"
         error = (exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc)
     except Exception as exc:
         download_status = "error"
         error = str(exc)
+        if cleanup_destination:
+            _remove_file_if_exists(cleanup_destination)
+
+        if destination and entry.get("info_file", False):
+            _remove_file_if_exists(_to_info_file_path(destination))
 
     _finish_queued_download(entry, download_status, destination, error)
     return {
@@ -2130,12 +2204,20 @@ def _safe_filename(value):
 
 
 def action_download(args):
+    _validate_and_normalize_url("url", args.url)
+    _validate_and_normalize_url("website", args.website)
     folder = _resolve_download_folder(args.folder)
+    item = _entry_from_args(args)
+    item["title"] = item.get("title", "")
+    destination = ""
     try:
-        destination = _download_to_file(args.url, folder, args.title)
+        destination = _download_with_info(item, folder)
     except subprocess.CalledProcessError as exc:
         die((exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc))
     except Exception as exc:
+        _remove_file_if_exists(destination)
+        if destination and item.get("info_file", False):
+            _remove_file_if_exists(_to_info_file_path(destination))
         die(str(exc))
 
     print(json.dumps({"status": "ok", "path": str(destination)}))
@@ -2272,9 +2354,18 @@ def parse_args():
     atplayer_export.add_argument("--target", required=True, choices=(HISTORY_EXPORT_TARGET, BOOKMARK_EXPORT_TARGET), help="history or bookmarks")
 
     download = sub.add_parser("download")
+    download.add_argument("--title", default="", help="Optional file base title")
+    download.add_argument("--sender", default="", help="Optional sender")
+    download.add_argument("--genre", default="", help="Optional genre")
+    download.add_argument("--topic", default="", help="Optional topic")
+    download.add_argument("--date", default="", help="Optional date")
+    download.add_argument("--time", default="", help="Optional time")
+    download.add_argument("--duration", default="", help="Optional duration")
+    download.add_argument("--description", default="", help="Optional description")
     download.add_argument("--url", required=True, help="Media URL")
     download.add_argument("--folder", default="", help="Download folder")
-    download.add_argument("--title", default="", help="Optional file base title")
+    download.add_argument("--website", default="", help="Optional website URL")
+    download.add_argument("--info-file", default="false", help="Whether to write metadata info file")
 
     download_enqueue = sub.add_parser("download-enqueue", help="Add media URL to download queue")
     download_enqueue.add_argument("--title", default="", help="Optional title")
@@ -2288,6 +2379,7 @@ def parse_args():
     download_enqueue.add_argument("--url", required=True, help="Media URL")
     download_enqueue.add_argument("--website", default="", help="Optional website URL")
     download_enqueue.add_argument("--folder", default="", help="Download folder")
+    download_enqueue.add_argument("--info-file", default="false", help="Whether to write metadata info file")
 
     sub.add_parser("download-list", help="List queue entries")
 

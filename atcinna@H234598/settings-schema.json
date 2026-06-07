@@ -139,6 +139,12 @@
     "tooltip": "Zielordner fuer heruntergeladene Audiodateien. Leer verwendet ~/Downloads.",
     "default": ""
   },
+  "download-info-file": {
+    "type": "switch",
+    "description": "Info-Datei schreiben",
+    "tooltip": "Schreibe nach erfolgreichen Downloads eine .txt-Datei mit vorhandenen Metadaten neben der Audiodatei.",
+    "default": false
+  },
   "refresh-mirror": {
     "type": "combobox",
     "description": "Katalog-Mirror",

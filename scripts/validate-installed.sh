@@ -156,7 +156,7 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
-for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section"; do
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-info-file"; do
     if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
         echo "ERROR: settings-schema key missing: $key"
         exit 1
@@ -336,6 +336,10 @@ if ! python3 -m py_compile "$FILTER_PROFILES_DIALOG"; then
 fi
 if ! rg -q -F -- "--theme-title" "$HELPER"; then
     echo "ERROR: installed helper does not define --theme-title in help output"
+    exit 1
+fi
+if ! rg -q -F -- "--info-file" "$HELPER"; then
+    echo "ERROR: installed helper does not define --info-file in help output"
     exit 1
 fi
 for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Gelöschte wieder anlegen"; do

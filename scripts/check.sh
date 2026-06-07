@@ -255,6 +255,10 @@ if ! rg -q -F "show-info-section\": true" "$APPLET_JS"; then
     echo "ERROR: settings reset default for show-info-section is missing"
     STATUS=1
 fi
+if ! rg -q -F "download-info-file\": false" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for download-info-file is missing"
+    STATUS=1
+fi
 if ! rg -q -F '"max-hits": 20' "$APPLET_JS"; then
     echo "ERROR: settings reset default for max-hits is missing"
     STATUS=1
@@ -651,7 +655,7 @@ if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
     echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-info-file; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
         STATUS=1
@@ -673,7 +677,7 @@ if ! rg -q -F '"--queued-only"' "$HELPER"; then
     echo "ERROR: helper queued-only cancel option is missing"
     STATUS=1
 fi
-for helper_arg in "--date" "--time" "--duration" "--description"; do
+for helper_arg in "--date" "--time" "--duration" "--description" "--info-file"; do
     if ! rg -q -e "${helper_arg}" "$HELPER"; then
         echo "ERROR: helper metadata parser flag is missing: ${helper_arg}"
         STATUS=1
@@ -1787,6 +1791,7 @@ QUEUE_HTTP_DIR="$TMP_DIR/queue-http"
 mkdir -p "$QUEUE_DOWNLOAD_DIR" "$QUEUE_HTTP_DIR"
 printf 'queued audio fixture\n' > "$QUEUE_HTTP_DIR/audio-one.mp3"
 printf 'queued audio fixture two\n' > "$QUEUE_HTTP_DIR/audio-two.mp3"
+printf 'queued audio fixture info\n' > "$QUEUE_HTTP_DIR/audio-info.mp3"
 python3 - "$QUEUE_HTTP_DIR" "$TMP_DIR/http-server.port" >"$TMP_DIR/http-server.log" 2>&1 <<'PY' &
 import functools
 import http.server
@@ -1827,7 +1832,67 @@ if [[ -z "$QUEUE_HTTP_PORT" ]]; then
 fi
 QUEUE_URL_ONE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-one.mp3"
 QUEUE_URL_TWO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3"
+QUEUE_URL_INFO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-info.mp3"
 QUEUE_URL_THREE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-three.mp3"
+
+DIRECT_INFO_TITLE="Download direkt mit Infodatei"
+DIRECT_WITH_INFO="$(python3 "$HELPER" download \
+    --title "$DIRECT_INFO_TITLE" \
+    --sender "Sender D" \
+    --genre "Genre D" \
+    --topic "Thema D" \
+    --date "2026-06-01" \
+    --time "10:00" \
+    --duration "00:12" \
+    --description "Direkter Download-Test" \
+    --url "$QUEUE_URL_INFO" \
+    --website "https://example.com" \
+    --folder "$QUEUE_DOWNLOAD_DIR" \
+    --info-file=true)"
+
+if ! echo "$DIRECT_WITH_INFO" | jq -e '.status == "ok" and (.path | endswith(".mp3"))' >/dev/null; then
+    echo "ERROR: download action with info-file=true failed"
+    echo "$DIRECT_WITH_INFO"
+    exit 1
+fi
+DIRECT_INFO_PATH="$(echo "$DIRECT_WITH_INFO" | jq -r '.path')"
+DIRECT_INFO_TEXT="${DIRECT_INFO_PATH%.mp3}.txt"
+if [[ ! -f "$DIRECT_INFO_PATH" ]]; then
+    echo "ERROR: direct download output file missing: $DIRECT_INFO_PATH"
+    exit 1
+fi
+if [[ ! -f "$DIRECT_INFO_TEXT" ]]; then
+    echo "ERROR: direct download info file missing: $DIRECT_INFO_TEXT"
+    exit 1
+fi
+if ! rg -q -F "Titel:         $DIRECT_INFO_TITLE" "$DIRECT_INFO_TEXT"; then
+    echo "ERROR: direct download info file missing title"
+    echo "--- $DIRECT_INFO_TEXT"
+    cat "$DIRECT_INFO_TEXT"
+    exit 1
+fi
+if ! rg -q -F "Sender:        Sender D" "$DIRECT_INFO_TEXT"; then
+    echo "ERROR: direct download info file missing sender"
+    echo "--- $DIRECT_INFO_TEXT"
+    cat "$DIRECT_INFO_TEXT"
+    exit 1
+fi
+
+DOWNLOAD_NO_INFO="$(python3 "$HELPER" download \
+    --title "Download ohne Infodatei" \
+    --url "$QUEUE_URL_INFO" \
+    --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$DOWNLOAD_NO_INFO" | jq -e '.status == "ok" and (.path | endswith(".mp3"))' >/dev/null; then
+    echo "ERROR: download action without info-file flag failed"
+    echo "$DOWNLOAD_NO_INFO"
+    exit 1
+fi
+DOWNLOAD_NO_INFO_PATH="$(echo "$DOWNLOAD_NO_INFO" | jq -r '.path')"
+DOWNLOAD_NO_INFO_TEXT="${DOWNLOAD_NO_INFO_PATH%.mp3}.txt"
+if [[ -f "$DOWNLOAD_NO_INFO_TEXT" ]]; then
+    echo "ERROR: download info file should not exist when info-file is false: $DOWNLOAD_NO_INFO_TEXT"
+    exit 1
+fi
 
 QUEUE_ADD_ONE="$(python3 "$HELPER" download-enqueue --title "Queue One" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR")"
 if ! echo "$QUEUE_ADD_ONE" | jq -e '.status == "ok"' >/dev/null; then
@@ -2050,6 +2115,52 @@ QUEUE_LIST_EMPTY="$(python3 "$HELPER" download-list)"
 if ! echo "$QUEUE_LIST_EMPTY" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
     echo "ERROR: download queue should be empty after clear"
     echo "$QUEUE_LIST_EMPTY"
+    exit 1
+fi
+
+QUEUE_INFO_ENQUEUE="$(python3 "$HELPER" download-enqueue \
+    --title "Queue mit Infodatei" \
+    --sender "Sender Q" \
+    --genre "Genre Q" \
+    --topic "Thema Q" \
+    --date "2026-06-02" \
+    --time "11:00" \
+    --duration "00:20" \
+    --description "Warteschlangen-Download mit Infodatei" \
+    --url "$QUEUE_URL_INFO" \
+    --folder "$QUEUE_DOWNLOAD_DIR" \
+    --info-file=true)"
+if ! echo "$QUEUE_INFO_ENQUEUE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: download-enqueue with info-file=true failed"
+    echo "$QUEUE_INFO_ENQUEUE"
+    exit 1
+fi
+QUEUE_INFO_RUN="$(python3 "$HELPER" download-run-next)"
+if ! echo "$QUEUE_INFO_RUN" | jq -e '.status == "ok" and .result.status == "finished" and (.result.path | endswith(".mp3"))' >/dev/null; then
+    echo "ERROR: download-run-next for info-file entry failed"
+    echo "$QUEUE_INFO_RUN"
+    exit 1
+fi
+QUEUE_INFO_PATH="$(echo "$QUEUE_INFO_RUN" | jq -r '.result.path')"
+QUEUE_INFO_TEXT="${QUEUE_INFO_PATH%.mp3}.txt"
+if [[ ! -f "$QUEUE_INFO_PATH" ]]; then
+    echo "ERROR: queue run output file missing: $QUEUE_INFO_PATH"
+    exit 1
+fi
+if [[ ! -f "$QUEUE_INFO_TEXT" ]]; then
+    echo "ERROR: queue info file missing: $QUEUE_INFO_TEXT"
+    exit 1
+fi
+if ! rg -q -F "Titel:         Queue mit Infodatei" "$QUEUE_INFO_TEXT"; then
+    echo "ERROR: queue info file missing title"
+    echo "--- $QUEUE_INFO_TEXT"
+    cat "$QUEUE_INFO_TEXT"
+    exit 1
+fi
+if ! rg -q -F "Warteschlangen-Download mit Infodatei" "$QUEUE_INFO_TEXT"; then
+    echo "ERROR: queue info file missing description"
+    echo "--- $QUEUE_INFO_TEXT"
+    cat "$QUEUE_INFO_TEXT"
     exit 1
 fi
 

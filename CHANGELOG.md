@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.55
+
+- Optionales Hilfsdatei-Verhalten ergänzt: `download-info-file` im Applet und `--info-file` im Helper für direkte und Queue-Downloads, mit robuster, atomarer Speicherung der ATPlayer-nahen Text-Infodatei (Metadaten neben der Audio-Datei).
+- `scripts/check.sh` testet jetzt beide Pfade (`download --info-file` und `download-enqueue --info-file`) inkl. erfolgreichem Erzeugen und Unterdrücken der Infodatei.
+- `scripts/validate-installed.sh` prüft zusätzlich `download-info-file` im Settings-Schema und das neue Helper-Flag `--info-file`.
+- Versionssprung auf `0.3.55`; `metadata.json`, `VERSION` und `README` aktualisiert.
+
 ## 0.3.54
 
 - Neu: Import/Export für ATPlayer-History-/Bookmark-Textformate im Helper ergänzt (`atplayer-history-import`, `atplayer-history-export`).
