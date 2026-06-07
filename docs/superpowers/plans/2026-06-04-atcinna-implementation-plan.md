@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.47`.
+- `VERSION` is `0.3.48`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -333,6 +333,15 @@
 - [x] **Checks/docs/version**
   - Extend source and installed validation for the new visible labels and handler symbols.
   - Bump version to `0.3.47`, update metadata/version/readme/changelog.
+
+### Task 48: Align Result Selection Labels to ATPlayer (0.3.48)
+
+- [x] **ATPlayer-nahe Treffer-Auswahllabels**
+  - Rename visible result batch selection actions to **Alles auswählen**, **Auswahl umkehren**, and **Tabelle zurücksetzen**.
+  - Keep existing result selection handlers, callback behavior, and underlying selection sets unchanged.
+- [x] **Checks/docs/version**
+  - Extend source and installed validation to verify the updated result selection labels.
+  - Bump version to `0.3.48`, update `metadata.json`, `VERSION`, `README`, and `CHANGELOG`.
 
 
 ### ATPlayer Parity Audit

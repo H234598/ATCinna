@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.48
+
+- Treffer-Auswahlaktionen wieder auf den ATPlayer-Wortlaut gesetzt: **Alles auswählen**, **Auswahl umkehren**, **Tabelle zurücksetzen**.
+- Handler und Auswahlverhalten bleiben unverändert; Source- und Installationschecks erwarten nun denselben sichtbaren Wortlaut, die Reset-Rückmeldung nutzt denselben Begriff.
+- Versionssprung auf `0.3.48`; `metadata.json`, `VERSION`, README, Plan und Checkskripte aktualisiert.
+
 ## 0.3.47
 
 - Top-Level-Trefferaktionen ergänzt auf den ersten markierten sichtbaren Treffer: **Blacklist-Eintrag für den Film erstellen** und **Thema direkt in die Blacklist einfügen**.

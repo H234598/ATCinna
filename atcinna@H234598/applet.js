@@ -1367,15 +1367,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         heading.actor.add_style_class_name("atcinna-section-title");
         this._resultsSection.addMenuItem(heading);
 
-        const selectAll = new PopupMenu.PopupMenuItem("Alle Treffer auswählen");
+        const selectAll = new PopupMenu.PopupMenuItem("Alles auswählen");
         selectAll.connect("activate", () => this._runResultSelectAll());
         this._resultsSection.addMenuItem(selectAll);
 
-        const invertSelection = new PopupMenu.PopupMenuItem("Treffer-Auswahl umkehren");
+        const invertSelection = new PopupMenu.PopupMenuItem("Auswahl umkehren");
         invertSelection.connect("activate", () => this._runResultInvertSelection());
         this._resultsSection.addMenuItem(invertSelection);
 
-        const resetSelection = new PopupMenu.PopupMenuItem("Treffer-Auswahl zurücksetzen");
+        const resetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");
         resetSelection.connect("activate", () => this._runResultResetSelection());
         this._resultsSection.addMenuItem(resetSelection);
 
@@ -1476,7 +1476,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     _runResultResetSelection() {
         this._resultSelectionItems.clear();
         this._renderResults(this._resultItemsCache, false);
-        this._setStatus("Treffer-Auswahl zurückgesetzt");
+        this._setStatus("Tabelle zurückgesetzt");
     }
 
     _runResultToggleSelection(item) {
