@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.54`.
+- `VERSION` is `0.3.76`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -24,6 +24,13 @@
   - Add a menu item **Einstellungen** in `atcinna@H234598/applet.js`.
   - Keep `on_applet_clicked(event)` as the left-click applet menu opener.
   - Add static `scripts/check.sh` checks for click/menu invariants (`on_applet_clicked(event)`, `this.menu.open(true)`, Einstellungen item, `configureApplet()` wiring).
+
+- [x] **Task 76: Add dark popup surface toggle (0.3.76)**
+  - Add setting key `system-dark-theme` to `settings-schema.json` with type `switch`, default `false`.
+  - Add top-level switch entry **Dunkle Oberfläche** in `atcinna@H234598/applet.js` using `PopupSwitchMenuItem`, bind to `system-dark-theme`, and persist the state through `this.settings.setValue(...)`.
+  - Apply/remove style class `atcinna-dark-surface` on the menu actor in response to setting changes.
+  - Include the new class and setting wiring in `scripts/check.sh` and `scripts/validate-installed.sh`.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.76`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 

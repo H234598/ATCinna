@@ -156,7 +156,7 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
-for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-file-name-template" "download-info-file" "download-show-notification" "download-dialog-error-show"; do
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "system-dark-theme" "show-filter-section" "show-info-section" "download-file-name-template" "download-info-file" "download-show-notification" "download-dialog-error-show"; do
     if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
         echo "ERROR: settings-schema key missing: $key"
         exit 1
@@ -170,8 +170,20 @@ if ! rg -q -F 'this.settings.bind("download-file-name-template", "downloadFileNa
     echo "ERROR: installed applet does not bind download-file-name-template"
     exit 1
 fi
+if ! rg -q -F 'this.settings.bind("system-dark-theme", "systemDarkTheme", this._onDarkThemeChanged.bind(this));' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not bind system-dark-theme"
+    exit 1
+fi
 if ! rg -q -F '"download-file-name-template": "%t-%T-%Z.mp4"' "$APPLET_JS"; then
     echo "ERROR: installed applet reset defaults do not restore download-file-name-template"
+    exit 1
+fi
+if ! rg -q -F '"system-dark-theme": false' "$APPLET_JS"; then
+    echo "ERROR: installed applet reset defaults do not restore system-dark-theme"
+    exit 1
+fi
+if ! rg -q -F 'this.settings.setValue("system-dark-theme", defaults["system-dark-theme"]);' "$APPLET_JS"; then
+    echo "ERROR: installed applet reset does not persist system-dark-theme"
     exit 1
 fi
 if ! rg -q -F 'this.settings.setValue("download-file-name-template", defaults["download-file-name-template"]);' "$APPLET_JS"; then
@@ -184,6 +196,34 @@ if ! rg -q -F '"download-dialog-error-show": true' "$APPLET_JS"; then
 fi
 if ! rg -q -F 'this.settings.setValue("download-dialog-error-show", defaults["download-dialog-error-show"]);' "$APPLET_JS"; then
     echo "ERROR: installed applet reset does not persist download-dialog-error-show"
+    exit 1
+fi
+if ! rg -q -F 'new PopupMenu.PopupSwitchMenuItem("Dunkle Oberfläche"' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not contain dark surface switch"
+    exit 1
+fi
+if ! rg -q -F '_onDarkThemeChanged' "$APPLET_JS"; then
+    echo "ERROR: installed applet is missing _onDarkThemeChanged handler"
+    exit 1
+fi
+if ! rg -q -F 'const nextValue = this._boolSetting(state, false)' "$APPLET_JS"; then
+    echo "ERROR: installed applet dark surface switch does not use toggled state"
+    exit 1
+fi
+if ! rg -q -F '_applyDarkTheme()' "$APPLET_JS"; then
+    echo "ERROR: installed applet is missing _applyDarkTheme handler"
+    exit 1
+fi
+if ! rg -q -F 'add_style_class_name("atcinna-dark-surface")' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not apply atcinna-dark-surface class"
+    exit 1
+fi
+if ! rg -q -F 'remove_style_class_name("atcinna-dark-surface")' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not clear atcinna-dark-surface class"
+    exit 1
+fi
+if ! rg -q -F '.atcinna-dark-surface' "$APPLET_DIR/stylesheet.css"; then
+    echo "ERROR: installed stylesheet is missing atcinna-dark-surface class"
     exit 1
 fi
 if ! rg -q -F '_runDownloadErrorList(false)' "$APPLET_JS"; then

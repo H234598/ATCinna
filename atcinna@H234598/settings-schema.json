@@ -101,6 +101,12 @@
       "Keine Podcasts": "none"
     }
   },
+  "system-dark-theme": {
+    "type": "switch",
+    "description": "Dunkle Oberfläche",
+    "tooltip": "Aktiviert eine dunkle Popup-Oberfläche inklusive Hintergrund- und Textkontrast.",
+    "default": false
+  },
   "blacklist-mode": {
     "type": "combobox",
     "description": "Blacklist-Modus",

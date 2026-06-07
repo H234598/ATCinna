@@ -135,6 +135,10 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Einstellungen")' "$APPLET_JS"; then
     echo "ERROR: applet menu does not contain Einstellungen item"
     STATUS=1
 fi
+if ! rg -q -F 'new PopupMenu.PopupSwitchMenuItem("Dunkle Oberfläche"' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain Dunkle Oberfläche switch item"
+    STATUS=1
+fi
 if ! rg -q -F 'new PopupMenu.PopupSubMenuMenuItem("Hilfe")' "$APPLET_JS"; then
     echo "ERROR: applet help submenu is missing"
     STATUS=1
@@ -235,6 +239,24 @@ for visibility_handler in "_toggleFilterSectionVisibility" "_toggleInfoSectionVi
         STATUS=1
     fi
 done
+for dark_theme_handler in "_onDarkThemeChanged" "_applyDarkTheme" "_boolSetting(this.systemDarkTheme" "const nextValue = this._boolSetting(state, false)"; do
+    if ! rg -q -F "${dark_theme_handler}" "$APPLET_JS"; then
+        echo "ERROR: applet dark theme handler is missing: ${dark_theme_handler}"
+        STATUS=1
+    fi
+done
+if ! rg -q -F 'atcinna-dark-surface' "$APPLET_JS"; then
+    echo "ERROR: applet dark theme CSS class is not applied in code"
+    STATUS=1
+fi
+if ! rg -q -F 'add_style_class_name("atcinna-dark-surface")' "$APPLET_JS"; then
+    echo "ERROR: applet dark theme class add call is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'remove_style_class_name("atcinna-dark-surface")' "$APPLET_JS"; then
+    echo "ERROR: applet dark theme class remove call is missing"
+    STATUS=1
+fi
 if ! rg -q -F "search-query\": \"\"" "$APPLET_JS"; then
     echo "ERROR: settings reset default for search-query is missing"
     STATUS=1
@@ -267,6 +289,10 @@ if ! rg -q -F "show-info-section\": true" "$APPLET_JS"; then
     echo "ERROR: settings reset default for show-info-section is missing"
     STATUS=1
 fi
+if ! rg -q -F "system-dark-theme\": false" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for system-dark-theme is missing"
+    STATUS=1
+fi
 if ! rg -q -F "download-info-file\": false" "$APPLET_JS"; then
     echo "ERROR: settings reset default for download-info-file is missing"
     STATUS=1
@@ -277,6 +303,18 @@ if ! rg -q -F "download-file-name-template\": \"%t-%T-%Z.mp4\"" "$APPLET_JS"; th
 fi
 if ! rg -q -F 'this.settings.bind("download-file-name-template", "downloadFileNameTemplate", null);' "$APPLET_JS"; then
     echo "ERROR: applet does not bind download-file-name-template setting"
+    STATUS=1
+fi
+if ! rg -q -F 'this.settings.bind("system-dark-theme", "systemDarkTheme", this._onDarkThemeChanged.bind(this));' "$APPLET_JS"; then
+    echo "ERROR: applet does not bind system-dark-theme"
+    STATUS=1
+fi
+if ! rg -q -F 'this.settings.setValue("system-dark-theme", defaults["system-dark-theme"]);' "$APPLET_JS"; then
+    echo "ERROR: applet reset does not persist system-dark-theme"
+    STATUS=1
+fi
+if ! rg -q -F '"system-dark-theme"' "$SETTINGS_SCHEMA"; then
+    echo "ERROR: settings schema does not define system-dark-theme"
     STATUS=1
 fi
 if ! rg -q -F '`--download-file-name-template=${fileNameTemplate}`' "$APPLET_JS"; then
@@ -551,6 +589,10 @@ if ! rg -q -F 'action: (value) => this._xdgOpen(value)' "$APPLET_JS"; then
     echo "ERROR: info section clickable rows are not wired to _xdgOpen"
     STATUS=1
 fi
+if ! rg -q -F '.atcinna-dark-surface' "$APPLET_DIR/stylesheet.css"; then
+    echo "ERROR: stylesheet is missing atcinna-dark-surface class"
+    STATUS=1
+fi
 if ! rg -q -F "const isTuple = Array.isArray(field);" "$APPLET_JS"; then
     echo "ERROR: info section renderer does not support field metadata and tuple fallback"
     STATUS=1
@@ -751,7 +793,7 @@ if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
     echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-file-name-template download-info-file download-show-notification download-dialog-error-show; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter system-dark-theme show-filter-section show-info-section download-file-name-template download-info-file download-show-notification download-dialog-error-show; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
         STATUS=1

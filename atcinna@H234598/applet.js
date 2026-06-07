@@ -90,6 +90,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._bookmarkFilterToggleItem = null;
         this._filterVisibilityItem = null;
         this._infoVisibilityItem = null;
+        this._darkThemeItem = null;
+        this.systemDarkTheme = false;
         this._bookmarkFilterSnapshot = null;
         this._dbusImpl = null;
         this._dbusOwnerId = 0;
@@ -120,6 +122,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("max-hits", "maxHits", this._onMaxHitsChanged.bind(this));
         this.settings.bind("show-filter-section", "showFilterSection", this._onSectionVisibilityChanged.bind(this));
         this.settings.bind("show-info-section", "showInfoSection", this._onSectionVisibilityChanged.bind(this));
+        this.settings.bind("system-dark-theme", "systemDarkTheme", this._onDarkThemeChanged.bind(this));
         this.settings.bind("download-folder", "downloadFolder", null);
         this.settings.bind("download-file-name-template", "downloadFileNameTemplate", null);
         this.settings.bind("download-info-file", "downloadInfoFile", null);
@@ -245,6 +248,16 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
         this.menu.addMenuItem(this._openSettingsItem);
 
+        this._darkThemeItem = new PopupMenu.PopupSwitchMenuItem("Dunkle Oberfläche", false);
+        this._darkThemeItem.connect("toggled", (_item, state) => {
+            const nextValue = this._boolSetting(state, false);
+            if (this.settings) {
+                this.settings.setValue("system-dark-theme", nextValue);
+            }
+            this._applyDarkTheme();
+        });
+        this.menu.addMenuItem(this._darkThemeItem);
+
         this._filterVisibilityItem = new PopupMenu.PopupMenuItem("Filter ein-/ausblenden");
         this._filterVisibilityItem.connect("activate", () => {
             this._toggleFilterSectionVisibility();
@@ -322,6 +335,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.menu.addMenuItem(this._downloadErrorSection);
 
         this._applySectionVisibility();
+        this._applyDarkTheme();
         this._setupQueueActions();
 
         this._refreshFilterSummary();
@@ -1253,6 +1267,27 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._applySectionVisibility();
     }
 
+    _onDarkThemeChanged() {
+        this._applyDarkTheme();
+    }
+
+    _applyDarkTheme() {
+        const enabled = this._boolSetting(this.systemDarkTheme, false);
+        if (!this.menu || !this.menu.actor) {
+            return;
+        }
+
+        if (enabled) {
+            this.menu.actor.add_style_class_name("atcinna-dark-surface");
+        } else {
+            this.menu.actor.remove_style_class_name("atcinna-dark-surface");
+        }
+
+        if (this._darkThemeItem && this._darkThemeItem.setToggleState) {
+            this._darkThemeItem.setToggleState(enabled);
+        }
+    }
+
     _applySectionVisibility() {
         this._setSectionVisible(this._filterSection, this._boolSetting(this.showFilterSection, true));
         this._setSectionVisible(this._infoSection, this._boolSetting(this.showInfoSection, true));
@@ -1318,6 +1353,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "only-bookmarks-filter": false,
             "hide-history-filter": false,
             "podcast-filter": "all",
+            "system-dark-theme": false,
             "show-filter-section": true,
             "show-info-section": true,
             "download-file-name-template": "%t-%T-%Z.mp4",
@@ -1346,6 +1382,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.onlyBookmarksFilter = defaults["only-bookmarks-filter"];
             this.hideHistoryFilter = defaults["hide-history-filter"];
             this.podcastFilter = defaults["podcast-filter"];
+            this.systemDarkTheme = defaults["system-dark-theme"];
             this.showFilterSection = defaults["show-filter-section"];
             this.showInfoSection = defaults["show-info-section"];
             this.downloadFileNameTemplate = defaults["download-file-name-template"];
@@ -1369,6 +1406,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("only-bookmarks-filter", defaults["only-bookmarks-filter"]);
             this.settings.setValue("hide-history-filter", defaults["hide-history-filter"]);
             this.settings.setValue("podcast-filter", defaults["podcast-filter"]);
+            this.settings.setValue("system-dark-theme", defaults["system-dark-theme"]);
             this.settings.setValue("show-filter-section", defaults["show-filter-section"]);
             this.settings.setValue("show-info-section", defaults["show-info-section"]);
             this.settings.setValue("download-file-name-template", defaults["download-file-name-template"]);
@@ -1387,6 +1425,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._refreshFilterSummary();
         this._applySectionVisibility();
+        this._applyDarkTheme();
         this._setStatus("Alle Programmeinstellungen auf Standard zurückgesetzt");
         this._renderInfoSection([
             ["Status", "Programmweite Sucheinstellungen wurden auf Standard zurückgesetzt."],

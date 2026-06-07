@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.76
+
+- Neuen direkten Popup-Menüpunkt **Dunkle Oberfläche** ergänzt, der die gesamte Popup-Oberfläche über die CSS-Klasse `atcinna-dark-surface` in den dunklen Modus schaltet.
+- Setting `system-dark-theme` (Switch, Default `false`) hinzugefügt, binded, in `ATCinna`-`settings-schema.json` aufgenommen und im Applet in die Zurücksetzroutine aufgenommen.
+- `scripts/check.sh` und `scripts/validate-installed.sh` wurden um neue Menü-/Binding-/Schema-/CSS- und Persistenz-Checks für den Dunkel-Modus ergänzt.
+- `metadata.json`, `VERSION`, `README.md` auf `0.3.76` angehoben.
+
 ## 0.3.75
 
 - Das Applet-Menü **Filterprofile** bietet jetzt die ATPlayer-nahe Aktion **Aktuelles Filterprofil umbenennen** und öffnet dafür den bestehenden GTK-Dialog direkt im Rename-Modus für das aktuelle Profil.
