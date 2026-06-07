@@ -496,13 +496,24 @@ for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen"
         STATUS=1
     fi
 done
-for queue_entry_action in 'const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");' 'const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");'; do
+for queue_entry_action in \
+    'const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");' \
+    'const queueEntryInvertSelection = new PopupMenu.PopupMenuItem("Auswahl umkehren");' \
+    'const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");' \
+    'const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");' \
+    'const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");'; do
     if ! rg -q -F "${queue_entry_action}" "$APPLET_JS"; then
         echo "ERROR: applet queue entry action label is missing: ${queue_entry_action}"
         STATUS=1
     fi
 done
-for queue_entry_action in 'const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' 'queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());'; do
+for queue_entry_action in \
+    'const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");' \
+    'queueEntrySelectAll.connect("activate", () => this._runQueueSelectAll());' \
+    'const queueEntryInvertSelection = new PopupMenu.PopupMenuItem("Auswahl umkehren");' \
+    'queueEntryInvertSelection.connect("activate", () => this._runQueueInvertSelection());' \
+    'const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' \
+    'queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());'; do
     if ! rg -q -F "${queue_entry_action}" "$APPLET_JS"; then
         echo "ERROR: applet queue entry action wiring is missing: ${queue_entry_action}"
         STATUS=1

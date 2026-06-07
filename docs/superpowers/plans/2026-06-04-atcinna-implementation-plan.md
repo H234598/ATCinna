@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.87`.
+- `VERSION` is `0.3.88`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -107,6 +107,13 @@
   - Keep helper JSON, stores, settings, database files, and download logic unchanged.
   - Extend `scripts/check.sh` and `scripts/validate-installed.sh` for the source and installed visible labels.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.87`.
+
+- [x] **Task 88: Add queue entry selection actions (0.3.88)**
+  - Add per-row queue-context items **Alles auswählen** and **Auswahl umkehren** directly after **Auswahl umschalten** in `atcinna@H234598/applet.js`.
+  - Wire both actions to existing handlers `_runQueueSelectAll()` and `_runQueueInvertSelection()`.
+  - Keep helper, DB, downloader, filter, blacklist, and CI logic unchanged.
+  - Extend `scripts/check.sh` and `scripts/validate-installed.sh` with queue-entry action/wiring checks for the new labels and handlers.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.88`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 

@@ -2769,6 +2769,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             toggleSelection.connect("activate", () => this._runQueueToggleSelection(item));
             row.menu.addMenuItem(toggleSelection);
 
+            const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");
+            queueEntrySelectAll.connect("activate", () => this._runQueueSelectAll());
+            row.menu.addMenuItem(queueEntrySelectAll);
+
+            const queueEntryInvertSelection = new PopupMenu.PopupMenuItem("Auswahl umkehren");
+            queueEntryInvertSelection.connect("activate", () => this._runQueueInvertSelection());
+            row.menu.addMenuItem(queueEntryInvertSelection);
+
             const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");
             queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());
             row.menu.addMenuItem(queueEntryResetSelection);

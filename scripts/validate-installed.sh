@@ -626,13 +626,24 @@ if ! rg -q -F -- '--start-now=false' "$APPLET_JS"; then
     echo "ERROR: installed applet does not pass explicit start-now argument"
     exit 1
 fi
-for applet_queue_entry_action in 'const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");' 'const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");'; do
+for applet_queue_entry_action in \
+    'const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");' \
+    'const queueEntryInvertSelection = new PopupMenu.PopupMenuItem("Auswahl umkehren");' \
+    'const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");' \
+    'const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");' \
+    'const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");'; do
     if ! rg -q -F "${applet_queue_entry_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue entry action label is missing: ${applet_queue_entry_action}"
         exit 1
     fi
 done
-for applet_queue_entry_action in 'const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' 'queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());'; do
+for applet_queue_entry_action in \
+    'const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");' \
+    'queueEntrySelectAll.connect("activate", () => this._runQueueSelectAll());' \
+    'const queueEntryInvertSelection = new PopupMenu.PopupMenuItem("Auswahl umkehren");' \
+    'queueEntryInvertSelection.connect("activate", () => this._runQueueInvertSelection());' \
+    'const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' \
+    'queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());'; do
     if ! rg -q -F "${applet_queue_entry_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue entry action wiring is missing: ${applet_queue_entry_action}"
         exit 1

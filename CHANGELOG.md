@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.88
+
+- Queue-Eintrag-Kontexte haben jetzt die ATPlayer-nahe, non-mutierende Selektionsnachführung mit **Alles auswählen** und **Auswahl umkehren** bekommen; beide rufen die bestehenden Handler `_runQueueSelectAll()` und `_runQueueInvertSelection()` auf.
+- Die neuen Menüeinträge ändern keine Helper-/DB-/Downloader-/Filter-/Blacklist- oder CI-Logik, sondern ergänzen nur die bestehende sichtbare Queue-UI.
+- `scripts/check.sh`, `scripts/validate-installed.sh`, `metadata.json`, `VERSION`, `README.md` und den Umsetzungsplan wurden auf `0.3.88` angehoben.
+
 ## 0.3.87
 
 - Die Downloadfehlersektion nutzt im leeren Zustand jetzt das ATPlayer-nahe Label **Keine Fehler**.
