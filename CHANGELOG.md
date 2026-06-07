@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.61
+
+- Kontextmenüfilter für Einträge ergänzt: Neue Aktion **nach Irgendwo filtern** im `Filter`-Untermenü der Kontextmenüs (`Ergebnisse`, `Verlauf`, `Favoriten`, `Warteschlange`).
+- Die neue Aktion nutzt `somewhere-filter` mit der ATPlayer-nahen Wertreihenfolge `title || topic || genre || date || description` und Statuswortlaut **Irgendwo**, damit die Semantik von `--somewhere` verwendet wird.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen den neuen Filter-Label- und Wiring-Contract sowie den Status-Metadaten-Check für `somewhere-filter`.
+- Versionssprung auf `0.3.61`; `metadata.json`, `VERSION`, `README.md` und `atcinna@H234598/applet.js` aktualisiert.
+
 ## 0.3.60
 
 - Kontextmenüfilter erweitert: Neu ergänzt wurde die Aktion **nach Thema oder Titel filtern** in den `Filter`-Untermenüs aller relevanten Einträge. Die Aktion nutzt `theme-title-filter` mit dem Wert `topic || title`, damit sie auch ohne eigenes Thema noch sinnvoll funktioniert.

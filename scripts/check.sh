@@ -481,7 +481,7 @@ for history_entry_action in 'const markShown = new PopupMenu.PopupMenuItem("Film
         STATUS=1
     fi
 done
-for filter_label in "Filter" "nach Sender filtern" "nach Genre filtern" "nach Thema filtern" "nach Titel filtern" "nach Sender und Thema filtern" "nach Sender, und Titel filtern" "nach Thema oder Titel filtern"; do
+for filter_label in "Filter" "nach Sender filtern" "nach Genre filtern" "nach Thema filtern" "nach Titel filtern" "nach Thema oder Titel filtern" "nach Irgendwo filtern" "nach Sender und Thema filtern" "nach Sender, und Titel filtern"; do
     if ! rg -q -F "${filter_label}" "$APPLET_JS"; then
         echo "ERROR: applet filter action label is missing: ${filter_label}"
         STATUS=1
@@ -693,6 +693,14 @@ match = re.search(
 )
 if not match:
     print("ERROR: Thema oder Titel filter action must map to theme-title-filter with topic || title")
+    raise SystemExit(1)
+
+match = re.search(
+    r'nach Irgendwo filtern[\s\S]*?_applyFilterSettings\("somewhere-filter",\s*title\s*\|\|\s*topic\s*\|\|\s*genre\s*\|\|\s*date\s*\|\|\s*description,\s*\{[\s\S]*?status:\s*"Irgendwo"',
+    source,
+)
+if not match:
+    print("ERROR: Irgendwo filter action must map to somewhere-filter with title || topic || genre || date || description")
     raise SystemExit(1)
 PY
 if ! rg -q -F '"blacklist-mode"' "$SETTINGS_SCHEMA"; then

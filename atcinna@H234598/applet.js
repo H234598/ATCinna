@@ -3310,6 +3310,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         const genre = this._toTrimmed(item.genre || "");
         const topic = this._toTrimmed(item.topic || "");
         const title = this._toTrimmed(item.title || "");
+        const date = this._toTrimmed(item.date || "");
+        const description = this._toTrimmed(item.description || "");
 
         const filterMenu = new PopupMenu.PopupSubMenuMenuItem("Filter");
 
@@ -3353,6 +3355,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             });
         });
         filterMenu.menu.addMenuItem(topicTitleFilterItem);
+
+        const somewhereFilterItem = new PopupMenu.PopupMenuItem("nach Irgendwo filtern");
+        somewhereFilterItem.connect("activate", () => {
+            this._applyFilterSettings("somewhere-filter", title || topic || genre || date || description, {
+                fallback: title || topic || genre || date || description,
+                status: "Irgendwo"
+            });
+        });
+        filterMenu.menu.addMenuItem(somewhereFilterItem);
 
         const senderTopicFilterItem = new PopupMenu.PopupMenuItem("nach Sender und Thema filtern");
         senderTopicFilterItem.connect("activate", () => {
