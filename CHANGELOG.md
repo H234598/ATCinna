@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.78
+
+- Direkten ATPlayer-nahen Menüschalter **Farb-Modus-1** ergänzt.
+- Neues Setting `system-color-theme-1` (Default `false`) bindet den Schalter persistent und setzt die Popup-CSS-Klasse `atcinna-color-mode-1`.
+- Der Farbakzent ist unabhängig von **Dunkle Oberfläche** und kombiniert sich mit `atcinna-dark-surface`, sodass heller und dunkler Popup-Modus jeweils einen alternativen Farbsatz erhalten.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen Menüpunkt, Binding, Reset-Persistenz, CSS-Klasse und Schema; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.78` angehoben.
+
 ## 0.3.77
 
 - Blacklist-Dialog um die ATPlayer-nahe Aktion **Treffer zählen** ergänzt.

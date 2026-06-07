@@ -37,3 +37,21 @@
 .atcinna-dark-surface .popup-menu-item:focus {
   background-color: rgba(255, 255, 255, 0.08);
 }
+
+.atcinna-color-mode-1 {
+  border-left: 3px solid #4d66cc;
+}
+
+.atcinna-color-mode-1 .atcinna-section-title,
+.atcinna-color-mode-1 .atcinna-filter-summary {
+  color: #4d66cc;
+}
+
+.atcinna-dark-surface.atcinna-color-mode-1 {
+  border-left-color: #99b3ff;
+}
+
+.atcinna-dark-surface.atcinna-color-mode-1 .atcinna-section-title,
+.atcinna-dark-surface.atcinna-color-mode-1 .atcinna-filter-summary {
+  color: #99b3ff;
+}

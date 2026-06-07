@@ -139,6 +139,10 @@ if ! rg -q -F 'new PopupMenu.PopupSwitchMenuItem("Dunkle Oberfläche"' "$APPLET_
     echo "ERROR: applet menu does not contain Dunkle Oberfläche switch item"
     STATUS=1
 fi
+if ! rg -q -F 'new PopupMenu.PopupSwitchMenuItem("Farb-Modus-1"' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain Farb-Modus-1 switch item"
+    STATUS=1
+fi
 if ! rg -q -F 'new PopupMenu.PopupSubMenuMenuItem("Hilfe")' "$APPLET_JS"; then
     echo "ERROR: applet help submenu is missing"
     STATUS=1
@@ -245,6 +249,12 @@ for dark_theme_handler in "_onDarkThemeChanged" "_applyDarkTheme" "_boolSetting(
         STATUS=1
     fi
 done
+for color_theme_handler in "_onColorThemeChanged" "_applyColorTheme" "_boolSetting(this.systemColorTheme1" 'this.settings.setValue("system-color-theme-1", nextValue)'; do
+    if ! rg -q -F "${color_theme_handler}" "$APPLET_JS"; then
+        echo "ERROR: applet color mode handler is missing: ${color_theme_handler}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F 'atcinna-dark-surface' "$APPLET_JS"; then
     echo "ERROR: applet dark theme CSS class is not applied in code"
     STATUS=1
@@ -255,6 +265,18 @@ if ! rg -q -F 'add_style_class_name("atcinna-dark-surface")' "$APPLET_JS"; then
 fi
 if ! rg -q -F 'remove_style_class_name("atcinna-dark-surface")' "$APPLET_JS"; then
     echo "ERROR: applet dark theme class remove call is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'atcinna-color-mode-1' "$APPLET_JS"; then
+    echo "ERROR: applet color mode CSS class is not applied in code"
+    STATUS=1
+fi
+if ! rg -q -F 'add_style_class_name("atcinna-color-mode-1")' "$APPLET_JS"; then
+    echo "ERROR: applet color mode class add call is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'remove_style_class_name("atcinna-color-mode-1")' "$APPLET_JS"; then
+    echo "ERROR: applet color mode class remove call is missing"
     STATUS=1
 fi
 if ! rg -q -F "search-query\": \"\"" "$APPLET_JS"; then
@@ -293,6 +315,10 @@ if ! rg -q -F "system-dark-theme\": false" "$APPLET_JS"; then
     echo "ERROR: settings reset default for system-dark-theme is missing"
     STATUS=1
 fi
+if ! rg -q -F "system-color-theme-1\": false" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for system-color-theme-1 is missing"
+    STATUS=1
+fi
 if ! rg -q -F "download-info-file\": false" "$APPLET_JS"; then
     echo "ERROR: settings reset default for download-info-file is missing"
     STATUS=1
@@ -309,12 +335,24 @@ if ! rg -q -F 'this.settings.bind("system-dark-theme", "systemDarkTheme", this._
     echo "ERROR: applet does not bind system-dark-theme"
     STATUS=1
 fi
+if ! rg -q -F 'this.settings.bind("system-color-theme-1", "systemColorTheme1", this._onColorThemeChanged.bind(this));' "$APPLET_JS"; then
+    echo "ERROR: applet does not bind system-color-theme-1"
+    STATUS=1
+fi
 if ! rg -q -F 'this.settings.setValue("system-dark-theme", defaults["system-dark-theme"]);' "$APPLET_JS"; then
     echo "ERROR: applet reset does not persist system-dark-theme"
     STATUS=1
 fi
+if ! rg -q -F 'this.settings.setValue("system-color-theme-1", defaults["system-color-theme-1"]);' "$APPLET_JS"; then
+    echo "ERROR: applet reset does not persist system-color-theme-1"
+    STATUS=1
+fi
 if ! rg -q -F '"system-dark-theme"' "$SETTINGS_SCHEMA"; then
     echo "ERROR: settings schema does not define system-dark-theme"
+    STATUS=1
+fi
+if ! rg -q -F '"system-color-theme-1"' "$SETTINGS_SCHEMA"; then
+    echo "ERROR: settings schema does not define system-color-theme-1"
     STATUS=1
 fi
 if ! rg -q -F '`--download-file-name-template=${fileNameTemplate}`' "$APPLET_JS"; then
@@ -593,6 +631,10 @@ if ! rg -q -F '.atcinna-dark-surface' "$APPLET_DIR/stylesheet.css"; then
     echo "ERROR: stylesheet is missing atcinna-dark-surface class"
     STATUS=1
 fi
+if ! rg -q -F '.atcinna-color-mode-1' "$APPLET_DIR/stylesheet.css"; then
+    echo "ERROR: stylesheet is missing atcinna-color-mode-1 class"
+    STATUS=1
+fi
 if ! rg -q -F "const isTuple = Array.isArray(field);" "$APPLET_JS"; then
     echo "ERROR: info section renderer does not support field metadata and tuple fallback"
     STATUS=1
@@ -793,7 +835,7 @@ if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
     echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter system-dark-theme show-filter-section show-info-section download-file-name-template download-info-file download-show-notification download-dialog-error-show; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter system-dark-theme system-color-theme-1 show-filter-section show-info-section download-file-name-template download-info-file download-show-notification download-dialog-error-show; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
         STATUS=1

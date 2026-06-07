@@ -107,6 +107,12 @@
     "tooltip": "Aktiviert eine dunkle Popup-Oberfläche inklusive Hintergrund- und Textkontrast.",
     "default": false
   },
+  "system-color-theme-1": {
+    "type": "switch",
+    "description": "Farb-Modus-1",
+    "tooltip": "Aktiviert den ersten ATPlayer-Farbmodus als alternativen Farbakzent für das Popup-Menü.",
+    "default": false
+  },
   "blacklist-mode": {
     "type": "combobox",
     "description": "Blacklist-Modus",

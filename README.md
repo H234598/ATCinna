@@ -12,7 +12,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Popup-Aktion „Suche öffnen“ für den optionalen externen GTK-Suchdialog.
 - Menüeintrag „Einstellungen“ für direktes Öffnen der Applet-Einstellungen.
 - ATPlayer-nahe Umschaltung im Menü: **Filter ein-/ausblenden** und **Infos ein-/ausblenden**; beide Zustände werden in Cinnamon-Settings gespeichert.
-- Popup-Menüpunkt **Dunkle Oberfläche** mit sichtbarem Schalter, der die Menüoberfläche per CSS-Klasse `atcinna-dark-surface` in einen dunklen Kontrastzustand wechselt und als Applet-Setting persistiert wird.
+- Popup-Menüpunkte **Dunkle Oberfläche** und **Farb-Modus-1** mit sichtbaren Schaltern; sie wechseln die Menüoberfläche per CSS-Klassen `atcinna-dark-surface` und `atcinna-color-mode-1` in persistente ATPlayer-nahe Farbzustände.
 - Hilfe-/Programm-Untermenü mit ATPlayer-nahen Aktionen:
   - Hilfedialog (Infos im Popup-Infobereich)
   - Anleitung im Web (führt auf die ATPlayer-Hilfeseite)
@@ -75,7 +75,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.77`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.78`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`
