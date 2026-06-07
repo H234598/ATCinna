@@ -2797,7 +2797,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             `--description=${item.description || ""}`,
             `--website=${item.website || ""}`,
             `--download-file-name-template=${item.download_file_name_template || this.downloadFileNameTemplate || ""}`,
-            `--info-file=${item.info_file === true ? "true" : "false"}`
+            `--info-file=${item.info_file === true ? "true" : "false"}`,
+            "--start-now=false",
         ];
 
         this._setStatus(`ändere Download: ${item.title || "Eintrag"}`);
@@ -2847,6 +2848,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                     this._setStatus("keine Änderung");
                 } else {
                     this._setStatus(`Download aktualisiert: ${payload.updated}`);
+                    if (payload.start_now === true && payload.updated > 0) {
+                        this._runQueueRunItem(item);
+                        return;
+                    }
                 }
                 this._runQueueList();
             });

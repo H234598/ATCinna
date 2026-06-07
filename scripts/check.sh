@@ -627,6 +627,18 @@ if ! rg -q -F '_runQueueEditDialog' "$APPLET_JS"; then
     echo "ERROR: applet queue edit handler is missing"
     STATUS=1
 fi
+if ! rg -q -F -- '--start-now=false' "$APPLET_JS"; then
+    echo "ERROR: applet queue edit call is missing start-now argument"
+    STATUS=1
+fi
+if ! rg -q -F 'payload.start_now === true && payload.updated > 0' "$APPLET_JS"; then
+    echo "ERROR: applet queue edit result handling is missing start-now update gate"
+    STATUS=1
+fi
+if ! rg -q -F "_runQueueRunItem(item);" "$APPLET_JS"; then
+    echo "ERROR: applet queue edit success path does not execute run helper"
+    STATUS=1
+fi
 if ! rg -q -F '_queueEditDialogPath' "$APPLET_JS"; then
     echo "ERROR: applet queue edit dialog path is missing"
     STATUS=1
@@ -833,6 +845,18 @@ if ! rg -q -F 'Infodatei anlegen: "Name.txt"' "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Infodatei anlegen: \"Name.txt\""
     STATUS=1
 fi
+if ! rg -q -F "noch nicht starten" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: noch nicht starten"
+    STATUS=1
+fi
+if ! rg -q -F "sofort starten" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: sofort starten"
+    STATUS=1
+fi
+if ! rg -q -F "Startzeitpunkt:" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: Startzeitpunkt:"
+    STATUS=1
+fi
 if ! rg -q -F "Dateinamensvorlage" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Dateinamensvorlage"
     STATUS=1
@@ -853,6 +877,10 @@ if ! rg -q -F -- "--info-file" "$QUEUE_EDIT_DIALOG"; then
 fi
 if ! rg -q -F -- "--download-file-name-template" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog argument is missing: --download-file-name-template"
+    STATUS=1
+fi
+if ! rg -q -F -- "--start-now" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog argument is missing: --start-now"
     STATUS=1
 fi
 if ! rg -q -F 'download_update.add_argument("--download-file-name-template"' "$HELPER"; then

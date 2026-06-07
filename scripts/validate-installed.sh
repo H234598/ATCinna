@@ -339,6 +339,18 @@ for applet_selected_action in 'const runSelected = new PopupMenu.PopupMenuItem("
         exit 1
     fi
 done
+if ! rg -q -F 'payload.start_now === true' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not honor queue edit start_now payload"
+    exit 1
+fi
+if ! rg -q -F "_runQueueRunItem(item);" "$APPLET_JS"; then
+    echo "ERROR: installed applet does not start edited queue entry through existing helper"
+    exit 1
+fi
+if ! rg -q -F -- '--start-now=false' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not pass explicit start-now argument"
+    exit 1
+fi
 for applet_queue_entry_action in 'const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");' 'const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");'; do
     if ! rg -q -F "${applet_queue_entry_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue entry action label is missing: ${applet_queue_entry_action}"
@@ -459,6 +471,18 @@ if ! rg -q -F "Dateinamensvorlage" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog label is missing: Dateinamensvorlage"
     exit 1
 fi
+if ! rg -q -F "noch nicht starten" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog label is missing: noch nicht starten"
+    exit 1
+fi
+if ! rg -q -F "sofort starten" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog label is missing: sofort starten"
+    exit 1
+fi
+if ! rg -q -F "Startzeitpunkt:" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog label is missing: Startzeitpunkt:"
+    exit 1
+fi
 if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog label is missing: Liste der Pfade löschen"
     exit 1
@@ -469,6 +493,10 @@ if ! rg -q -F -- "--info-file" "$QUEUE_EDIT_DIALOG"; then
 fi
 if ! rg -q -F -- "--download-file-name-template" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: installed queue edit dialog argument is missing: --download-file-name-template"
+    exit 1
+fi
+if ! rg -q -F -- "--start-now" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: installed queue edit dialog argument is missing: --start-now"
     exit 1
 fi
 if ! rg -q -F 'download_update.add_argument("--download-file-name-template"' "$HELPER"; then

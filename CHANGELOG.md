@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.68
+
+- Queue-Edit-Dialog mit Startentscheidung ergänzt: neue Optionen **noch nicht starten** (Default) und **sofort starten** (direct start) sowie JSON-Feld `start_now` in der Dialogausgabe.
+- Bei erfolgreichem Speichern mit `start_now: true` startet das Applet den bearbeiteten Queue-Eintrag über den vorhandenen `_runQueueRunItem(item)`-Pfad, ohne neue Helper-/Scheduler-Logik einzuführen.
+- Statische Checks (`scripts/check.sh`), Install-Validierung (`scripts/validate-installed.sh`) und Versions-/Dokumentationseinträge auf 0.3.68 angehoben.
+- Versionssprung auf `0.3.68`; `metadata.json`, `VERSION`, `README.md` und `CHANGELOG.md` aktualisiert.
+
 ## 0.3.67
 
 - Queue-Edit-Dialog ergänzt nun das Feld **Dateinamensvorlage** (Initialisierung aus `--download-file-name-template`/Queue-Wert) und übergibt die Änderung per `download-update --download-file-name-template=...`.

@@ -305,7 +305,7 @@ def _select_download_folder(parent_window, folder_entry, gtk_module):
         dialog.destroy()
 
 
-def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website, file_name_template, info_file):
+def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website, file_name_template, info_file, start_now=False):
     try:
         import gi
 
@@ -324,7 +324,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     window.set_default_size(820, 560)
     window.set_border_width(8)
     window.connect("destroy", Gtk.main_quit)
-    result = {"status": "ok", "updated": 0, "cancelled": True}
+    result = {"status": "ok", "updated": 0, "cancelled": True, "start_now": False}
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     window.add(root)
@@ -379,6 +379,17 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     if description:
         description_buffer.set_text(description, -1)
 
+    start_not_now_radio = Gtk.RadioButton(label="noch nicht starten")
+    start_now_radio = Gtk.RadioButton(label="sofort starten", group=start_not_now_radio)
+    if start_now:
+        start_now_radio.set_active(True)
+    else:
+        start_not_now_radio.set_active(True)
+    start_mode_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    start_mode_label = Gtk.Label(label="Startzeitpunkt:", xalign=0)
+    start_mode_row.pack_start(start_not_now_radio, False, False, 0)
+    start_mode_row.pack_start(start_now_radio, False, False, 0)
+
     status = Gtk.Label(label="Bereit", xalign=0)
     status.set_line_wrap(True)
     root.pack_start(status, False, False, 0)
@@ -404,6 +415,8 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     grid.attach(description_label, 0, 10, 1, 1)
     grid.attach(description_scroller, 1, 10, 1, 1)
     grid.attach(info_file_checkbox, 1, 11, 1, 1)
+    grid.attach(start_mode_label, 0, 12, 1, 1)
+    grid.attach(start_mode_row, 1, 12, 1, 1)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     root.pack_start(actions, False, False, 0)
@@ -457,6 +470,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
                 return
             result.clear()
             result.update(payload)
+            result["start_now"] = start_now_radio.get_active()
             status.set_text("Gespeichert")
             window.close()
         except Exception as exc:
@@ -492,6 +506,7 @@ def main():
     parser.add_argument("--website", default="", help="Website")
     parser.add_argument("--download-file-name-template", default="", help="Download file name template")
     parser.add_argument("--info-file", default=None, help="Whether to write metadata info file")
+    parser.add_argument("--start-now", default="false", help="Start updated queue item immediately")
     args = parser.parse_args()
 
     if args.self_test:
@@ -516,6 +531,7 @@ def main():
         args.website,
         args.download_file_name_template,
         info_file,
+        _parse_bool_arg(args.start_now, "start-now"),
     )
     return 0
 
