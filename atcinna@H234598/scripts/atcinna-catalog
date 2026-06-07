@@ -24,6 +24,7 @@ MIRRORS = [
 ]
 
 QUEUE_MAX_ENTRIES = 500
+DOWNLOAD_ERROR_MAX_ENTRIES = 500
 QUEUE_STATUSES = {"queued", "running", "finished", "error", "cancelled"}
 HISTORY_MAX_ENTRIES = 100
 HISTORY_EXPORT_TARGET = "history"
@@ -1169,6 +1170,10 @@ def _undo_path():
     return data_dir() / "download-queue-undo.json"
 
 
+def _download_error_path():
+    return data_dir() / "download-errors.json"
+
+
 def _normalize_queue_entry(entry):
     if not isinstance(entry, dict):
         return None
@@ -1228,6 +1233,62 @@ def _store_undo(entries):
     _store_list(_undo_path(), entries)
 
 
+def _normalize_download_error_entry(entry):
+    if not isinstance(entry, dict):
+        return None
+
+    return {
+        "title": _normalize_entry_value(entry.get("title")),
+        "url": _normalize_entry_value(entry.get("url")),
+        "file": _normalize_entry_value(entry.get("file")),
+        "error": _normalize_entry_value(entry.get("error")),
+        "error_stream": _normalize_entry_value(entry.get("error_stream") or entry.get("errorStream")),
+        "timestamp": _normalize_timestamp(entry.get("timestamp"), int(time.time())),
+    }
+
+
+def _load_download_errors():
+    normalized = []
+    for entry in _load_list(_download_error_path()):
+        normalized_entry = _normalize_download_error_entry(entry)
+        if normalized_entry:
+            normalized.append(normalized_entry)
+    return normalized
+
+
+def _store_download_errors(entries):
+    _store_list(_download_error_path(), entries)
+
+
+def _add_download_error(item, file_path, error, error_stream=""):
+    entry = {
+        "title": _normalize_entry_value(item.get("title")),
+        "url": _normalize_entry_value(item.get("url")),
+        "file": _normalize_entry_value(file_path),
+        "error": _normalize_entry_value(error),
+        "error_stream": _normalize_entry_value(error_stream),
+        "timestamp": int(time.time()),
+    }
+    with _store_lock(_download_error_path()):
+        entries = _load_download_errors()
+        entries.insert(0, entry)
+        if DOWNLOAD_ERROR_MAX_ENTRIES > 0:
+            entries = entries[:DOWNLOAD_ERROR_MAX_ENTRIES]
+        _store_download_errors(entries)
+
+
+def action_download_error_list(args):
+    entries = _load_download_errors()
+    print(json.dumps({"status": "ok", "count": len(entries), "results": entries}))
+
+
+def action_download_error_clear(args):
+    with _store_lock(_download_error_path()):
+        entries = _load_download_errors()
+        _store_download_errors([])
+    print(json.dumps({"status": "ok", "removed": len(entries)}))
+
+
 def _entry_from_args_with_folder(args):
     item = _entry_from_args(args)
     item["folder"] = _normalize_entry_value(args.folder)
@@ -1273,13 +1334,17 @@ def _download_to_file(url, folder, title):
         die("curl not found")
 
     destination = Path(_download_file_path(url, folder, title))
-    subprocess.run(
-        [curl, "--fail", "--location", "--silent", "--show-error", "-L", "-o", str(destination), url],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=True,
-        timeout=120,
-    )
+    try:
+        subprocess.run(
+            [curl, "--fail", "--location", "--silent", "--show-error", "-L", "-o", str(destination), url],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            timeout=120,
+        )
+    except subprocess.CalledProcessError as exc:
+        exc.destination = str(destination)
+        raise
     return str(destination)
 
 
@@ -1341,7 +1406,8 @@ def _download_with_info(item, folder):
     try:
         if item.get("info_file", False):
             _write_info_file(destination, item)
-    except Exception:
+    except Exception as exc:
+        exc.destination = destination
         _remove_file_if_exists(destination)
         _remove_file_if_exists(_to_info_file_path(destination))
         raise
@@ -1650,15 +1716,20 @@ def _run_claimed_download(entry):
         cleanup_destination = destination
     except subprocess.CalledProcessError as exc:
         download_status = "error"
-        error = (exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc)
+        destination = getattr(exc, "destination", destination)
+        error_stream = (exc.stderr or b"").decode("utf-8", "replace").strip()
+        error = error_stream or str(exc)
+        _add_download_error(entry, destination, error, error_stream)
     except Exception as exc:
         download_status = "error"
+        destination = getattr(exc, "destination", destination)
         error = str(exc)
         if cleanup_destination:
             _remove_file_if_exists(cleanup_destination)
 
         if destination and entry.get("info_file", False):
             _remove_file_if_exists(_to_info_file_path(destination))
+        _add_download_error(entry, destination, error)
 
     _finish_queued_download(entry, download_status, destination, error)
     return {
@@ -2231,11 +2302,17 @@ def action_download(args):
     try:
         destination = _download_with_info(item, folder)
     except subprocess.CalledProcessError as exc:
-        die((exc.stderr or b"").decode("utf-8", "replace").strip() or str(exc))
+        destination = getattr(exc, "destination", destination)
+        error_stream = (exc.stderr or b"").decode("utf-8", "replace").strip()
+        error = error_stream or str(exc)
+        _add_download_error(item, destination, error, error_stream)
+        die(error)
     except Exception as exc:
+        destination = getattr(exc, "destination", destination)
         _remove_file_if_exists(destination)
         if destination and item.get("info_file", False):
             _remove_file_if_exists(_to_info_file_path(destination))
+        _add_download_error(item, destination, str(exc))
         die(str(exc))
 
     print(json.dumps({"status": "ok", "path": str(destination)}))
@@ -2400,6 +2477,8 @@ def parse_args():
     download_enqueue.add_argument("--info-file", default="false", help="Whether to write metadata info file")
 
     sub.add_parser("download-list", help="List queue entries")
+    sub.add_parser("download-error-list", help="List persistent download errors")
+    sub.add_parser("download-error-clear", help="Clear persistent download errors")
 
     sub.add_parser("download-run-next", help="Run next queued download")
     download_run = sub.add_parser("download-run", help="Run queued download by URL")
@@ -2481,6 +2560,10 @@ def main():
         action_download_enqueue(args)
     elif args.action == "download-list":
         action_download_list(args)
+    elif args.action == "download-error-list":
+        action_download_error_list(args)
+    elif args.action == "download-error-clear":
+        action_download_error_clear(args)
     elif args.action == "download-run-next":
         action_download_run_next(args)
     elif args.action == "download-run":

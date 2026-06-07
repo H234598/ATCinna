@@ -156,12 +156,28 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
-for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-info-file" "download-show-notification"; do
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-info-file" "download-show-notification" "download-dialog-error-show"; do
     if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
         echo "ERROR: settings-schema key missing: $key"
         exit 1
     fi
 done
+if ! rg -q -F 'this.settings.bind("download-dialog-error-show", "downloadDialogErrorShow", null);' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not bind download-dialog-error-show"
+    exit 1
+fi
+if ! rg -q -F '"download-dialog-error-show": true' "$APPLET_JS"; then
+    echo "ERROR: installed applet reset defaults do not enable download-dialog-error-show"
+    exit 1
+fi
+if ! rg -q -F 'this.settings.setValue("download-dialog-error-show", defaults["download-dialog-error-show"]);' "$APPLET_JS"; then
+    echo "ERROR: installed applet reset does not persist download-dialog-error-show"
+    exit 1
+fi
+if ! rg -q -F '_runDownloadErrorList(false)' "$APPLET_JS"; then
+    echo "ERROR: installed automatic download error display should not overwrite the active download status"
+    exit 1
+fi
 
 node --check "$APPLET_JS" >/dev/null
 python3 - "$APPLET_JS" <<'PY'
@@ -275,6 +291,12 @@ for applet_label in "Download starten" "Downloads aktualisieren" "Downloads star
         exit 1
     fi
 done
+for applet_label in "Downloadfehler anzeigen" "Downloadfehler löschen" "Downloadfehler nicht mehr automatisch anzeigen"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS" "$SETTINGS_SCHEMA"; then
+        echo "ERROR: installed download error label is missing: ${applet_label}"
+        exit 1
+    fi
+done
 for applet_selected_action in 'const runSelected = new PopupMenu.PopupMenuItem("Downloads starten");' 'const preferSelected = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBackSelected = new PopupMenu.PopupMenuItem("Downloads zurückstellen");' 'const cancelSelected = new PopupMenu.PopupMenuItem("Downloads stoppen");' 'const removeSelected = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");'; do
     if ! rg -q -F "${applet_selected_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue selected action label is missing: ${applet_selected_action}"
@@ -339,6 +361,12 @@ if ! rg -q -F '"download-run"' "$HELPER"; then
     echo "ERROR: installed helper action is missing: download-run"
     exit 1
 fi
+for helper_action in "download-error-list" "download-error-clear"; do
+    if ! rg -q -F "${helper_action}" "$HELPER"; then
+        echo "ERROR: installed helper action is missing: ${helper_action}"
+        exit 1
+    fi
+done
 if ! python3 -m py_compile "$SEARCH_DIALOG"; then
     echo "ERROR: py_compile failed for search dialog"
     exit 1

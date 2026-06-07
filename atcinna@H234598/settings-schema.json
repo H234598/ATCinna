@@ -151,6 +151,12 @@
     "tooltip": "Nach einem erfolgreichen oder fehlgeschlagenen Download eine Benachrichtigung anzeigen.",
     "default": true
   },
+  "download-dialog-error-show": {
+    "type": "switch",
+    "description": "Downloadfehler anzeigen",
+    "tooltip": "Bei Downloadfehlern die persistente Fehlerliste im Applet automatisch anzeigen.",
+    "default": true
+  },
   "refresh-mirror": {
     "type": "combobox",
     "description": "Katalog-Mirror",

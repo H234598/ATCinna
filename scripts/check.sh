@@ -699,9 +699,37 @@ if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
     echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-info-file download-show-notification; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-info-file download-show-notification download-dialog-error-show; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
+        STATUS=1
+    fi
+done
+if ! rg -q -F 'this.settings.bind("download-dialog-error-show", "downloadDialogErrorShow", null);' "$APPLET_JS"; then
+    echo "ERROR: applet does not bind download-dialog-error-show"
+    STATUS=1
+fi
+if ! rg -q -F '"download-dialog-error-show": true' "$APPLET_JS"; then
+    echo "ERROR: applet reset defaults do not enable download-dialog-error-show"
+    STATUS=1
+fi
+if ! rg -q -F 'this.settings.setValue("download-dialog-error-show", defaults["download-dialog-error-show"]);' "$APPLET_JS"; then
+    echo "ERROR: applet reset does not persist download-dialog-error-show"
+    STATUS=1
+fi
+if ! rg -q -F '_runDownloadErrorList(false)' "$APPLET_JS"; then
+    echo "ERROR: automatic download error display should not overwrite the active download status"
+    STATUS=1
+fi
+for helper_action in "download-error-list" "download-error-clear"; do
+    if ! rg -q -F "${helper_action}" "$HELPER"; then
+        echo "ERROR: helper action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
+for applet_label in "Downloadfehler anzeigen" "Downloadfehler löschen" "Downloadfehler nicht mehr automatisch anzeigen"; do
+    if ! rg -q -F "${applet_label}" "$APPLET_JS" "$SETTINGS_SCHEMA"; then
+        echo "ERROR: download error UI label is missing: ${applet_label}"
         STATUS=1
     fi
 done
@@ -1829,6 +1857,12 @@ if ! jq -e '.status == "error" and .message == "invalid URL scheme"' "$TMP_DIR/d
     cat "$TMP_DIR/download-invalid.out"
     exit 1
 fi
+DOWNLOAD_ERRORS_AFTER_INVALID="$(python3 "$HELPER" download-error-list)"
+if ! echo "$DOWNLOAD_ERRORS_AFTER_INVALID" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: invalid URL download should not be logged as a download error"
+    echo "$DOWNLOAD_ERRORS_AFTER_INVALID"
+    exit 1
+fi
 
 QUEUE_DOWNLOAD_DIR="$TMP_DIR/queue-downloads"
 QUEUE_HTTP_DIR="$TMP_DIR/queue-http"
@@ -1878,6 +1912,32 @@ QUEUE_URL_ONE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-one.mp3"
 QUEUE_URL_TWO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3"
 QUEUE_URL_INFO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-info.mp3"
 QUEUE_URL_THREE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-three.mp3"
+
+DIRECT_ERROR_TITLE="Direkter Downloadfehler"
+if python3 "$HELPER" download \
+    --title "$DIRECT_ERROR_TITLE" \
+    --url "$QUEUE_URL_THREE" \
+    --folder "$QUEUE_DOWNLOAD_DIR" >"$TMP_DIR/download-direct-error.out" 2>&1; then
+    echo "ERROR: direct download for missing fixture unexpectedly succeeded"
+    exit 1
+fi
+if ! jq -e '.status == "error" and (.message | length > 0)' "$TMP_DIR/download-direct-error.out" >/dev/null 2>&1; then
+    echo "ERROR: direct download error did not return expected JSON"
+    cat "$TMP_DIR/download-direct-error.out"
+    exit 1
+fi
+DIRECT_ERROR_LIST="$(python3 "$HELPER" download-error-list)"
+if ! echo "$DIRECT_ERROR_LIST" | jq -e --arg title "$DIRECT_ERROR_TITLE" --arg url "$QUEUE_URL_THREE" '.status == "ok" and .count == 1 and .results[0].title == $title and .results[0].url == $url and (.results[0].file | type == "string") and (.results[0].error | length > 0) and (.results[0].error_stream | type == "string") and (.results[0].timestamp > 0)' >/dev/null; then
+    echo "ERROR: direct download error was not logged"
+    echo "$DIRECT_ERROR_LIST"
+    exit 1
+fi
+DIRECT_ERROR_CLEAR="$(python3 "$HELPER" download-error-clear)"
+if ! echo "$DIRECT_ERROR_CLEAR" | jq -e '.status == "ok" and .removed == 1' >/dev/null; then
+    echo "ERROR: download-error-clear did not remove direct error"
+    echo "$DIRECT_ERROR_CLEAR"
+    exit 1
+fi
 
 DIRECT_INFO_TITLE="Download direkt mit Infodatei"
 DIRECT_WITH_INFO="$(python3 "$HELPER" download \
@@ -2159,6 +2219,38 @@ QUEUE_LIST_EMPTY="$(python3 "$HELPER" download-list)"
 if ! echo "$QUEUE_LIST_EMPTY" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
     echo "ERROR: download queue should be empty after clear"
     echo "$QUEUE_LIST_EMPTY"
+    exit 1
+fi
+
+QUEUE_ERROR_TITLE="Queue Downloadfehler"
+QUEUE_ERROR_ENQUEUE="$(python3 "$HELPER" download-enqueue --title "$QUEUE_ERROR_TITLE" --url "$QUEUE_URL_THREE" --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$QUEUE_ERROR_ENQUEUE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: queue error fixture enqueue failed"
+    echo "$QUEUE_ERROR_ENQUEUE"
+    exit 1
+fi
+QUEUE_ERROR_RUN="$(python3 "$HELPER" download-run-next)"
+if ! echo "$QUEUE_ERROR_RUN" | jq -e '.status == "ok" and .result.status == "error" and (.result.error | length > 0)' >/dev/null; then
+    echo "ERROR: queue download error did not report error result"
+    echo "$QUEUE_ERROR_RUN"
+    exit 1
+fi
+QUEUE_ERROR_LIST="$(python3 "$HELPER" download-error-list)"
+if ! echo "$QUEUE_ERROR_LIST" | jq -e --arg title "$QUEUE_ERROR_TITLE" --arg url "$QUEUE_URL_THREE" '.status == "ok" and .count == 1 and .results[0].title == $title and .results[0].url == $url and (.results[0].file | type == "string") and (.results[0].error | length > 0) and (.results[0].error_stream | type == "string") and (.results[0].timestamp > 0)' >/dev/null; then
+    echo "ERROR: queue download error was not logged"
+    echo "$QUEUE_ERROR_LIST"
+    exit 1
+fi
+QUEUE_ERROR_CLEAR="$(python3 "$HELPER" download-error-clear)"
+if ! echo "$QUEUE_ERROR_CLEAR" | jq -e '.status == "ok" and .removed == 1' >/dev/null; then
+    echo "ERROR: download-error-clear did not remove queue error"
+    echo "$QUEUE_ERROR_CLEAR"
+    exit 1
+fi
+QUEUE_ERROR_LIST_AFTER_CLEAR="$(python3 "$HELPER" download-error-list)"
+if ! echo "$QUEUE_ERROR_LIST_AFTER_CLEAR" | jq -e '.status == "ok" and .count == 0' >/dev/null; then
+    echo "ERROR: download-error-clear did not empty error list"
+    echo "$QUEUE_ERROR_LIST_AFTER_CLEAR"
     exit 1
 fi
 

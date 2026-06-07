@@ -67,8 +67,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionBlacklistTopicFirstSelected = null;
         this._queueSection = null;
         this._queueListSection = null;
+        this._downloadErrorSection = null;
         this._queueSelectionItems = new Set();
         this._queueItemsCache = [];
+        this._downloadErrorItemsCache = [];
         this._queueActionSelectAll = null;
         this._queueActionInvertSelection = null;
         this._queueActionResetSelection = null;
@@ -120,6 +122,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this.settings.bind("download-folder", "downloadFolder", null);
         this.settings.bind("download-info-file", "downloadInfoFile", null);
         this.settings.bind("download-show-notification", "downloadShowNotification", null);
+        this.settings.bind("download-dialog-error-show", "downloadDialogErrorShow", null);
         this.settings.bind("refresh-mirror", "refreshMirror", null);
         this._activeSearchQuery = this.searchQuery || "";
 
@@ -276,8 +279,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
 
         this._queueSection = new PopupMenu.PopupMenuSection();
         this._queueListSection = new PopupMenu.PopupMenuSection();
+        this._downloadErrorSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._queueSection);
         this.menu.addMenuItem(this._queueListSection);
+        this.menu.addMenuItem(this._downloadErrorSection);
 
         this._applySectionVisibility();
         this._setupQueueActions();
@@ -450,7 +455,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     }
 
     _shortText(value, maxLength = 140) {
-        const text = this._toTrimmed(value);
+        const text = this._toTrimmed(value).replace(/\s+/g, " ");
         if (text.length <= maxLength) {
             return text;
         }
@@ -1111,7 +1116,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             "show-filter-section": true,
             "show-info-section": true,
             "download-info-file": false,
-            "download-show-notification": true
+            "download-show-notification": true,
+            "download-dialog-error-show": true
         };
         const nextSearchQuery = defaults["search-query"];
 
@@ -1138,6 +1144,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.showInfoSection = defaults["show-info-section"];
             this.downloadInfoFile = defaults["download-info-file"];
             this.downloadShowNotification = defaults["download-show-notification"];
+            this.downloadDialogErrorShow = defaults["download-dialog-error-show"];
 
             this.settings.setValue("search-query", defaults["search-query"]);
             this.settings.setValue("sender-filter", defaults["sender-filter"]);
@@ -1159,6 +1166,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             this.settings.setValue("show-info-section", defaults["show-info-section"]);
             this.settings.setValue("download-info-file", defaults["download-info-file"]);
             this.settings.setValue("download-show-notification", defaults["download-show-notification"]);
+            this.settings.setValue("download-dialog-error-show", defaults["download-dialog-error-show"]);
 
             if (this._searchEntry && this._searchEntry.get_text() !== nextSearchQuery) {
                 this._searchEntry.set_text(nextSearchQuery);
@@ -1831,6 +1839,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         refresh.connect("activate", () => this._runQueueList());
         this._queueSection.addMenuItem(refresh);
 
+        const showErrors = new PopupMenu.PopupMenuItem("Downloadfehler anzeigen");
+        showErrors.connect("activate", () => this._runDownloadErrorList());
+        this._queueSection.addMenuItem(showErrors);
+
+        const clearErrors = new PopupMenu.PopupMenuItem("Downloadfehler löschen");
+        clearErrors.connect("activate", () => this._runDownloadErrorClear());
+        this._queueSection.addMenuItem(clearErrors);
+
         const runNext = new PopupMenu.PopupMenuItem("Nächsten Download starten");
         runNext.connect("activate", () => this._runQueueRunNext());
         this._queueSection.addMenuItem(runNext);
@@ -1980,6 +1996,127 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
     }
 
+    _runDownloadErrorList(updateStatus = true) {
+        this._runHelper([
+            "download-error-list"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-error-list fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-error-list: unerwartete Antwort");
+                    return;
+                }
+                this._renderDownloadErrors(payload.results || []);
+                if (updateStatus) {
+                    this._setStatus(`Downloadfehler: ${payload.count || 0}`);
+                }
+            } catch (error) {
+                this._setStatus(`download-error-list ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _runDownloadErrorClear() {
+        this._runHelper([
+            "download-error-clear"
+        ], (status, stdout, stderr) => {
+            if (status !== CMD_SUCCESS) {
+                this._setStatus(`download-error-clear fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
+                return;
+            }
+            try {
+                const payload = JSON.parse(stdout || "{}");
+                if (payload.status !== "ok") {
+                    this._setStatus("download-error-clear: unerwartete Antwort");
+                    return;
+                }
+                this._renderDownloadErrors([]);
+                this._setStatus(`Downloadfehler gelöscht: ${payload.removed || 0}`);
+            } catch (error) {
+                this._setStatus(`download-error-clear ungültige Antwort: ${error.message}`);
+            }
+        });
+    }
+
+    _maybeShowDownloadErrors() {
+        if (this.downloadDialogErrorShow === true) {
+            this._runDownloadErrorList(false);
+        }
+    }
+
+    _disableAutomaticDownloadErrorDisplay() {
+        if (!this.settings) {
+            this._setStatus("Automatische Downloadfehler-Anzeige nicht änderbar");
+            return;
+        }
+        this.downloadDialogErrorShow = false;
+        this.settings.setValue("download-dialog-error-show", false);
+        this._setStatus("Downloadfehler werden weiter protokolliert, aber nicht mehr automatisch angezeigt");
+        this._renderDownloadErrors(this._downloadErrorItemsCache);
+    }
+
+    _renderDownloadErrors(items) {
+        if (!this._downloadErrorSection) {
+            return;
+        }
+
+        this._downloadErrorSection.removeAll();
+        const entries = Array.isArray(items) ? items : [];
+        const visibleEntries = entries.slice(0, 10);
+        this._downloadErrorItemsCache = visibleEntries;
+
+        const heading = new PopupMenu.PopupMenuItem("Downloadfehler");
+        heading.actor.reactive = false;
+        heading.actor.add_style_class_name("atcinna-section-title");
+        this._downloadErrorSection.addMenuItem(heading);
+
+        if (!entries.length) {
+            const empty = new PopupMenu.PopupMenuItem("keine Downloadfehler");
+            empty.actor.reactive = false;
+            this._downloadErrorSection.addMenuItem(empty);
+            return;
+        }
+
+        for (const item of visibleEntries) {
+            const title = item.title || "Eintrag";
+            const errorText = item.error || item.error_stream || "unbekannter Fehler";
+            const row = new PopupMenu.PopupSubMenuMenuItem(`${this._shortText(title, 48)}: ${this._shortText(errorText, 88)}`);
+            const errorRow = new PopupMenu.PopupMenuItem(`Fehler: ${this._shortText(errorText)}`);
+            errorRow.actor.reactive = false;
+            row.menu.addMenuItem(errorRow);
+            if (item.error_stream) {
+                const streamRow = new PopupMenu.PopupMenuItem(`Fehlerausgabe: ${this._shortText(item.error_stream)}`);
+                streamRow.actor.reactive = false;
+                row.menu.addMenuItem(streamRow);
+            }
+            if (item.url) {
+                const urlRow = new PopupMenu.PopupMenuItem(`URL: ${this._shortText(item.url)}`);
+                urlRow.actor.reactive = false;
+                row.menu.addMenuItem(urlRow);
+            }
+            if (item.file) {
+                const fileRow = new PopupMenu.PopupMenuItem(`Datei: ${this._shortText(item.file)}`);
+                fileRow.actor.reactive = false;
+                row.menu.addMenuItem(fileRow);
+            }
+            this._downloadErrorSection.addMenuItem(row);
+        }
+
+        const clearErrors = new PopupMenu.PopupMenuItem("Downloadfehler löschen");
+        clearErrors.connect("activate", () => this._runDownloadErrorClear());
+        this._downloadErrorSection.addMenuItem(clearErrors);
+
+        if (this.downloadDialogErrorShow === true) {
+            const disableAutoShow = new PopupMenu.PopupMenuItem("Downloadfehler nicht mehr automatisch anzeigen");
+            disableAutoShow.connect("activate", () => this._disableAutomaticDownloadErrorDisplay());
+            this._downloadErrorSection.addMenuItem(disableAutoShow);
+        }
+    }
+
     _runQueueRunNext() {
         this._setStatus("starte nächsten Download");
         this._runHelper([
@@ -2006,6 +2143,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 } else if (payload.result && payload.result.status === "error") {
                     this._setStatus(`download fehlgeschlagen: ${payload.result.error}`);
                     this._notifyDownloadResult("Download", "error", payload.result.error || "unbekannter Fehler");
+                    this._maybeShowDownloadErrors();
                 } else {
                     this._setStatus("download abgeschlossen");
                     this._notifyDownloadResult("Download", "finished", "erfolgreich abgeschlossen");
@@ -2075,6 +2213,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                 } else if (payload.result && payload.result.status === "error") {
                     this._setStatus(`download fehlgeschlagen: ${payload.result.error || "unbekannter Fehler"}`);
                     this._notifyDownloadResult(title, "error", payload.result.error || "unbekannter Fehler");
+                    this._maybeShowDownloadErrors();
                 } else {
                     this._setStatus("download abgeschlossen");
                     this._notifyDownloadResult(title, "finished", "erfolgreich abgeschlossen");
@@ -2102,6 +2241,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             if (remaining <= 0) {
                 this._setStatus(`Alle Downloads gestartet: erledigt ${finishedCount}, Fehler ${errorCount} (Limit erreicht)`);
                 this._notifyDownloadRunAllSummary(finishedCount, errorCount);
+                if (errorCount > 0) {
+                    this._maybeShowDownloadErrors();
+                }
                 this._runQueueList();
                 return;
             }
@@ -2128,6 +2270,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
                     if (payload.state === "empty") {
                         this._setStatus(`Alle Downloads abgearbeitet: erledigt ${finishedCount}, Fehler ${errorCount}`);
                         this._notifyDownloadRunAllSummary(finishedCount, errorCount);
+                        if (errorCount > 0) {
+                            this._maybeShowDownloadErrors();
+                        }
                         this._runQueueList();
                         return;
                     }
@@ -3762,6 +3907,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             if (status !== CMD_SUCCESS) {
                 this._setStatus(`download fehlgeschlagen: ${stderr || "unbekannter Fehler"}`);
                 this._notifyDownloadResult(item.title || "Eintrag", "error", stderr || "unbekannter Fehler");
+                this._maybeShowDownloadErrors();
                 return;
             }
             let payload = {};

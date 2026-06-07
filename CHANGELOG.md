@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.59
+
+- Persistente ATPlayer-nahe Downloadfehlerliste ergänzt: direkte Downloadfehler und Queue-Downloadfehler werden in `download-errors.json` mit Titel, URL, Datei, Fehler, Fehlerausgabe und Zeitstempel protokolliert.
+- Neue Helper-Actions `download-error-list` und `download-error-clear`; das Applet bietet **Downloadfehler anzeigen**, **Downloadfehler löschen** und eine Fehlersektion im Popup.
+- Neuer Applet-Schalter `download-dialog-error-show` mit Default `true`: Fehler werden weiter protokolliert, aber die automatische Fehlerlisten-Anzeige kann deaktiviert werden.
+- `scripts/check.sh` und `scripts/validate-installed.sh` sichern Schema, Binding, Reset-Default, Helper-Actions, Applet-Labels sowie funktionale direkte und Queue-Fehlerlistenpfade ab.
+
 ## 0.3.58
 
 - Direkte Downloads und Queue-Downloads melden `Main.notify("Download beendet", details)` nach fertiggestelltem Download als Erfolg oder Fehler, sofern die neue Applet-Einstellung `download-show-notification` aktiv ist.
