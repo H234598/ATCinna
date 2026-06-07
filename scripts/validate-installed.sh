@@ -267,6 +267,22 @@ for applet_label in "Filme als gesehen markieren" "Filme als ungesehen markieren
         exit 1
     fi
 done
+if rg -q '_addFilterActions' "$APPLET_JS"; then
+    for installed_filter_label in "Filter" "nach Sender filtern" "nach Genre filtern" "nach Thema filtern" "nach Titel filtern" "nach Sender und Thema filtern" "nach Sender, und Titel filtern" "nach Thema oder Titel filtern"; do
+        if ! rg -q -F "${installed_filter_label}" "$APPLET_JS"; then
+            echo "ERROR: installed applet filter label is missing: ${installed_filter_label}"
+            exit 1
+        fi
+    done
+    if ! rg -q -F '_applyFilterSettings("theme-title-filter", topic || title' "$APPLET_JS"; then
+        echo "ERROR: installed applet filter wiring is missing theme-title OR title action"
+        exit 1
+    fi
+    if ! rg -q -F 'status: "Thema oder Titel"' "$APPLET_JS"; then
+        echo "ERROR: installed applet theme-title filter status metadata is missing"
+        exit 1
+    fi
+fi
 for applet_history_entry_action in 'const markShown = new PopupMenu.PopupMenuItem("Filme als gesehen markieren");' 'const markUnshown = new PopupMenu.PopupMenuItem("Filme als ungesehen markieren");'; do
     if ! rg -q -F "${applet_history_entry_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet history entry action label is missing: ${applet_history_entry_action}"

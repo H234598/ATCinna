@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.60
+
+- Kontextmenüfilter erweitert: Neu ergänzt wurde die Aktion **nach Thema oder Titel filtern** in den `Filter`-Untermenüs aller relevanten Einträge. Die Aktion nutzt `theme-title-filter` mit dem Wert `topic || title`, damit sie auch ohne eigenes Thema noch sinnvoll funktioniert.
+- `scripts/check.sh` und `scripts/validate-installed.sh` validieren den neuen Filterlabel- und Wiring-Kontext gezielt für `theme-title-filter`.
+- Versionssprung auf `0.3.60`; `metadata.json`, `VERSION`, `README.md` und Applet-UI-Dokumentation aktualisiert.
+
 ## 0.3.59
 
 - Persistente ATPlayer-nahe Downloadfehlerliste ergänzt: direkte Downloadfehler und Queue-Downloadfehler werden in `download-errors.json` mit Titel, URL, Datei, Fehler, Fehlerausgabe und Zeitstempel protokolliert.

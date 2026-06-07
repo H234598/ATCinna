@@ -3345,6 +3345,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         });
         filterMenu.menu.addMenuItem(titleFilterItem);
 
+        const topicTitleFilterItem = new PopupMenu.PopupMenuItem("nach Thema oder Titel filtern");
+        topicTitleFilterItem.connect("activate", () => {
+            this._applyFilterSettings("theme-title-filter", topic || title, {
+                fallback: item.sender || item.topic || item.title || item.genre || "",
+                status: "Thema oder Titel"
+            });
+        });
+        filterMenu.menu.addMenuItem(topicTitleFilterItem);
+
         const senderTopicFilterItem = new PopupMenu.PopupMenuItem("nach Sender und Thema filtern");
         senderTopicFilterItem.connect("activate", () => {
             this._applyFilterSettings("sender-filter", sender, {
@@ -3371,8 +3380,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     _applyFilterSettings(settingName, rawValue, statusMeta, secondaryName, secondaryRawValue, secondaryStatusMeta) {
         const value = this._toTrimmed(rawValue);
         if (!value) {
+            const settingText = statusMeta && statusMeta.status ? `${statusMeta.status}-Wert` : `${settingName.replace(/-/g, " ")}wert`;
             const fallback = statusMeta && statusMeta.fallback ? ` (${statusMeta.fallback})` : "";
-            this._setStatus(`Filter kann nicht gesetzt werden: kein ${settingName.replace(/-/g, " ")}wert${fallback}`);
+            this._setStatus(`Filter kann nicht gesetzt werden: kein ${settingText}${fallback}`);
             return;
         }
 
@@ -3385,8 +3395,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         if (secondaryName) {
             const secondaryValue = this._toTrimmed(secondaryRawValue);
             if (!secondaryValue) {
+                const secondaryText = secondaryStatusMeta && secondaryStatusMeta.status ? `${secondaryStatusMeta.status}-Wert` : `${secondaryName.replace(/-/g, " ")}wert`;
                 const fallback = secondaryStatusMeta && secondaryStatusMeta.fallback ? ` (${secondaryStatusMeta.fallback})` : "";
-                this._setStatus(`Filter kann nicht gesetzt werden: kein ${secondaryName.replace(/-/g, " ")}wert${fallback}`);
+                this._setStatus(`Filter kann nicht gesetzt werden: kein ${secondaryText}${fallback}`);
                 return;
             }
             updates.push({

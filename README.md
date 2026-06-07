@@ -49,7 +49,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen zeigen jetzt zusätzliche Metadatenaktion:
   "Audioinformation anzeigen", plus Kopieraktionen für Audio-URL, Titel, Genre und Thema.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen besitzen zusätzlich das Untermenü **Filter** mit filtern- und kombinierten Filteraktionen im ATPlayer-Stil:
-  Sender, Genre, Thema, Titel, Sender+Thema sowie Sender+Titel.
+  Sender, Genre, Thema, Titel, Thema oder Titel, Sender+Thema sowie Sender+Titel.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen bieten ATPlayer-ähnliche Blacklist-Aktionen für Audio, Sender/Genre/Thema, Sender/Thema, Thema, Titel sowie das neue `theme_title`-Konstrukt „Thema oder Titel“.
 - Blacklist-Regeln unterstützen das Negationspräfix `!:` (Ausschluss auf Feldebene). Das Regex-Präfix `#:` ist aus Sicherheitsgründen ausgeschlossen.
 - Das Script `atcinna@H234598/scripts/atcinna-search-dialog` nutzt `atcinna-catalog` als Backend und bietet Play-, Webseiten- und Download-Buttons mit sicheren Argumentlisten, wenn Python-GTK3 verfügbar ist.
@@ -64,7 +64,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.59`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.60`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`
