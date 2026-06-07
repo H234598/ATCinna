@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.84
+
+- Audioinformation benennt die ATPlayer-nahe Dauerzeile jetzt sichtbar als **Dauer [min]**.
+- Es wurden keine Helper-, Store-, Settings- oder Datenbankpfade geändert.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen das neue Label und verbieten den alten Audioinfo-Vertrag; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.84` angehoben.
+
 ## 0.3.83
 
 - Audioinformation zeigt **Datum**, **Zeit** und **Dauer** jetzt als getrennte ATPlayer-nahe Infozeilen statt als kombinierte Zeile.

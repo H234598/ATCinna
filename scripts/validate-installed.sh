@@ -437,12 +437,16 @@ fi
 for info_date_contract in \
     '["Datum", safeItem.date]' \
     '["Zeit", safeItem.time]' \
-    '["Dauer", safeItem.duration]'; do
+    '["Dauer [min]", safeItem.duration]'; do
     if ! rg -q -F "${info_date_contract}" "$APPLET_JS"; then
         echo "ERROR: installed applet info date/time/duration contract is missing: ${info_date_contract}"
         exit 1
     fi
 done
+if rg -q -F '["Dauer", safeItem.duration]' "$APPLET_JS"; then
+    echo "ERROR: installed applet old info duration label is still present"
+    exit 1
+fi
 if rg -q -F '["Datum/Uhrzeit/Dauer"' "$APPLET_JS"; then
     echo "ERROR: installed applet combined info date/time/duration row is still present"
     exit 1
