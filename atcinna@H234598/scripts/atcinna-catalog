@@ -25,6 +25,10 @@ MIRRORS = [
 
 QUEUE_MAX_ENTRIES = 500
 QUEUE_STATUSES = {"queued", "running", "finished", "error", "cancelled"}
+HISTORY_MAX_ENTRIES = 100
+HISTORY_EXPORT_TARGET = "history"
+BOOKMARK_MAX_ENTRIES = 500
+BOOKMARK_EXPORT_TARGET = "bookmarks"
 UNDO_MAX_ENTRIES = 100
 BLACKLIST_MAX_ENTRIES = 500
 BLACKLIST_MODES = {"off", "hide", "only"}
@@ -38,6 +42,11 @@ FILTER_PROFILE_DEFAULT_MAX_DAYS = 0
 FILTER_PROFILE_DEFAULT_MIN_DURATION = 0
 FILTER_PROFILE_DEFAULT_MAX_DURATION = 150
 FILTER_PROFILE_DEFAULT_PODCAST_MODE = "all"
+ATPLAYER_FORMAT_SEPARATOR = " |#| "
+ATPLAYER_META_SEPARATOR = "  |###|  "
+ATPLAYER_FORMAT_RE = re.compile(
+    r"^\s*(?P<date>.*?) \|#\| (?P<topic>.*?) \|#\| (?P<title>.*?)  \|###\|  (?P<url>.*)$"
+)
 
 
 def die(message, exit_code=1):
@@ -137,6 +146,130 @@ def _load_list(path):
         return []
 
     return [item for item in raw if isinstance(item, dict)]
+
+
+def _store_text_lines(path, lines):
+    ensure_dir(path.parent)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as handle:
+            handle.write("\n".join(lines))
+            if lines:
+                handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        dir_fd = os.open(path.parent, os.O_DIRECTORY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _target_path_from_name(target):
+    if target == HISTORY_EXPORT_TARGET:
+        return data_dir() / "history.json"
+    if target == BOOKMARK_EXPORT_TARGET:
+        return data_dir() / "bookmarks.json"
+    die("unknown target")
+
+
+def _target_limit(target):
+    if target == HISTORY_EXPORT_TARGET:
+        return HISTORY_MAX_ENTRIES
+    if target == BOOKMARK_EXPORT_TARGET:
+        return BOOKMARK_MAX_ENTRIES
+    die("unknown target")
+
+
+def _parse_atplayer_text_line(raw_line):
+    line = raw_line.rstrip("\r\n")
+    if not line:
+        return None, None
+
+    match = ATPLAYER_FORMAT_RE.match(line)
+    if match:
+        url = _normalize_entry_value(match.group("url"))
+        if not url:
+            return None, "skip_invalid"
+        return {
+            "url": url,
+            "date": _normalize_entry_value(match.group("date")),
+            "topic": _normalize_entry_value(match.group("topic")),
+            "title": _normalize_entry_value(match.group("title")),
+        }, None
+
+    if ATPLAYER_META_SEPARATOR in line or ATPLAYER_FORMAT_SEPARATOR in line:
+        return None, "skip_invalid"
+
+    line = line.strip()
+    if _is_http_url(line):
+        return {"url": line, "date": "", "topic": "", "title": ""}, None
+
+    return None, "skip_invalid"
+
+
+def _to_atcinna_entry(parsed):
+    normalized = _normalize_entry_value(parsed.get("url"))
+    return {
+        "title": _normalize_entry_value(parsed.get("title")),
+        "sender": "",
+        "genre": "",
+        "topic": _normalize_entry_value(parsed.get("topic")),
+        "date": _normalize_entry_value(parsed.get("date")),
+        "time": "",
+        "duration": "",
+        "description": "",
+        "url": normalized,
+        "website": "",
+        "timestamp": int(time.time()),
+    }
+
+
+def _to_export_lines(target_path):
+    entries = _load_list(target_path)
+    lines = []
+    skipped = 0
+    for entry in entries:
+        url = _normalize_entry_value(entry.get("url"))
+        if not _is_http_url(url):
+            skipped += 1
+            continue
+        date = _normalize_entry_value(entry.get("date"))
+        topic = _normalize_entry_value(entry.get("topic"))
+        title = _normalize_entry_value(entry.get("title"))
+        lines.append(
+            f"{date}{ATPLAYER_FORMAT_SEPARATOR}{topic}{ATPLAYER_FORMAT_SEPARATOR}{title}{ATPLAYER_META_SEPARATOR}{url}"
+        )
+    return lines, skipped
+
+
+def _import_lines(source_lines):
+    imported = []
+    seen = set()
+    counts = {
+        "imported": 0,
+        "skipped": 0,
+    }
+    for raw_line in source_lines:
+        parsed, error = _parse_atplayer_text_line(raw_line)
+        if parsed is None:
+            if error == "skip_invalid":
+                counts["skipped"] += 1
+            continue
+        url = _normalize_entry_value(parsed.get("url"))
+        if not _is_http_url(url):
+            counts["skipped"] += 1
+            continue
+        imported = [item for item in imported if _normalize_entry_value(item.get("url")) != url]
+        if url in seen:
+            counts["imported"] -= 1
+        imported.insert(0, _to_atcinna_entry(parsed))
+        seen.add(url)
+        counts["imported"] += 1
+    return imported, counts
 
 
 def _normalize_blacklist_field(value):
@@ -935,7 +1068,7 @@ def _parse_bool_value(value, default=False):
 def action_history_add(args):
     _validate_and_normalize_url("url", args.url)
     _validate_and_normalize_url("website", args.website)
-    _add_to_store(data_dir() / "history.json", args, 100)
+    _add_to_store(data_dir() / "history.json", args, HISTORY_MAX_ENTRIES)
     print(json.dumps({"status": "ok"}))
 
 
@@ -958,7 +1091,7 @@ def action_history_remove(args):
 def action_bookmark_add(args):
     _validate_and_normalize_url("url", args.url)
     _validate_and_normalize_url("website", args.website)
-    _add_to_store(data_dir() / "bookmarks.json", args, 500)
+    _add_to_store(data_dir() / "bookmarks.json", args, BOOKMARK_MAX_ENTRIES)
     print(json.dumps({"status": "ok"}))
 
 
@@ -986,6 +1119,45 @@ def action_bookmark_clear(args):
 
 def action_bookmark_list(args):
     _list_store(data_dir() / "bookmarks.json")
+
+
+def action_atplayer_history_import(args):
+    source = Path(args.source)
+    if not source.exists() or not source.is_file():
+        die("source file does not exist")
+    target = _target_path_from_name(args.target)
+    max_entries = _target_limit(args.target)
+    source_lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
+    imported_entries, counts = _import_lines(source_lines)
+    with _store_lock(target):
+        existing = _load_list(target)
+        imported_urls = {_normalize_entry_value(entry.get("url")) for entry in imported_entries}
+        existing = [entry for entry in existing if _normalize_entry_value(entry.get("url")) not in imported_urls]
+        merged = imported_entries + existing
+        if max_entries > 0:
+            merged = merged[:max_entries]
+        _store_list(target, merged)
+    counts["count"] = len(merged)
+    counts["status"] = "ok"
+    counts["target"] = args.target
+    counts["source"] = str(source)
+    print(json.dumps(counts))
+
+
+def action_atplayer_history_export(args):
+    target = _target_path_from_name(args.target)
+    lines, skipped = _to_export_lines(target)
+    output = Path(args.output)
+    ensure_dir(output.parent)
+    _store_text_lines(output, lines)
+    print(json.dumps({
+        "status": "ok",
+        "target": args.target,
+        "output": str(output),
+        "exported": len(lines),
+        "skipped": skipped,
+        "count": len(lines) + skipped,
+    }))
 
 
 def _queue_path():
@@ -2091,6 +2263,14 @@ def parse_args():
 
     bookmark_list = sub.add_parser("bookmark-list", help="List bookmark entries")
 
+    atplayer_import = sub.add_parser("atplayer-history-import", help="Import ATPlayer history/bookmark text file")
+    atplayer_import.add_argument("--source", required=True, help="Input file path")
+    atplayer_import.add_argument("--target", required=True, choices=(HISTORY_EXPORT_TARGET, BOOKMARK_EXPORT_TARGET), help="history or bookmarks")
+
+    atplayer_export = sub.add_parser("atplayer-history-export", help="Export history/bookmarks to ATPlayer text format")
+    atplayer_export.add_argument("--output", required=True, help="Output file path")
+    atplayer_export.add_argument("--target", required=True, choices=(HISTORY_EXPORT_TARGET, BOOKMARK_EXPORT_TARGET), help="history or bookmarks")
+
     download = sub.add_parser("download")
     download.add_argument("--url", required=True, help="Media URL")
     download.add_argument("--folder", default="", help="Download folder")
@@ -2225,6 +2405,10 @@ def main():
         action_bookmark_clear(args)
     elif args.action == "bookmark-list":
         action_bookmark_list(args)
+    elif args.action == "atplayer-history-import":
+        action_atplayer_history_import(args)
+    elif args.action == "atplayer-history-export":
+        action_atplayer_history_export(args)
     else:
         die("unknown action")
 

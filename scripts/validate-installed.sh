@@ -601,6 +601,69 @@ if ! python3 "$HELPER" blacklist-clear >/dev/null; then
     exit 1
 fi
 
+cat > "$TMP_DIR/installed_atplayer_history.txt" <<'TEXT'
+2026-06-05 |#| Theme Installed |#| Titel Installed  |###|  https://example.com/installed/imported
+ftp://example.com/installed/skip
+https://example.com/installed/existing
+TEXT
+cat > "$XDG_DATA_HOME/atcinna@H234598/history.json" <<'JSON'
+[{"title":"Existing", "sender":"", "genre":"", "topic":"", "date":"2026-01-01", "time":"", "duration":"", "description":"", "url":"https://example.com/installed/existing", "website":"", "timestamp":1}]
+JSON
+INST_HISTORY_IMPORT="$(python3 "$HELPER" atplayer-history-import --source "$TMP_DIR/installed_atplayer_history.txt" --target history)"
+if ! echo "$INST_HISTORY_IMPORT" | jq -e '.status == "ok" and .target == "history" and .imported == 2 and .skipped == 1 and .count == 2' >/dev/null; then
+    echo "ERROR: installed history import should dedupe and skip non-http URLs"
+    echo "$INST_HISTORY_IMPORT"
+    exit 1
+fi
+INST_HISTORY_LIST="$(python3 "$HELPER" history-list)"
+if ! echo "$INST_HISTORY_LIST" | jq -e '.status == "ok" and .results[0].url == "https://example.com/installed/existing" and .results[1].url == "https://example.com/installed/imported"' >/dev/null; then
+    echo "ERROR: installed history import should move duplicated URL to front"
+    echo "$INST_HISTORY_LIST"
+    exit 1
+fi
+INST_HISTORY_EXPORT="$(python3 "$HELPER" atplayer-history-export --output "$TMP_DIR/installed_history_export.txt" --target history)"
+if ! echo "$INST_HISTORY_EXPORT" | jq -e '.status == "ok" and .target == "history" and .exported == 2' >/dev/null; then
+    echo "ERROR: installed history export should write HTTP-only entries"
+    echo "$INST_HISTORY_EXPORT"
+    exit 1
+fi
+INST_ROUNDTRIP_EXPORT="$(python3 "$HELPER" atplayer-history-export --output "$TMP_DIR/installed_roundtrip.txt" --target history)"
+if ! echo "$INST_ROUNDTRIP_EXPORT" | jq -e '.status == "ok" and .exported == 2 and .skipped == 0' >/dev/null; then
+    echo "ERROR: installed history export roundtrip base should include exported entries"
+    echo "$INST_ROUNDTRIP_EXPORT"
+    exit 1
+fi
+cat > "$XDG_DATA_HOME/atcinna@H234598/history.json" <<'JSON'
+[]
+JSON
+INST_ROUNDTRIP_IMPORT="$(python3 "$HELPER" atplayer-history-import --source "$TMP_DIR/installed_roundtrip.txt" --target history)"
+if ! echo "$INST_ROUNDTRIP_IMPORT" | jq -e '.status == "ok" and .target == "history" and .imported == 2 and .skipped == 0' >/dev/null; then
+    echo "ERROR: installed history import roundtrip should restore entries"
+    echo "$INST_ROUNDTRIP_IMPORT"
+    exit 1
+fi
+
+cat > "$TMP_DIR/installed_atplayer_bookmark.txt" <<'TEXT'
+https://example.com/installed/bookmark/1
+ftp://example.com/installed/bookmark/skip
+https://example.com/installed/bookmark/2
+TEXT
+cat > "$XDG_DATA_HOME/atcinna@H234598/bookmarks.json" <<'JSON'
+[]
+JSON
+INST_BOOKMARK_IMPORT="$(python3 "$HELPER" atplayer-history-import --source "$TMP_DIR/installed_atplayer_bookmark.txt" --target bookmarks)"
+if ! echo "$INST_BOOKMARK_IMPORT" | jq -e '.status == "ok" and .target == "bookmarks" and .imported == 2 and .skipped == 1' >/dev/null; then
+    echo "ERROR: installed bookmark import should skip non-http URLs"
+    echo "$INST_BOOKMARK_IMPORT"
+    exit 1
+fi
+INST_BOOKMARK_EXPORT="$(python3 "$HELPER" atplayer-history-export --output "$TMP_DIR/installed_bookmark_export.txt" --target bookmarks)"
+if ! echo "$INST_BOOKMARK_EXPORT" | jq -e '.status == "ok" and .target == "bookmarks" and .exported == 2' >/dev/null; then
+    echo "ERROR: installed bookmark export should include imported entries"
+    echo "$INST_BOOKMARK_EXPORT"
+    exit 1
+fi
+
 SEARCH_DIALOG_SELF_TEST="$(python3 "$SEARCH_DIALOG" --self-test)"
 if ! echo "$SEARCH_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean")' >/dev/null; then
     echo "ERROR: installed search dialog self-test failed"

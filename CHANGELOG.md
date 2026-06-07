@@ -1,4 +1,16 @@
 # Changelog
+## 0.3.54
+
+- Neu: Import/Export für ATPlayer-History-/Bookmark-Textformate im Helper ergänzt (`atplayer-history-import`, `atplayer-history-export`).
+- Import verarbeitet neue/alte ATPlayer-Formatzeilen mit exakten Trennern, dedupliziert nach URL, setzt Duplikate vorne und zählt `imported`/`skipped`.
+- Export schreibt atomar im ATPlayer-Textformat, legt Elternverzeichnisse bei Bedarf an und liefert `exported`/`skipped` im Status.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen jetzt:
+  - neuen/alten ATPlayer-Importpfad,
+  - Nicht-`http(s)`-URL-Skips,
+  - Duplikat-Handling,
+  - Export- und Export/Import-Roundtrip.
+- Versionssprung auf `0.3.54`; Dokumentation/Plan/Metadata aktualisiert. Es handelt sich explizit um History/Bookmark-Formatparität, nicht um komplette ATPlayer-Migrationspfade.
+
 ## 0.3.53
 
 - ATPlayer-nahes Queue-Top-Level ergänzt: **Gespeichertes Audio (Datei) abspielen** für die erste markierte Queue-Auswahl.

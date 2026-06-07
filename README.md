@@ -35,6 +35,8 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Website-Aktion (falls vorhanden).
 - Favoriten/Bookmarks: Einträge können pro Treffer als Favorit gespeichert, aus den Kontexten wieder entfernt, in der Liste angezeigt und gesammelt über **Alle angelegten Bookmarks löschen** geleert werden.
 - Unterhalb der Treffer werden zusätzlich die letzten Einträge aus dem Verlauf sowie Favoriten (je max. 5) als kompakte Untermenüs gezeigt.
+- Import/Export der History/Bookmarks: Der Helper kann ATPlayer-Textdateien (`--source`) in `history`/`bookmarks` importieren und aktuelle Stores atomar wieder als ATPlayer-Text exportieren (`--output`), inklusive Formatunterstützung für URL-only und Legacy-Zeilen mit ` |#| ` und `  |###|  `.
+- Diese neuen Funktionen decken ausschließlich den ATPlayer-History-/Bookmark-Datenformat-Nachbau ab; keine vollständige ATPlayer-Konfigurationsmigration.
 - Audio-Kontextaktionen im ATPlayer-Stil: **Abspielen**, **Speichern** (legt in die Download-Warteschlange), **Filminformation anzeigen** und die bestehende kompakte **Audioinformation anzeigen**.
 - Download per sicherem Helper mit `curl` in konfigurierbaren Zielordner.
 - Download-Warteschlange: Treffer können in eine FIFO-Warteschlange gelegt werden; das Menü kann den nächsten, markierte oder alle Downloads starten, alle Downloads stoppen, nur wartende Downloads stoppen, die Queue anzeigen/aktualisieren, erledigte Einträge entfernen, die Liste der Downloads aufräumen und gelöschte Einträge wiederherstellen.

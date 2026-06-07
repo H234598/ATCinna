@@ -325,6 +325,18 @@ for helper_action in history-add history-remove history-list; do
         STATUS=1
     fi
 done
+for helper_action in atplayer-history-import atplayer-history-export; do
+    if ! rg -q -F "\"${helper_action}\"" "$HELPER"; then
+        echo "ERROR: helper atplayer action is missing: ${helper_action}"
+        STATUS=1
+    fi
+done
+for helper_arg in "--source" "--output" "--target"; do
+    if ! rg -q -F -- "$helper_arg" "$HELPER"; then
+        echo "ERROR: helper atplayer import/export is missing argument: ${helper_arg}"
+        STATUS=1
+    fi
+done
 if ! rg -q -F -- "--active" "$HELPER"; then
     echo "ERROR: blacklist-add action is missing --active"
     STATUS=1
@@ -1593,6 +1605,137 @@ if ! echo "$BOOKMARK_CLEAR" | jq -e '.status == "ok" and .removed >= 1' >/dev/nu
 fi
 if ! jq -e '.status == "ok" and .count == 0 and (.results | length) == 0' <<<"$(python3 "$HELPER" bookmark-list)" >/dev/null; then
     echo "ERROR: bookmark-clear should leave bookmark list empty"
+    exit 1
+fi
+
+cat > "$TMP_DIR/atplayer_import.txt" <<'TEXT'
+https://example.com/history/old
+2026-06-06 |#| Thema Import |#| Titel Import  |###|  https://example.com/atplayer/new
+notaurl
+https://old.example.com/legacy
+ftp://example.com/legacy
+TEXT
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+data_dir.mkdir(parents=True, exist_ok=True)
+data_dir.joinpath("history.json").write_text(json.dumps([
+    {
+        "title": "Old",
+        "sender": "",
+        "genre": "",
+        "topic": "",
+        "date": "2026-06-01",
+        "time": "",
+        "duration": "",
+        "description": "",
+        "url": "https://example.com/history/old",
+        "website": "",
+        "timestamp": 1,
+    }
+]), encoding="utf-8")
+PY
+HISTORY_IMPORT="$(python3 "$HELPER" atplayer-history-import --source "$TMP_DIR/atplayer_import.txt" --target history)"
+if ! echo "$HISTORY_IMPORT" | jq -e '.status == "ok" and .target == "history" and .imported == 3 and .skipped == 2' >/dev/null; then
+    echo "ERROR: history import should report expected imported/skipped counts"
+    echo "$HISTORY_IMPORT"
+    exit 1
+fi
+HISTORY_AFTER_IMPORT="$(python3 "$HELPER" history-list)"
+if ! echo "$HISTORY_AFTER_IMPORT" | jq -e '.status == "ok" and .count == 3 and .results[0].url == "https://old.example.com/legacy" and .results[1].url == "https://example.com/atplayer/new" and .results[2].url == "https://example.com/history/old"' >/dev/null; then
+    echo "ERROR: history import should treat later ATPlayer lines as newer entries"
+    echo "$HISTORY_AFTER_IMPORT"
+    exit 1
+fi
+
+cat > "$TMP_DIR/atplayer_bookmark_import.txt" <<'TEXT'
+https://example.com/bookmark/1
+https://example.com/bookmark/2
+ftp://example.com/bookmark/legacy
+TEXT
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+data_dir.joinpath("bookmarks.json").write_text(json.dumps([
+    {"title": "Old Bookmark", "sender": "", "genre": "", "topic": "", "date": "", "time": "", "duration": "", "description": "", "url": "https://example.com/bookmark/1", "website": "", "timestamp": 1},
+    {"title": "Second", "sender": "", "genre": "", "topic": "", "date": "", "time": "", "duration": "", "description": "", "url": "https://example.com/bookmark/2", "website": "", "timestamp": 1},
+]), encoding="utf-8")
+PY
+BOOKMARK_IMPORT="$(python3 "$HELPER" atplayer-history-import --source "$TMP_DIR/atplayer_bookmark_import.txt" --target bookmarks)"
+if ! echo "$BOOKMARK_IMPORT" | jq -e '.status == "ok" and .target == "bookmarks" and .imported == 2 and .skipped == 1' >/dev/null; then
+    echo "ERROR: bookmark import should dedupe and skip non-http URLs"
+    echo "$BOOKMARK_IMPORT"
+    exit 1
+fi
+HISTORY_EXPORT_STATUS="$(python3 "$HELPER" atplayer-history-export --output "$TMP_DIR/atplayer_export.txt" --target history)"
+if ! echo "$HISTORY_EXPORT_STATUS" | jq -e '.status == "ok" and .exported == 3 and .skipped == 0' >/dev/null; then
+    echo "ERROR: history export should write exported/skipped status"
+    echo "$HISTORY_EXPORT_STATUS"
+    exit 1
+fi
+if ! [ -s "$TMP_DIR/atplayer_export.txt" ]; then
+    echo "ERROR: history export should create non-empty output file"
+    exit 1
+fi
+if ! rg -q "https://example.com/atplayer/new" "$TMP_DIR/atplayer_export.txt"; then
+    echo "ERROR: history export should contain imported ATPlayer format URL"
+    exit 1
+fi
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+(data_dir / "history.json").write_text("[]", encoding="utf-8")
+data_dir.joinpath("bookmarks.json").write_text("[]", encoding="utf-8")
+PY
+BOOKMARK_EXPORT_STATUS="$(python3 "$HELPER" atplayer-history-export --output "$TMP_DIR/atplayer_bookmark_export.txt" --target bookmarks)"
+if ! echo "$BOOKMARK_EXPORT_STATUS" | jq -e '.status == "ok" and .exported == 0' >/dev/null; then
+    echo "ERROR: bookmark export should handle empty store"
+    echo "$BOOKMARK_EXPORT_STATUS"
+    exit 1
+fi
+if ! [ -f "$TMP_DIR/atplayer_bookmark_export.txt" ]; then
+    echo "ERROR: bookmark export should create output file for empty store"
+    exit 1
+fi
+
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+data_dir.joinpath("history.json").write_text(json.dumps([
+    {"title": "Roundtrip", "sender": "", "genre": "", "topic": "", "date": "", "time": "", "duration": "", "description": "", "url": "https://example.com/roundtrip", "website": "", "timestamp": 1},
+    {"title": "Bad URL", "sender": "", "genre": "", "topic": "", "date": "", "time": "", "duration": "", "description": "", "url": "ftp://example.com/roundtrip", "website": "", "timestamp": 1},
+]), encoding="utf-8")
+PY
+ROUNDTRIP_EXPORT="$(python3 "$HELPER" atplayer-history-export --output "$TMP_DIR/atplayer_roundtrip.txt" --target history)"
+if ! echo "$ROUNDTRIP_EXPORT" | jq -e '.status == "ok" and .exported == 1 and .skipped == 1' >/dev/null; then
+    echo "ERROR: history export roundtrip setup failed"
+    echo "$ROUNDTRIP_EXPORT"
+    exit 1
+fi
+python3 - <<'PY'
+import os
+from pathlib import Path
+
+data_dir = Path(os.environ["XDG_DATA_HOME"]) / "atcinna@H234598"
+history = data_dir.joinpath("history.json")
+history.write_text("[]", encoding="utf-8")
+PY
+ROUNDTRIP_IMPORT="$(python3 "$HELPER" atplayer-history-import --source "$TMP_DIR/atplayer_roundtrip.txt" --target history)"
+if ! echo "$ROUNDTRIP_IMPORT" | jq -e '.status == "ok" and .imported == 1 and .skipped == 0' >/dev/null; then
+    echo "ERROR: history export-import roundtrip failed"
+    echo "$ROUNDTRIP_IMPORT"
     exit 1
 fi
 

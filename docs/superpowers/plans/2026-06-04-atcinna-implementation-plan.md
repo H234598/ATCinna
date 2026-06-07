@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.53`.
+- `VERSION` is `0.3.54`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -59,6 +59,19 @@
 - [x] **Checks/docs/version**
   - Extend `scripts/check.sh` and `scripts/validate-installed.sh` with checks for the new top-level menu action, handler and action-state field wiring.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.53`.
+
+### Task 54: ATPlayer History/Bookmark Text Import/Export (0.3.54)
+
+- [x] **History/Bookmark import support**
+  - Add helper action `atplayer-history-import --source FILE --target history|bookmarks`.
+  - Parse both ATPlayer line formats (`URL` only and `Datum |#| Thema |#| Titel  |###|  URL`) with strict separators and `http`/`https` filtering.
+  - Remove duplicates by URL, place imported entries at the front, enforce store limits (history: 100, bookmarks: 500), return JSON status with `status`, `imported`, `skipped`, `count`.
+- [x] **History/Bookmark export support**
+  - Add helper action `atplayer-history-export --output FILE --target history|bookmarks`.
+  - Export current store atomically in ATPlayer text format, create parent directories if required, skip non-`http(s)` URLs and return `exported`/`skipped` in JSON status.
+- [x] **Checks/docs/version**
+  - Extend `scripts/check.sh` and `scripts/validate-installed.sh` with fixture tests for old/new source format, non-`http(s)` skips, duplicate handling, and export/import roundtrip.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.54`.
 
 ### Task 21: ATPlayer-near Filters + Profile parity markers (0.3.21)
 
