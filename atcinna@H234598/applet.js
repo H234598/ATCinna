@@ -62,6 +62,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionShowInfoFirstSelected = null;
         this._resultActionCopyTopicFirstSelected = null;
         this._resultActionCopyTitleFirstSelected = null;
+        this._resultActionBlacklistFilmFirstSelected = null;
+        this._resultActionBlacklistTopicFirstSelected = null;
         this._queueSection = null;
         this._queueListSection = null;
         this._queueSelectionItems = new Set();
@@ -1405,6 +1407,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         copyTitle.connect("activate", () => this._runResultCopyTitleFirstSelected());
         this._resultsSection.addMenuItem(copyTitle);
 
+        const blacklistMovie = new PopupMenu.PopupMenuItem("Blacklist-Eintrag für den Film erstellen");
+        blacklistMovie.connect("activate", () => this._runResultBlacklistAddFirstSelected());
+        this._resultsSection.addMenuItem(blacklistMovie);
+
+        const blacklistTopic = new PopupMenu.PopupMenuItem("Thema direkt in die Blacklist einfügen");
+        blacklistTopic.connect("activate", () => this._runResultBlacklistTopicFirstSelected());
+        this._resultsSection.addMenuItem(blacklistTopic);
+
         const markShownSelected = new PopupMenu.PopupMenuItem("Filme als gesehen markieren");
         markShownSelected.connect("activate", () => this._runResultMarkShownSelected());
         this._resultsSection.addMenuItem(markShownSelected);
@@ -1431,6 +1441,8 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionShowInfoFirstSelected = showInfoMovie;
         this._resultActionCopyTopicFirstSelected = copyTopic;
         this._resultActionCopyTitleFirstSelected = copyTitle;
+        this._resultActionBlacklistFilmFirstSelected = blacklistMovie;
+        this._resultActionBlacklistTopicFirstSelected = blacklistTopic;
         this._resultActionMarkShownSelected = markShownSelected;
         this._resultActionMarkUnshownSelected = markUnshownSelected;
         this._resultActionBookmarkSelected = bookmarkSelected;
@@ -1551,6 +1563,37 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             return;
         }
         this._copyToClipboard(selectedItems[0].title, "Titel in die Zwischenablage kopieren");
+    }
+
+    _runResultBlacklistAddFirstSelected() {
+        const selectedItems = this._getSelectedResultItems();
+        if (!selectedItems.length) {
+            this._setStatus("Blacklist-Eintrag für den Film erstellen: keine Auswahl");
+            return;
+        }
+        const selectedItem = selectedItems[0];
+        this._runBlacklistAdd(selectedItem, {
+            sender: selectedItem.sender || "",
+            genre: selectedItem.genre || "",
+            topic: selectedItem.topic || "",
+            title: selectedItem.title || ""
+        });
+    }
+
+    _runResultBlacklistTopicFirstSelected() {
+        const selectedItems = this._getSelectedResultItems();
+        if (!selectedItems.length) {
+            this._setStatus("Thema direkt in die Blacklist einfügen: keine Auswahl");
+            return;
+        }
+        const selectedItem = selectedItems[0];
+        if (!this._toTrimmed(selectedItem.topic || "")) {
+            this._setStatus("Thema direkt in die Blacklist einfügen: kein Thema");
+            return;
+        }
+        this._runBlacklistAdd(selectedItem, {
+            topic: selectedItem.topic || ""
+        });
     }
 
     _runResultBookmarkSelected() {
@@ -1699,6 +1742,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._resultActionCopyTitleFirstSelected) {
             this._resultActionCopyTitleFirstSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionBlacklistFilmFirstSelected) {
+            this._resultActionBlacklistFilmFirstSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionBlacklistTopicFirstSelected) {
+            this._resultActionBlacklistTopicFirstSelected.setSensitive(hasSelection);
         }
         if (this._resultActionMarkShownSelected) {
             this._resultActionMarkShownSelected.setSensitive(hasSelection);

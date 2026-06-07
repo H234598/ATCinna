@@ -377,19 +377,19 @@ for result_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffe
         STATUS=1
     fi
 done
-for result_label in "Film abspielen" "Film speichern" "Filminformation anzeigen" "Thema in die Zwischenablage kopieren" "Titel in die Zwischenablage kopieren"; do
+for result_label in "Film abspielen" "Film speichern" "Filminformation anzeigen" "Thema in die Zwischenablage kopieren" "Titel in die Zwischenablage kopieren" "Blacklist-Eintrag für den Film erstellen" "Thema direkt in die Blacklist einfügen"; do
     if ! rg -q -F "${result_label}" "$APPLET_JS"; then
         echo "ERROR: applet result top-level label is missing: ${result_label}"
         STATUS=1
     fi
 done
-for result_top_action in 'const playMovie = new PopupMenu.PopupMenuItem("Film abspielen");' 'const saveMovie = new PopupMenu.PopupMenuItem("Film speichern");' 'const showInfoMovie = new PopupMenu.PopupMenuItem("Filminformation anzeigen");' 'const copyTopic = new PopupMenu.PopupMenuItem("Thema in die Zwischenablage kopieren");' 'const copyTitle = new PopupMenu.PopupMenuItem("Titel in die Zwischenablage kopieren");'; do
+for result_top_action in 'const playMovie = new PopupMenu.PopupMenuItem("Film abspielen");' 'const saveMovie = new PopupMenu.PopupMenuItem("Film speichern");' 'const showInfoMovie = new PopupMenu.PopupMenuItem("Filminformation anzeigen");' 'const copyTopic = new PopupMenu.PopupMenuItem("Thema in die Zwischenablage kopieren");' 'const copyTitle = new PopupMenu.PopupMenuItem("Titel in die Zwischenablage kopieren");' 'const blacklistMovie = new PopupMenu.PopupMenuItem("Blacklist-Eintrag für den Film erstellen");' 'const blacklistTopic = new PopupMenu.PopupMenuItem("Thema direkt in die Blacklist einfügen");'; do
     if ! rg -q -F "${result_top_action}" "$APPLET_JS"; then
         echo "ERROR: applet result top-level action is missing: ${result_top_action}"
         STATUS=1
     fi
 done
-for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_setupResultActions" "_runResultSelectAll" "_runResultInvertSelection" "_runResultResetSelection" "_runResultToggleSelection" "_runResultPlaySelected" "_runResultSaveSelected" "_runResultPlayFirstSelected" "_runResultSaveFirstSelected" "_runResultShowInfoFirstSelected" "_runResultCopyTopicFirstSelected" "_runResultCopyTitleFirstSelected" "_runResultMarkShownSelected" "_runResultMarkUnshownSelected" "_runResultBookmarkSelected" "_runResultRemoveBookmarksSelected" "_runResultBatchAction" "_getSelectedResultItems" "_resultItemKey" "_pruneResultSelection" "_updateResultSelectionActionState"; do
+for result_selection_handler in "_resultSelectionItems" "_resultItemsCache" "_setupResultActions" "_runResultSelectAll" "_runResultInvertSelection" "_runResultResetSelection" "_runResultToggleSelection" "_runResultPlaySelected" "_runResultSaveSelected" "_runResultPlayFirstSelected" "_runResultSaveFirstSelected" "_runResultShowInfoFirstSelected" "_runResultCopyTopicFirstSelected" "_runResultCopyTitleFirstSelected" "_runResultBlacklistAddFirstSelected" "_runResultBlacklistTopicFirstSelected" "_runResultMarkShownSelected" "_runResultMarkUnshownSelected" "_runResultBookmarkSelected" "_runResultRemoveBookmarksSelected" "_runResultBatchAction" "_getSelectedResultItems" "_resultItemKey" "_pruneResultSelection" "_updateResultSelectionActionState"; do
     if ! rg -q -F "${result_selection_handler}" "$APPLET_JS"; then
         echo "ERROR: applet result selection handler is missing: ${result_selection_handler}"
         STATUS=1

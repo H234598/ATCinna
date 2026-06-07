@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.47
+
+- Top-Level-Trefferaktionen ergänzt auf den ersten markierten sichtbaren Treffer: **Blacklist-Eintrag für den Film erstellen** und **Thema direkt in die Blacklist einfügen**.
+- Beide Top-Level-Blacklist-Aktionen liefern klare Statusmeldungen bei fehlender Auswahl bzw. fehlendem Thema und nutzen weiterhin `blacklist-add` ohne neue Backend-Helfer.
+- Versionssprung auf `0.3.47`; `metadata.json`, `VERSION`, README und Checkskripte aktualisiert.
+
 ## 0.3.46
 
 - Treffer-Batch-Aktionen im Treffer-Top-Level auf ATPlayer-nahe Labels umgestellt: **Filme als gesehen markieren**, **Filme als ungesehen markieren**, **Neue Bookmarks anlegen**, **Bookmarks löschen**.

@@ -230,13 +230,13 @@ for applet_label in "Als gesehen markieren" "Als ungesehen markieren"; do
         exit 1
     fi
 done
-for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Film abspielen" "Film speichern" "Filminformation anzeigen" "Thema in die Zwischenablage kopieren" "Titel in die Zwischenablage kopieren" "Filme als gesehen markieren" "Filme als ungesehen markieren" "Neue Bookmarks anlegen" "Bookmarks löschen"; do
+for applet_label in "Alle Treffer auswählen" "Treffer-Auswahl umkehren" "Treffer-Auswahl zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Film abspielen" "Film speichern" "Filminformation anzeigen" "Thema in die Zwischenablage kopieren" "Titel in die Zwischenablage kopieren" "Blacklist-Eintrag für den Film erstellen" "Thema direkt in die Blacklist einfügen" "Filme als gesehen markieren" "Filme als ungesehen markieren" "Neue Bookmarks anlegen" "Bookmarks löschen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
         exit 1
     fi
 done
-for applet_result_action in 'const playMovie = new PopupMenu.PopupMenuItem("Film abspielen");' 'const saveMovie = new PopupMenu.PopupMenuItem("Film speichern");' 'const showInfoMovie = new PopupMenu.PopupMenuItem("Filminformation anzeigen");' 'const copyTopic = new PopupMenu.PopupMenuItem("Thema in die Zwischenablage kopieren");' 'const copyTitle = new PopupMenu.PopupMenuItem("Titel in die Zwischenablage kopieren");'; do
+for applet_result_action in 'const playMovie = new PopupMenu.PopupMenuItem("Film abspielen");' 'const saveMovie = new PopupMenu.PopupMenuItem("Film speichern");' 'const showInfoMovie = new PopupMenu.PopupMenuItem("Filminformation anzeigen");' 'const copyTopic = new PopupMenu.PopupMenuItem("Thema in die Zwischenablage kopieren");' 'const copyTitle = new PopupMenu.PopupMenuItem("Titel in die Zwischenablage kopieren");' 'const blacklistMovie = new PopupMenu.PopupMenuItem("Blacklist-Eintrag für den Film erstellen");' 'const blacklistTopic = new PopupMenu.PopupMenuItem("Thema direkt in die Blacklist einfügen");'; do
     if ! rg -q -F "${applet_result_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet result top-level action is missing: ${applet_result_action}"
         exit 1

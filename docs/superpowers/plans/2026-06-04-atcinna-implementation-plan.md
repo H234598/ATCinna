@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.44`.
+- `VERSION` is `0.3.47`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -321,6 +321,18 @@
 - [x] **Checks/docs/version**
   - Extend source and installed validation for the updated visible labels.
   - Bump version to `0.3.46`, update metadata/version/readme/changelog.
+
+### Task 47: Add Result Top-Level Blacklist Actions (0.3.47)
+
+- [x] **ATPlayer-nahe Blacklist-Top-Level-Aktionen**
+  - Add **Blacklist-Eintrag für den Film erstellen** and **Thema direkt in die Blacklist einfügen** to the Treffer top-level action section.
+  - Reuse visible result selection and the existing `_runBlacklistAdd()` helper path for the first selected visible result.
+- [x] **Defensive UX**
+  - Set explicit status for missing selection and missing topic.
+  - Do not add helper/backend paths or shell command construction.
+- [x] **Checks/docs/version**
+  - Extend source and installed validation for the new visible labels and handler symbols.
+  - Bump version to `0.3.47`, update metadata/version/readme/changelog.
 
 
 ### ATPlayer Parity Audit
