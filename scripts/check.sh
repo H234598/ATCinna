@@ -347,9 +347,15 @@ if ! rg -q -F '"--blacklist-mode"' "$HELPER"; then
     echo "ERROR: helper search action is missing --blacklist-mode argument"
     STATUS=1
 fi
-for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Aus Liste entfernen" "Vorziehen" "Zurückstellen" "Gelöschte wieder anlegen"; do
+for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Downloads aus Liste entfernen" "Downloads vorziehen" "Downloads zurückstellen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue menu label is missing: ${queue_label}"
+        STATUS=1
+    fi
+done
+for queue_entry_action in 'const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");' 'const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");'; do
+    if ! rg -q -F "${queue_entry_action}" "$APPLET_JS"; then
+        echo "ERROR: applet queue entry action label is missing: ${queue_entry_action}"
         STATUS=1
     fi
 done

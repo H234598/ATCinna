@@ -2272,15 +2272,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             openFolder.connect("activate", () => this._openQueuePathFolder(item));
             row.menu.addMenuItem(openFolder);
 
-            const remove = new PopupMenu.PopupMenuItem("Aus Liste entfernen");
+            const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");
             remove.connect("activate", () => this._runQueueRemove(item));
             row.menu.addMenuItem(remove);
 
-            const prefer = new PopupMenu.PopupMenuItem("Vorziehen");
+            const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");
             prefer.connect("activate", () => this._runQueuePrefer(item));
             row.menu.addMenuItem(prefer);
 
-            const putBack = new PopupMenu.PopupMenuItem("Zurückstellen");
+            const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");
             putBack.connect("activate", () => this._runQueuePutBack(item));
             row.menu.addMenuItem(putBack);
 

@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.48`.
+- `VERSION` is `0.3.49`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -342,6 +342,15 @@
 - [x] **Checks/docs/version**
   - Extend source and installed validation to verify the updated result selection labels.
   - Bump version to `0.3.48`, update `metadata.json`, `VERSION`, `README`, and `CHANGELOG`.
+
+### Task 49: Align Queue Entry Context Labels to ATPlayer (0.3.49)
+
+- [x] **ATPlayer-nahe Queue-Entry-Beschriftungen**
+  - Rename queue entry context actions from **Aus Liste entfernen**, **Vorziehen**, and **Zurückstellen** to **Downloads aus Liste entfernen**, **Downloads vorziehen**, and **Downloads zurückstellen**.
+  - Keep handlers and queue behavior unchanged (`_runQueueRemove`, `_runQueuePrefer`, `_runQueuePutBack`).
+- [x] **Checks/docs/version**
+  - Update `scripts/check.sh` and `scripts/validate-installed.sh` to assert the concrete entry-level labels.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.49`.
 
 
 ### ATPlayer Parity Audit

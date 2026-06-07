@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.49
+
+- Per-Entry-Queue-Kontextbeschriftungen auf ATPlayer-Wortlaut gebracht: **Aus Liste entfernen**, **Vorziehen** und **Zurückstellen** wurden auf **Downloads aus Liste entfernen**, **Downloads vorziehen** und **Downloads zurückstellen** vereinheitlicht.
+- Queue-Handler und Warteschlangenlogik bleiben unverändert; Source- und Installationschecks prüfen jetzt die konkreten Per-Entry-Labels.
+- Versionssprung auf `0.3.49`; `metadata.json`, `VERSION`, README, Plan und Checkskripte aktualisiert.
+
 ## 0.3.48
 
 - Treffer-Auswahlaktionen wieder auf den ATPlayer-Wortlaut gesetzt: **Alles auswählen**, **Auswahl umkehren**, **Tabelle zurücksetzen**.
