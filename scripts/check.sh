@@ -1000,6 +1000,20 @@ for applet_label in "Downloadfehler anzeigen" "Downloadfehler löschen" "Downloa
         STATUS=1
     fi
 done
+for applet_download_error_detail in 'new PopupMenu.PopupMenuItem("Keine Fehler")' "new PopupMenu.PopupMenuItem(\`Titel: \${this._shortText(title)}\`)" "new PopupMenu.PopupMenuItem(\`Programmausgabe: \${this._shortText(item.error_stream)}\`)"; do
+    if ! rg -q -F "${applet_download_error_detail}" "$APPLET_JS"; then
+        echo "ERROR: download error detail label is missing: ${applet_download_error_detail}"
+        STATUS=1
+    fi
+done
+if rg -q -F 'new PopupMenu.PopupMenuItem("keine Downloadfehler")' "$APPLET_JS"; then
+    echo "ERROR: download error empty-state label must be ATPlayer-like Keine Fehler"
+    STATUS=1
+fi
+if rg -q -F 'Fehlerausgabe:' "$APPLET_JS"; then
+    echo "ERROR: download error stream label must be Programmausgabe"
+    STATUS=1
+fi
 if ! jq -e '.["blacklist-mode"] | has("type") and .default == "hide"' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
     echo "ERROR: settings schema blacklist-mode block malformed"
     STATUS=1

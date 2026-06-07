@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.87
+
+- Die Downloadfehlersektion nutzt im leeren Zustand jetzt das ATPlayer-nahe Label **Keine Fehler**.
+- Fehler-Untermenüs zeigen den Audiotitel zusätzlich als nicht-reaktive Zeile **Titel: ...**.
+- Die gespeicherte Fehlerstream-Zeile heißt sichtbar **Programmausgabe: ...** statt **Fehlerausgabe: ...**; Helper-JSON, Stores und Downloadlogik bleiben unverändert.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen die neuen sichtbaren Downloadfehlerlabels; `metadata.json`, `VERSION`, `README.md` und Plan wurden auf `0.3.87` angehoben.
+
 ## 0.3.86
 
 - Download-Infodateien schreiben die Dauer jetzt ATPlayer-nah als **Dauer [min]** statt **Dauer**.

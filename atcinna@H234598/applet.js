@@ -2407,7 +2407,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._downloadErrorSection.addMenuItem(heading);
 
         if (!entries.length) {
-            const empty = new PopupMenu.PopupMenuItem("keine Downloadfehler");
+            const empty = new PopupMenu.PopupMenuItem("Keine Fehler");
             empty.actor.reactive = false;
             this._downloadErrorSection.addMenuItem(empty);
             return;
@@ -2417,11 +2417,14 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const title = item.title || "Eintrag";
             const errorText = item.error || item.error_stream || "unbekannter Fehler";
             const row = new PopupMenu.PopupSubMenuMenuItem(`${this._shortText(title, 48)}: ${this._shortText(errorText, 88)}`);
+            const titleRow = new PopupMenu.PopupMenuItem(`Titel: ${this._shortText(title)}`);
+            titleRow.actor.reactive = false;
+            row.menu.addMenuItem(titleRow);
             const errorRow = new PopupMenu.PopupMenuItem(`Fehler: ${this._shortText(errorText)}`);
             errorRow.actor.reactive = false;
             row.menu.addMenuItem(errorRow);
             if (item.error_stream) {
-                const streamRow = new PopupMenu.PopupMenuItem(`Fehlerausgabe: ${this._shortText(item.error_stream)}`);
+                const streamRow = new PopupMenu.PopupMenuItem(`Programmausgabe: ${this._shortText(item.error_stream)}`);
                 streamRow.actor.reactive = false;
                 row.menu.addMenuItem(streamRow);
             }

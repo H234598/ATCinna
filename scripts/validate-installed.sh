@@ -594,6 +594,20 @@ for applet_label in "Downloadfehler anzeigen" "Downloadfehler löschen" "Downloa
         exit 1
     fi
 done
+for applet_download_error_detail in 'new PopupMenu.PopupMenuItem("Keine Fehler")' "new PopupMenu.PopupMenuItem(\`Titel: \${this._shortText(title)}\`)" "new PopupMenu.PopupMenuItem(\`Programmausgabe: \${this._shortText(item.error_stream)}\`)"; do
+    if ! rg -q -F "${applet_download_error_detail}" "$APPLET_JS"; then
+        echo "ERROR: installed download error detail label is missing: ${applet_download_error_detail}"
+        exit 1
+    fi
+done
+if rg -q -F 'new PopupMenu.PopupMenuItem("keine Downloadfehler")' "$APPLET_JS"; then
+    echo "ERROR: installed download error empty-state label must be ATPlayer-like Keine Fehler"
+    exit 1
+fi
+if rg -q -F 'Fehlerausgabe:' "$APPLET_JS"; then
+    echo "ERROR: installed download error stream label must be Programmausgabe"
+    exit 1
+fi
 for applet_selected_action in 'const runSelected = new PopupMenu.PopupMenuItem("Downloads starten");' 'const preferSelected = new PopupMenu.PopupMenuItem("Downloads vorziehen");' 'const putBackSelected = new PopupMenu.PopupMenuItem("Downloads zurückstellen");' 'const cancelSelected = new PopupMenu.PopupMenuItem("Downloads stoppen");' 'const removeSelected = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");'; do
     if ! rg -q -F "${applet_selected_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue selected action label is missing: ${applet_selected_action}"

@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.86`.
+- `VERSION` is `0.3.87`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -99,6 +99,14 @@
   - Keep history, bookmark, queue-store schemas, CLI arguments, URL handling, D-Bus, applet files, and shell-path handling unchanged.
   - Extend `scripts/check.sh` for direct and queue info files and `scripts/validate-installed.sh` for the installed helper contract.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.86`.
+
+- [x] **Task 87: Align download error pane labels (0.3.87)**
+  - Rename the empty download error state from **keine Downloadfehler** to **Keine Fehler**.
+  - Add a non-reactive **Titel: ...** detail row inside each download error submenu.
+  - Rename the visible error stream row from **Fehlerausgabe: ...** to **Programmausgabe: ...**.
+  - Keep helper JSON, stores, settings, database files, and download logic unchanged.
+  - Extend `scripts/check.sh` and `scripts/validate-installed.sh` for the source and installed visible labels.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.87`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 
