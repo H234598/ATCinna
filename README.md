@@ -8,7 +8,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 
 - Panel-Anzeige mit Icon/Label.
 - Popup-Menü mit Statuszeile, In-Popup-Suchfeld, Refresh-Knopf und Ergebnisliste.
-- Linksklick auf das Applet schaltet das Popup-Menü (`on_applet_clicked` als Toggle); über den Menüpunkt **Einstellungen** wird direkt `configureApplet()` geöffnet.
+- Linksklick auf das Applet öffnet das Popup-Menü explizit über `on_applet_clicked(event)`; über den Menüpunkt **Einstellungen** wird direkt `configureApplet()` geöffnet.
 - Popup-Aktion „Suche öffnen“ für den optionalen externen GTK-Suchdialog.
 - Menüeintrag „Einstellungen“ für direktes Öffnen der Applet-Einstellungen.
 - ATPlayer-nahe Umschaltung im Menü: **Filter ein-/ausblenden** und **Infos ein-/ausblenden**; beide Zustände werden in Cinnamon-Settings gespeichert.

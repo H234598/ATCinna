@@ -119,12 +119,16 @@ for forbidden_pattern in \
     fi
 done
 
-if ! rg -q -F 'on_applet_clicked()' "$APPLET_JS"; then
+if ! rg -q -F 'on_applet_clicked(event)' "$APPLET_JS"; then
     echo "ERROR: on_applet_clicked handler is missing"
     STATUS=1
 fi
-if ! rg -q -F 'this.menu.toggle();' "$APPLET_JS"; then
-    echo "ERROR: applet click handler does not toggle menu"
+if ! rg -q -F 'typeof event.get_button === "function"' "$APPLET_JS" || ! rg -q -F 'event.get_button() !== 1' "$APPLET_JS"; then
+    echo "ERROR: applet click handler does not guard left click"
+    STATUS=1
+fi
+if ! rg -q -F 'this.menu.open(true);' "$APPLET_JS"; then
+    echo "ERROR: applet left click handler does not open menu"
     STATUS=1
 fi
 if ! rg -q -F 'new PopupMenu.PopupMenuItem("Einstellungen")' "$APPLET_JS"; then

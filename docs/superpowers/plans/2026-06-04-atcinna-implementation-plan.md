@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.36`.
+- `VERSION` is `0.3.37`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -22,8 +22,8 @@
 
 - [x] **Task 8: Add settings launcher in applet menu**
   - Add a menu item **Einstellungen** in `atcinna@H234598/applet.js`.
-  - Keep `on_applet_clicked()` as menu toggle.
-  - Add static `scripts/check.sh` checks for click/menu invariants (`on_applet_clicked`, `this.menu.toggle()`, Einstellungen item, `configureApplet()` wiring).
+  - Keep `on_applet_clicked(event)` as the left-click applet menu opener.
+  - Add static `scripts/check.sh` checks for click/menu invariants (`on_applet_clicked(event)`, `this.menu.open(true)`, Einstellungen item, `configureApplet()` wiring).
 
 ### Task 21: ATPlayer-near Filters + Profile parity markers (0.3.21)
 
@@ -33,7 +33,7 @@
   - Update task text and docs to avoid claiming ATPlayer parity is complete while these 0.3.21 filter updates are in use.
 
 - [x] **0.3.21 status in user-visible docs**
-  - Keep `on_applet_clicked()` as menu toggle and explicit, direct settings launch via `configureApplet()`.
+  - Keep `on_applet_clicked(event)` as the left-click menu opener and explicit, direct settings launch via `configureApplet()`.
   - Mark ATPlayer parity as explicitly incomplete in changelog/plan/README even with these filter improvements in place.
 
 ### Task 22: ATPlayer New/Podcast Filter Parity (0.3.22)
@@ -129,7 +129,7 @@
   - Add **Als gesehen markieren** and **Als ungesehen markieren** to Treffer, Verlauf, Favoriten, and Queue item contexts.
   - Reuse `history-add` for seen marking and add a locked helper action `history-remove --url URL` for unseen marking.
 - [x] **Click/settings contract remains explicit**
-  - Keep `on_applet_clicked()` as the applet popup toggle.
+  - Keep `on_applet_clicked(event)` as the applet popup opener.
   - Keep **Einstellungen** in the popup menu, wired through `_openAppletSettings()` to `configureApplet()`.
 - [x] **Checks/docs/version**
   - Extend source and installed validation for labels, handlers, and functional `history-remove`.
@@ -221,9 +221,21 @@
   - Extend source and installed validation for labels, handlers, reset defaults and schema keys.
   - Bump version to `0.3.36` and document that full ATPlayer parity is still open.
 
+### Task 37: Harden Left-Click Menu Open Path (0.3.37)
+
+- [x] **Applet click contract**
+  - Make `on_applet_clicked(event)` explicit and accept only Button 1 defensively.
+  - Open the applet popup menu deterministically on left click with `menu.open(true)`.
+- [x] **Settings entry remains visible**
+  - Keep **Einstellungen** in the top-level applet menu.
+  - Keep the action wired to `configureApplet()`.
+- [x] **Checks/docs/version**
+  - Extend source and installed validation so Linksklick opens the menu instead of only checking for a generic toggle.
+  - Bump version to `0.3.37` and document that full ATPlayer parity is still open.
+
 ### ATPlayer Parity Audit
 
-ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style filter/info visibility toggles, ATPlayer-style visible Treffer selection with batch play/save/bookmark/history actions, ATPlayer-style **Abspielen**/**Speichern** audio context actions, ATPlayer-style audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including per-entry **Download starten**, `Download ändern`, refresh/cleanup labels, and first visible-list selection/reset workflows, history, optional GTK dialogs with first Blacklist table-interaction parity, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
+ATCinna is not yet feature-complete against ATPlayer. It must not be treated as done until the remaining ATPlayer behavior below is either implemented or explicitly rejected. The applet currently covers the core quick-access path: left-click menu open with a direct **Einstellungen** entry, catalog refresh/search, sender/genre/topic/title/theme-title/somewhere/time/duration/new/bookmark/history/podcast filters, a direct ATPlayer-style **Bookmarks anzeigen** filter toggle, first Filterprofile management, first Blacklist modes and direct Blacklist context actions, play/open/download handoff, ATPlayer-style filter/info visibility toggles, ATPlayer-style visible Treffer selection with batch play/save/bookmark/history actions, ATPlayer-style **Abspielen**/**Speichern** audio context actions, ATPlayer-style audio URL/title/genre/topic copy actions, first Bookmark add/remove/clear workflows, first seen/unseen history actions, a durable download queue with several ATPlayer-style actions including per-entry **Download starten**, `Download ändern`, refresh/cleanup labels, and first visible-list selection/reset workflows, history, optional GTK dialogs with first Blacklist table-interaction parity, D-Bus status/profile apply, local install/package checks, and runtime smoke checks.
 
 Known parity gaps from `/home/teladi/ATPlayer`:
 
@@ -344,7 +356,7 @@ Next parity implementation priority: deeper queue table workflows beyond the vis
 
 ### Task 13: Harden Installed Click/Settings Contract (0.3.13)
 
-- [x] Keep `on_applet_clicked()` as the applet menu toggle.
+- [x] Keep `on_applet_clicked(event)` as the applet menu opener.
 - [x] Keep the applet popup menu item **Einstellungen** wired to `_openAppletSettings()` and `configureApplet()`.
 - [x] Add installed-tree validation in `scripts/validate-installed.sh` so the copied applet is checked for the same click/settings contract, not just the source tree.
 - [x] Update this plan so ATPlayer parity remains explicitly open.

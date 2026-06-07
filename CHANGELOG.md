@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.37
+
+- Linksklick-Pfad gehärtet: `on_applet_clicked(event)` akzeptiert defensiv nur Button 1 und öffnet das Popup-Menü deterministisch.
+- Menüpunkt **Einstellungen** bleibt im Hauptmenü geschützt und öffnet weiter direkt `configureApplet()`.
+- Source- und Installationschecks prüfen nun explizit den Linksklick-Kontrakt statt nur einen generischen Toggle.
+- Versionssprung auf `0.3.37`; `metadata.json` und Dokumentation angepasst. ATPlayer-Parität bleibt offen.
+
 ## 0.3.36
 
 - ATPlayer-nahe Menüaktionen **Filter ein-/ausblenden** und **Infos ein-/ausblenden** ergänzt.

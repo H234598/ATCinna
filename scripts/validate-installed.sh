@@ -173,8 +173,8 @@ source_path = Path(sys.argv[1])
 source = source_path.read_text(encoding="utf-8")
 
 checks = {
-    "on_applet_clicked toggles menu": re.compile(
-        r"on_applet_clicked\s*\([^)]*\)\s*\{[^{}]*\bthis\.menu\.toggle\s*\(\s*\)\s*;",
+    "on_applet_clicked handles left click": re.compile(
+        r"on_applet_clicked\s*\(\s*event\s*\)\s*\{[\s\S]*?\btypeof\s+event\.get_button\s*===\s*['\"]function['\"][\s\S]*?\bevent\.get_button\s*\(\s*\)\s*!==\s*1[\s\S]*?\bthis\.menu\.open\s*\(\s*true\s*\)\s*;",
         re.S,
     ),
     "Einstellungen menu item is created": re.compile(

@@ -3414,8 +3414,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._runSearch();
     }
 
-    on_applet_clicked() {
-        this.menu.toggle();
+    on_applet_clicked(event) {
+        if (event && typeof event.get_button === "function" && event.get_button() !== 1) {
+            return;
+        }
+        this.menu.open(true);
     }
 
     on_applet_removed_from_panel() {
