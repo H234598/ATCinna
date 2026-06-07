@@ -224,9 +224,15 @@ for applet_label in "Bookmarks löschen" "Alle angelegten Bookmarks löschen"; d
         exit 1
     fi
 done
-for applet_label in "Als gesehen markieren" "Als ungesehen markieren"; do
+for applet_label in "Filme als gesehen markieren" "Filme als ungesehen markieren"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
+        exit 1
+    fi
+done
+for applet_history_entry_action in 'const markShown = new PopupMenu.PopupMenuItem("Filme als gesehen markieren");' 'const markUnshown = new PopupMenu.PopupMenuItem("Filme als ungesehen markieren");'; do
+    if ! rg -q -F "${applet_history_entry_action}" "$APPLET_JS"; then
+        echo "ERROR: installed applet history entry action label is missing: ${applet_history_entry_action}"
         exit 1
     fi
 done

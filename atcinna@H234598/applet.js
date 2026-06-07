@@ -3066,11 +3066,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
     }
 
     _addHistoryActions(menu, item) {
-        const markShown = new PopupMenu.PopupMenuItem("Als gesehen markieren");
+        const markShown = new PopupMenu.PopupMenuItem("Filme als gesehen markieren");
         markShown.connect("activate", () => this._runHistoryAdd(item));
         menu.addMenuItem(markShown);
 
-        const markUnshown = new PopupMenu.PopupMenuItem("Als ungesehen markieren");
+        const markUnshown = new PopupMenu.PopupMenuItem("Filme als ungesehen markieren");
         markUnshown.connect("activate", () => this._runHistoryRemove(item));
         menu.addMenuItem(markUnshown);
     }

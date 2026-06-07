@@ -429,9 +429,15 @@ for bookmark_label in "Zu Favoriten hinzufügen" "Bookmarks löschen" "Alle ange
         STATUS=1
     fi
 done
-for history_label in "Als gesehen markieren" "Als ungesehen markieren"; do
+for history_label in "Filme als gesehen markieren" "Filme als ungesehen markieren"; do
     if ! rg -q -F "${history_label}" "$APPLET_JS"; then
         echo "ERROR: applet history action label is missing: ${history_label}"
+        STATUS=1
+    fi
+done
+for history_entry_action in 'const markShown = new PopupMenu.PopupMenuItem("Filme als gesehen markieren");' 'const markUnshown = new PopupMenu.PopupMenuItem("Filme als ungesehen markieren");'; do
+    if ! rg -q -F "${history_entry_action}" "$APPLET_JS"; then
+        echo "ERROR: applet history entry action label is missing: ${history_entry_action}"
         STATUS=1
     fi
 done

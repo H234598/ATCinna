@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.50
+
+- History-Eintragskontexte auf ATPlayer-nahe Beschriftung ausgerichtet: **Filme als gesehen markieren**, **Filme als ungesehen markieren**.
+- Backend-Logik unverändert; `check.sh` und `validate-installed.sh` prüfen jetzt die konkreten Entry-Labels statt der alten Kurzlabels.
+- Versionssprung auf `0.3.50`; `metadata.json`, `VERSION`, README, Plan und Checkskripte aktualisiert.
+
 ## 0.3.49
 
 - Per-Entry-Queue-Kontextbeschriftungen auf ATPlayer-Wortlaut gebracht: **Aus Liste entfernen**, **Vorziehen** und **Zurückstellen** wurden auf **Downloads aus Liste entfernen**, **Downloads vorziehen** und **Downloads zurückstellen** vereinheitlicht.

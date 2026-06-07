@@ -30,7 +30,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Trefferliste mit ATPlayer-naher sichtbarer Auswahl: Treffer auswählen, Auswahl umkehren/zurücksetzen, alle markierten Audios abspielen, markierte Audios speichern (in die Download-Warteschlange legen), Filme als gesehen/ungesehen markieren, neue Bookmarks anlegen und Bookmarks löschen.
 - Top-Level trefferbezogene ATPlayer-nähere Aktionen ergänzt: **Film abspielen**, **Film speichern**, **Filminformation anzeigen**, **Thema in die Zwischenablage kopieren**, **Titel in die Zwischenablage kopieren**, **Blacklist-Eintrag für den Film erstellen** und **Thema direkt in die Blacklist einfügen**.
 - Die beiden neuen Top-Level-Blacklist-Aktionen verarbeiten den ersten markierten sichtbaren Treffer, melden **keine Auswahl** sowie **kein Thema** klar und verwenden weiterhin `blacklist-add` ohne Backend- oder Untermenüänderung.
-- Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert; Kontextmenüs können Einträge auch direkt als gesehen markieren oder über **Als ungesehen markieren** wieder aus dem Verlauf entfernen.
+- Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert; Kontextmenüs können Einträge über **Filme als gesehen markieren** direkt als gesehen markieren oder über **Filme als ungesehen markieren** wieder aus dem Verlauf entfernen.
 - Website-Aktion (falls vorhanden).
 - Favoriten/Bookmarks: Einträge können pro Treffer als Favorit gespeichert, aus den Kontexten wieder entfernt, in der Liste angezeigt und gesammelt über **Alle angelegten Bookmarks löschen** geleert werden.
 - Unterhalb der Treffer werden zusätzlich die letzten Einträge aus dem Verlauf sowie Favoriten (je max. 5) als kompakte Untermenüs gezeigt.
@@ -57,7 +57,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.49`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.50`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

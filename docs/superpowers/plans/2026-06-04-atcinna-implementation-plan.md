@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.49`.
+- `VERSION` is `0.3.50`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -351,6 +351,15 @@
 - [x] **Checks/docs/version**
   - Update `scripts/check.sh` and `scripts/validate-installed.sh` to assert the concrete entry-level labels.
   - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.49`.
+
+### Task 50: Align Entry History Context Labels to ATPlayer (0.3.50)
+
+- [x] **ATPlayer-nahe Verlaufskontext-Aktionen**
+  - Rename entry history actions from **Als gesehen markieren** and **Als ungesehen markieren** to **Filme als gesehen markieren** and **Filme als ungesehen markieren**.
+  - Keep existing history handlers and backend wiring (`_runHistoryAdd`, `_runHistoryRemove`) unchanged.
+- [x] **Checks/docs/version**
+  - Update `scripts/check.sh` and `scripts/validate-installed.sh` to assert the concrete entry-history labels.
+  - Keep version and release metadata aligned: `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md`.
 
 
 ### ATPlayer Parity Audit
