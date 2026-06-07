@@ -1,4 +1,12 @@
 # Changelog
+## 0.3.51
+
+- Katalog-Leseweg auf optionalen SQLite-Cache umgestellt: `action_refresh` baut nach erfolgreichem `audios.xz`-Update atomar `catalog.sqlite` in `XDG_CACHE_HOME/atcinna@H234598` auf.
+- Einheitliche Audio-Normalisierung für XZ-Parsing und DB-Import eingeführt.
+- `search` bevorzugt den SQLite-Katalog; bei fehlender/kaputter DB wird sauber auf `audios.xz` zurückgefallen.
+- `check.sh` und `validate-installed.sh` prüfen jetzt DB-Bau/Verwendung, sowie Suchverhalten bei fehlender oder kaputter DB mit vorhandenem XZ-Fallback.
+- Versionssprung auf `0.3.51`; `metadata.json`, `VERSION`, README und Plan aktualisiert.
+
 ## 0.3.50
 
 - History-Eintragskontexte auf ATPlayer-nahe Beschriftung ausgerichtet: **Filme als gesehen markieren**, **Filme als ungesehen markieren**.

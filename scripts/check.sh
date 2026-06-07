@@ -722,7 +722,9 @@ JSONL
 
 export XDG_CACHE_HOME="$TMP_DIR"
 LZMA_FILE="$XDG_CACHE_HOME/atcinna@H234598/audios.xz"
+CATALOG_DB="$XDG_CACHE_HOME/atcinna@H234598/catalog.sqlite"
 mkdir -p "$(dirname "$LZMA_FILE")"
+rm -f "$CATALOG_DB"
 xz -z -c "$TMP_DIR/audios.jsonl" > "$LZMA_FILE"
 
 SEARCH_JSON="$(python3 "$HELPER" search --query "Kurz" --max 1)"
@@ -731,6 +733,36 @@ if ! echo "$SEARCH_JSON" | jq -e '.status == "ok" and .count >= 1' >/dev/null; t
     echo "$SEARCH_JSON"
     exit 1
 fi
+if [ ! -f "$CATALOG_DB" ]; then
+    echo "ERROR: catalog.sqlite was not built from fixture on first search run"
+    exit 1
+fi
+
+SEARCH_SQLITE_JSON="$(python3 "$HELPER" search --query "Zweite" --max 1)"
+if ! echo "$SEARCH_SQLITE_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung"' >/dev/null; then
+    echo "ERROR: search from catalog.sqlite did not return expected fixture result"
+    echo "$SEARCH_SQLITE_JSON"
+    exit 1
+fi
+
+mv "$LZMA_FILE" "$LZMA_FILE.bak"
+SEARCH_NO_CACHE_FILE="$(python3 "$HELPER" search --query "Kurz" --max 1)"
+if ! echo "$SEARCH_NO_CACHE_FILE" | jq -e '.status == "ok" and .count >= 1 and .results[0].title == "Kurzmeldung"' >/dev/null; then
+    echo "ERROR: search should still work from catalog.sqlite after audios.xz is missing"
+    echo "$SEARCH_NO_CACHE_FILE"
+    exit 1
+fi
+mv "$LZMA_FILE.bak" "$LZMA_FILE"
+
+cp "$CATALOG_DB" "$CATALOG_DB.bak"
+printf "not-a-database" > "$CATALOG_DB"
+SEARCH_CORRUPT_DB="$(python3 "$HELPER" search --query "Kurz" --max 1)"
+if ! echo "$SEARCH_CORRUPT_DB" | jq -e '.status == "ok" and .count >= 1 and .results[0].title == "Kurzmeldung"' >/dev/null; then
+    echo "ERROR: search should fall back to audios.xz when catalog.sqlite is corrupt"
+    echo "$SEARCH_CORRUPT_DB"
+    exit 1
+fi
+mv "$CATALOG_DB.bak" "$CATALOG_DB"
 
 SEARCH_DIALOG_SELF_TEST="$(python3 "$SEARCH_DIALOG" --self-test)"
 if ! echo "$SEARCH_DIALOG_SELF_TEST" | jq -e '.status == "ok" and (.gtk3 | type == "boolean")' >/dev/null; then

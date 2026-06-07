@@ -364,7 +364,9 @@ export XDG_CACHE_HOME="$TMP_DIR/cache"
 export XDG_DATA_HOME="$TMP_DIR/data"
 mkdir -p "$XDG_CACHE_HOME"
 CACHE_FILE="$XDG_CACHE_HOME/atcinna@H234598/audios.xz"
+CATALOG_DB="$XDG_CACHE_HOME/atcinna@H234598/catalog.sqlite"
 mkdir -p "$(dirname "$CACHE_FILE")"
+rm -f "$CATALOG_DB"
 
 TODAY="$(date +%F)"
 OLD_DATE="$(date -d '100 days ago' +%F)"
@@ -389,6 +391,29 @@ if ! echo "$SEARCH_JSON_TWO" | jq -e '.status == "ok" and .count == 1 and .resul
     echo "$SEARCH_JSON_TWO"
     exit 1
 fi
+if [ ! -f "$CATALOG_DB" ]; then
+    echo "ERROR: installed catalog.sqlite was not built from fixture"
+    exit 1
+fi
+
+mv "$CACHE_FILE" "$CACHE_FILE.bak"
+SEARCH_SQLITE_JSON="$(python3 "$HELPER" search --query "Zweite" --max 1)"
+if ! echo "$SEARCH_SQLITE_JSON" | jq -e '.status == "ok" and .count == 1 and .results[0].title == "Zweite Kurzmeldung"' >/dev/null; then
+    echo "ERROR: installed helper should read search results from catalog.sqlite when audios.xz is missing"
+    echo "$SEARCH_SQLITE_JSON"
+    exit 1
+fi
+mv "$CACHE_FILE.bak" "$CACHE_FILE"
+
+cp "$CATALOG_DB" "$CATALOG_DB.bak"
+printf "not-a-database" > "$CATALOG_DB"
+SEARCH_CORRUPT_DB="$(python3 "$HELPER" search --query "Kurz" --max 1)"
+if ! echo "$SEARCH_CORRUPT_DB" | jq -e '.status == "ok" and .count >= 1' >/dev/null; then
+    echo "ERROR: installed helper should fall back to audios.xz when catalog.sqlite is corrupt"
+    echo "$SEARCH_CORRUPT_DB"
+    exit 1
+fi
+mv "$CATALOG_DB.bak" "$CATALOG_DB"
 
 mkdir -p "$XDG_DATA_HOME/atcinna@H234598"
 cat > "$XDG_DATA_HOME/atcinna@H234598/bookmarks.json" <<'JSON'

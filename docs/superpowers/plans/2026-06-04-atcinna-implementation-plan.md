@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.50`.
+- `VERSION` is `0.3.51`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -24,6 +24,20 @@
   - Add a menu item **Einstellungen** in `atcinna@H234598/applet.js`.
   - Keep `on_applet_clicked(event)` as the left-click applet menu opener.
   - Add static `scripts/check.sh` checks for click/menu invariants (`on_applet_clicked(event)`, `this.menu.open(true)`, Einstellungen item, `configureApplet()` wiring).
+
+### Task 51: Optional SQLite Catalog Cache (0.3.51)
+
+- [x] **Catalog cache in cache-dir**
+  - Add `catalog.sqlite` usage in `atcinna@H234598/scripts/atcinna-catalog` under `XDG_CACHE_HOME/atcinna@H234598`.
+  - `action_refresh` builds a temporary SQLite DB from the downloaded `audios.xz` and swaps it with `os.replace`.
+- [x] **Query-path precedence**
+  - `search` prefers SQLite when the cache DB exists and is valid.
+  - On missing/invalid DB, search falls back to `audios.xz`.
+- [x] **Normalization parity and validation**
+  - Unified row normalisation for DB import and search parsing, including URL + Website validation and inherited sender/genre/topic.
+- [x] **Checks/docs/version**
+  - Add checks in `scripts/check.sh` and `scripts/validate-installed.sh` for DB-building, DB fallback without XZ, and XZ fallback with corrupt DB.
+  - Update `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.51`.
 
 ### Task 21: ATPlayer-near Filters + Profile parity markers (0.3.21)
 

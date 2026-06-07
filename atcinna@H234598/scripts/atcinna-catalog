@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import subprocess
+import sqlite3
 from pathlib import Path
 from urllib.parse import urlparse
 import lzma
@@ -52,6 +53,10 @@ def cache_dir():
 def data_dir():
     base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
     return Path(base) / "atcinna@H234598"
+
+
+def _catalog_db_path():
+    return cache_dir() / "catalog.sqlite"
 
 
 def ensure_dir(path):
@@ -919,6 +924,14 @@ def _parse_audio_bool(value):
     return text in {"1", "true", "yes", "on", "ja", "j", "x"}
 
 
+def _parse_bool_value(value, default=False):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return default if value is None else _parse_audio_bool(value)
+
+
 def action_history_add(args):
     _validate_and_normalize_url("url", args.url)
     _validate_and_normalize_url("website", args.website)
@@ -1561,6 +1574,175 @@ def _iter_audio_rows(path):
             yield row
 
 
+def _catalog_db_schema():
+    return """
+        CREATE TABLE IF NOT EXISTS catalog (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT NOT NULL DEFAULT '',
+            genre TEXT NOT NULL DEFAULT '',
+            topic TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL DEFAULT '',
+            date TEXT NOT NULL DEFAULT '',
+            time TEXT NOT NULL DEFAULT '',
+            duration TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            url TEXT NOT NULL,
+            website TEXT NOT NULL DEFAULT '',
+            is_new INTEGER NOT NULL DEFAULT 0,
+            podcast INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_catalog_query ON catalog (sender, genre, topic, title, description, url, date, time, duration);
+    """
+
+
+def _row_to_audio_item(raw, last_sender, last_genre, last_topic):
+    if len(raw) < 10:
+        return None, last_sender, last_genre, last_topic
+    if raw[0] == "Sender":
+        return None, last_sender, last_genre, last_topic
+
+    sender = normalize_value(raw[0], last_sender)
+    genre = normalize_value(raw[1], last_genre)
+    topic = normalize_value(raw[2], last_topic)
+    last_sender = sender
+    last_genre = genre
+    last_topic = topic
+
+    title = normalize_value(raw[3], "")
+    date = normalize_value(raw[4], "")
+    time_value = normalize_value(raw[5], "")
+    duration = normalize_value(raw[6], "")
+    description = normalize_value(raw[8], "")
+    url = normalize_value(raw[9], "")
+    website = normalize_value(raw[10], "") if len(raw) > 10 else ""
+    is_new = _parse_audio_bool(raw[11]) if len(raw) > 11 else False
+    is_podcast = _parse_audio_bool(raw[12]) if len(raw) > 12 else False
+
+    if not _is_http_url(url):
+        return None, last_sender, last_genre, last_topic
+    if website and not _is_http_url(website):
+        website = ""
+    if not url or not title:
+        return None, last_sender, last_genre, last_topic
+
+    return {
+        "sender": sender,
+        "genre": genre,
+        "topic": topic,
+        "title": title,
+        "date": date,
+        "time": time_value,
+        "duration": duration,
+        "description": description,
+        "url": url,
+        "website": website,
+        "is_new": is_new,
+        "podcast": is_podcast,
+    }, last_sender, last_genre, last_topic
+
+
+def _iter_catalog_rows(path):
+    if not path.exists():
+        return
+    if not _catalog_db_is_valid(path):
+        return
+    try:
+        with sqlite3.connect(path) as connection:
+            connection.row_factory = sqlite3.Row
+            for row in connection.execute(
+                "SELECT sender, genre, topic, title, date, time, duration, description, url, website, is_new, podcast "
+                "FROM catalog ORDER BY id"
+            ):
+                yield {
+                    "sender": _normalize_entry_value(row["sender"]),
+                    "genre": _normalize_entry_value(row["genre"]),
+                    "topic": _normalize_entry_value(row["topic"]),
+                    "title": _normalize_entry_value(row["title"]),
+                    "date": _normalize_entry_value(row["date"]),
+                    "time": _normalize_entry_value(row["time"]),
+                    "duration": _normalize_entry_value(row["duration"]),
+                    "description": _normalize_entry_value(row["description"]),
+                    "url": _normalize_entry_value(row["url"]),
+                    "website": _normalize_entry_value(row["website"]),
+                    "is_new": bool(row["is_new"]),
+                    "podcast": bool(row["podcast"]),
+                }
+    except sqlite3.Error:
+        return
+
+
+def _catalog_db_is_valid(path):
+    if not path.exists():
+        return False
+    try:
+        with sqlite3.connect(path) as connection:
+            cursor = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='catalog'")
+            return cursor.fetchone() is not None
+    except sqlite3.Error:
+        return False
+
+
+def _rebuild_catalog_db(cache_path, catalog_db_path):
+    if not cache_path.exists():
+        return 0
+
+    ensure_dir(catalog_db_path.parent)
+    temp_db = catalog_db_path.with_name(f"{catalog_db_path.name}.tmp.{os.getpid()}.sqlite")
+    connection = None
+    try:
+        connection = sqlite3.connect(temp_db)
+        connection.execute("PRAGMA journal_mode = OFF")
+        connection.execute("BEGIN")
+        connection.executescript(_catalog_db_schema())
+        connection.execute("DELETE FROM catalog")
+        total = 0
+        last_sender = ""
+        last_genre = ""
+        last_topic = ""
+        insert = (
+            "INSERT INTO catalog (sender, genre, topic, title, date, time, duration, description, url, website, is_new, podcast) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        for raw in _iter_audio_rows(cache_path):
+            item, last_sender, last_genre, last_topic = _row_to_audio_item(raw, last_sender, last_genre, last_topic)
+            if item is None:
+                continue
+            connection.execute(
+                insert,
+                (
+                    item["sender"],
+                    item["genre"],
+                    item["topic"],
+                    item["title"],
+                    item["date"],
+                    item["time"],
+                    item["duration"],
+                    item["description"],
+                    item["url"],
+                    item["website"],
+                    1 if item["is_new"] else 0,
+                    1 if item["podcast"] else 0,
+                ),
+            )
+            total += 1
+        connection.commit()
+        connection.close()
+        connection = None
+        os.replace(temp_db, catalog_db_path)
+        return total
+    except Exception:
+        if connection is not None:
+            connection.rollback()
+            connection.close()
+            connection = None
+        temp_db.unlink(missing_ok=True)
+        raise
+    finally:
+        if connection is not None:
+            connection.close()
+        temp_db.unlink(missing_ok=True)
+
+
 def _count_audio_rows(path):
     return sum(1 for _ in _iter_audio_rows(path))
 
@@ -1568,6 +1750,7 @@ def _count_audio_rows(path):
 def action_refresh(args):
     target_cache = cache_dir() / "audios.xz"
     tmp_cache = cache_dir() / "audios.xz.tmp"
+    target_catalog_db = _catalog_db_path()
     ensure_dir(cache_dir())
 
     mirrors = []
@@ -1607,6 +1790,10 @@ def action_refresh(args):
                 print(json.dumps({"status": "warning", "mirror": mirror, "message": "no audio entries found"}))
                 continue
             os.replace(tmp_cache, target_cache)
+            try:
+                _rebuild_catalog_db(target_cache, target_catalog_db)
+            except Exception as exc:
+                die(f"failed to build catalog cache: {exc}")
         except Exception as exc:
             tmp_cache.unlink(missing_ok=True)
             die(f"failed to write cache: {exc}")
@@ -1618,8 +1805,22 @@ def action_refresh(args):
 
 
 def _iter_results(query, max_hits, filters):
-    path = cache_dir() / "audios.xz"
-    if not path.exists():
+    xz_path = cache_dir() / "audios.xz"
+    catalog_db_path = _catalog_db_path()
+
+    rows = []
+    if _catalog_db_is_valid(catalog_db_path):
+        rows = list(_iter_catalog_rows(catalog_db_path))
+    elif xz_path.exists():
+        try:
+            _rebuild_catalog_db(xz_path, catalog_db_path)
+        except Exception:
+            rows = list(_iter_audio_rows(xz_path))
+        else:
+            rows = list(_iter_catalog_rows(catalog_db_path))
+    if not rows and xz_path.exists():
+        rows = list(_iter_audio_rows(xz_path))
+    if not rows:
         return 0, []
 
     lower = (query or "").strip().lower()
@@ -1639,39 +1840,52 @@ def _iter_results(query, max_hits, filters):
     bookmark_urls = _store_url_set("bookmarks.json") if only_bookmarks else set()
     history_urls = _store_url_set("history.json") if hide_history else set()
     hits = []
-    last_sender = ""
-    last_genre = ""
-    last_topic = ""
     blacklist_mode = _normalize_entry_value(getattr(filters, "blacklist_mode", "off"))
     if blacklist_mode not in BLACKLIST_MODES:
         blacklist_mode = "off"
     blacklist_rules = _load_blacklist() if blacklist_mode in {"hide", "only"} else []
+    last_sender = ""
+    last_genre = ""
+    last_topic = ""
 
-    for raw in _iter_audio_rows(path):
-        if len(raw) < 10:
+    for raw in rows:
+        sender = genre = topic = title = date = time = duration = description = url = website = ""
+        is_new = False
+        is_podcast = False
+        normalized = None
+        if isinstance(raw, dict):
+            normalized = {
+                "sender": _normalize_entry_value(raw.get("sender")),
+                "genre": _normalize_entry_value(raw.get("genre")),
+                "topic": _normalize_entry_value(raw.get("topic")),
+                "title": _normalize_entry_value(raw.get("title")),
+                "date": _normalize_entry_value(raw.get("date")),
+                "time": _normalize_entry_value(raw.get("time")),
+                "duration": _normalize_entry_value(raw.get("duration")),
+                "description": _normalize_entry_value(raw.get("description")),
+                "url": _normalize_entry_value(raw.get("url")),
+                "website": _normalize_entry_value(raw.get("website")),
+                "is_new": _parse_bool_value(raw.get("is_new"), False),
+                "podcast": _parse_bool_value(raw.get("podcast"), False),
+            }
+        else:
+            normalized, last_sender, last_genre, last_topic = _row_to_audio_item(raw, last_sender, last_genre, last_topic)
+
+        if normalized is None:
             continue
 
-        sender = normalize_value(raw[0], last_sender)
-        genre = normalize_value(raw[1], last_genre)
-        topic = normalize_value(raw[2], last_topic)
-        last_sender, last_genre, last_topic = sender, genre, topic
-
-        title = normalize_value(raw[3], "")
-        date = normalize_value(raw[4], "") if len(raw) > 4 else ""
-        time = normalize_value(raw[5], "") if len(raw) > 5 else ""
-        duration = normalize_value(raw[6], "") if len(raw) > 6 else ""
-        description = normalize_value(raw[8], "") if len(raw) > 8 else ""
-        url = normalize_value(raw[9], "")
-        website = normalize_value(raw[10], "") if len(raw) > 10 else ""
-        is_new = _parse_audio_bool(raw[11]) if len(raw) > 11 else False
-        is_podcast = _parse_audio_bool(raw[12]) if len(raw) > 12 else False
-        if not _is_http_url(url):
-            continue
-        if website and not _is_http_url(website):
-            website = ""
-
-        if not url or not title:
-            continue
+        sender = normalized["sender"]
+        genre = normalized["genre"]
+        topic = normalized["topic"]
+        title = normalized["title"]
+        date = normalized["date"]
+        time = normalized["time"]
+        duration = normalized["duration"]
+        description = normalized["description"]
+        url = normalized["url"]
+        website = normalized["website"]
+        is_new = normalized["is_new"]
+        is_podcast = normalized["podcast"]
 
         if not _matches_filter(sender, filter_sender):
             continue
