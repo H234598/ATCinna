@@ -139,6 +139,12 @@
     "tooltip": "Zielordner fuer heruntergeladene Audiodateien. Leer verwendet ~/Downloads.",
     "default": ""
   },
+  "download-file-name-template": {
+    "type": "entry",
+    "description": "Download-Dateiname",
+    "tooltip": "ATPlayer-nahe Vorlage fuer Dateinamen: %t Thema, %T Titel, %s Sender, %N Originaldateiname, %S Suffix, %Z URL-Hash.",
+    "default": "%t-%T-%Z.mp4"
+  },
   "download-info-file": {
     "type": "switch",
     "description": "Info-Datei schreiben",

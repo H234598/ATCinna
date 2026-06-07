@@ -40,6 +40,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Diese neuen Funktionen decken ausschließlich den ATPlayer-History-/Bookmark-Datenformat-Nachbau ab; keine vollständige ATPlayer-Konfigurationsmigration.
 - Audio-Kontextaktionen im ATPlayer-Stil: **Abspielen**, **Speichern** (legt in die Download-Warteschlange), **Filminformation anzeigen** und die bestehende kompakte **Audioinformation anzeigen**.
 - Download per sicherem Helper mit `curl` in konfigurierbaren Zielordner.
+- Download-Dateinamen folgen optional einer ATPlayer-nahen Vorlage (`download-file-name-template`, Default `%t-%T-%Z.mp4`) mit Tokens für Thema, Titel, Sender, Originaldateiname, Suffix und URL-Hash.
 - Optional schreibt der Applet-Schalter `download-info-file` bei aktivierter Einstellung für direkte und Queue-Downloads eine ATPlayer-nahe `.txt`-Infodatei mit den Metadaten neben der Audio-Datei.
 - Der neue Applet-Schalter `download-show-notification` kontrolliert Benachrichtigungen über `Download beendet`; direkte Downloads und Queue-Downloads melden nach `finished`/`error` die Ergebnisse, während **Alle Downloads starten** nur noch eine Zusammenfassung (Erledigt/Fehler) zeigt.
 - Direkte Downloadfehler und Queue-Downloadfehler werden persistent in `download-errors.json` gespeichert. Die Applet-Aktionen **Downloadfehler anzeigen** und **Downloadfehler löschen** zeigen bzw. leeren die Liste; `download-dialog-error-show` steuert, ob die Fehlerliste bei neuen Fehlern automatisch eingeblendet wird.
@@ -64,7 +65,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.61`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.62`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

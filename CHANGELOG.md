@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.62
+
+- ATPlayer-nahe Download-Dateinamensvorlage ergänzt: neues Applet-Setting `download-file-name-template` mit Default `%t-%T-%Z.mp4`.
+- Direkte Downloads und Queue-Downloads übergeben die Vorlage an den Helper; unterstützt werden `%t` Thema, `%T` Titel, `%s` Sender, `%N` Originaldateiname, `%S` Suffix und `%Z` stabiler URL-Hash.
+- Der Helper bereinigt Vorlagen strikt zu sicheren Dateinamen im Zielordner und verhindert Pfadtraversal; leere Vorlagenergebnisse fallen robust auf Titel, URL-Dateiname oder `stream` zurück.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen Schema, Binding, Reset-Default, Helper-Argumente sowie direkte und Queue-Downloadpfade mit Vorlage.
+
 ## 0.3.61
 
 - Kontextmenüfilter für Einträge ergänzt: Neue Aktion **nach Irgendwo filtern** im `Filter`-Untermenü der Kontextmenüs (`Ergebnisse`, `Verlauf`, `Favoriten`, `Warteschlange`).

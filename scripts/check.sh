@@ -259,6 +259,18 @@ if ! rg -q -F "download-info-file\": false" "$APPLET_JS"; then
     echo "ERROR: settings reset default for download-info-file is missing"
     STATUS=1
 fi
+if ! rg -q -F "download-file-name-template\": \"%t-%T-%Z.mp4\"" "$APPLET_JS"; then
+    echo "ERROR: settings reset default for download-file-name-template is missing"
+    STATUS=1
+fi
+if ! rg -q -F 'this.settings.bind("download-file-name-template", "downloadFileNameTemplate", null);' "$APPLET_JS"; then
+    echo "ERROR: applet does not bind download-file-name-template setting"
+    STATUS=1
+fi
+if ! rg -q -F '`--download-file-name-template=${fileNameTemplate}`' "$APPLET_JS"; then
+    echo "ERROR: applet does not pass download-file-name-template to helper"
+    STATUS=1
+fi
 if ! rg -q -F "download-show-notification\": true" "$APPLET_JS"; then
     echo "ERROR: settings reset default for download-show-notification is missing"
     STATUS=1
@@ -715,7 +727,7 @@ if ! rg -q -F 'BL: Whitelist' "$APPLET_JS"; then
     echo "ERROR: applet blacklist summary does not expose whitelist/inverse label"
     STATUS=1
 fi
-for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-info-file download-show-notification download-dialog-error-show; do
+for schema_key in title-filter theme-title-filter somewhere-filter max-days-filter min-duration-filter max-duration-filter only-new-filter only-bookmarks-filter hide-history-filter podcast-filter show-filter-section show-info-section download-file-name-template download-info-file download-show-notification download-dialog-error-show; do
     if ! jq -e --arg key "$schema_key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null 2>&1; then
         echo "ERROR: settings schema does not define ${schema_key}"
         STATUS=1
@@ -765,7 +777,7 @@ if ! rg -q -F '"--queued-only"' "$HELPER"; then
     echo "ERROR: helper queued-only cancel option is missing"
     STATUS=1
 fi
-for helper_arg in "--date" "--time" "--duration" "--description" "--info-file"; do
+for helper_arg in "--date" "--time" "--duration" "--description" "--info-file" "--download-file-name-template"; do
     if ! rg -q -e "${helper_arg}" "$HELPER"; then
         echo "ERROR: helper metadata parser flag is missing: ${helper_arg}"
         STATUS=1
@@ -1968,6 +1980,7 @@ DIRECT_WITH_INFO="$(python3 "$HELPER" download \
     --url "$QUEUE_URL_INFO" \
     --website "https://example.com" \
     --folder "$QUEUE_DOWNLOAD_DIR" \
+    --download-file-name-template "%s-%t-%T.%S" \
     --info-file=true)"
 
 if ! echo "$DIRECT_WITH_INFO" | jq -e '.status == "ok" and (.path | endswith(".mp3"))' >/dev/null; then
@@ -1977,6 +1990,11 @@ if ! echo "$DIRECT_WITH_INFO" | jq -e '.status == "ok" and (.path | endswith(".m
 fi
 DIRECT_INFO_PATH="$(echo "$DIRECT_WITH_INFO" | jq -r '.path')"
 DIRECT_INFO_TEXT="${DIRECT_INFO_PATH%.mp3}.txt"
+DIRECT_INFO_NAME="$(basename "$DIRECT_INFO_PATH")"
+if [[ "$DIRECT_INFO_NAME" != "Sender_D-Thema_D-Download_direkt_mit_Infodatei.mp3" ]]; then
+    echo "ERROR: direct download file name template was not applied: $DIRECT_INFO_NAME"
+    exit 1
+fi
 if [[ ! -f "$DIRECT_INFO_PATH" ]]; then
     echo "ERROR: direct download output file missing: $DIRECT_INFO_PATH"
     exit 1
@@ -2001,7 +2019,8 @@ fi
 DOWNLOAD_NO_INFO="$(python3 "$HELPER" download \
     --title "Download ohne Infodatei" \
     --url "$QUEUE_URL_INFO" \
-    --folder "$QUEUE_DOWNLOAD_DIR")"
+    --folder "$QUEUE_DOWNLOAD_DIR" \
+    --download-file-name-template "%T.%S")"
 if ! echo "$DOWNLOAD_NO_INFO" | jq -e '.status == "ok" and (.path | endswith(".mp3"))' >/dev/null; then
     echo "ERROR: download action without info-file flag failed"
     echo "$DOWNLOAD_NO_INFO"
@@ -2013,26 +2032,36 @@ if [[ -f "$DOWNLOAD_NO_INFO_TEXT" ]]; then
     echo "ERROR: download info file should not exist when info-file is false: $DOWNLOAD_NO_INFO_TEXT"
     exit 1
 fi
+DOWNLOAD_DEFAULT_TEMPLATE="$(python3 "$HELPER" download \
+    --title "Download Default Vorlage" \
+    --topic "Thema Default" \
+    --url "$QUEUE_URL_INFO" \
+    --folder "$QUEUE_DOWNLOAD_DIR")"
+if ! echo "$DOWNLOAD_DEFAULT_TEMPLATE" | jq -e '.status == "ok" and (.path | test("Thema_Default-Download_Default_Vorlage-[0-9a-f]{16}\\.mp4$"))' >/dev/null; then
+    echo "ERROR: download default file name template was not applied"
+    echo "$DOWNLOAD_DEFAULT_TEMPLATE"
+    exit 1
+fi
 
-QUEUE_ADD_ONE="$(python3 "$HELPER" download-enqueue --title "Queue One" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR")"
+QUEUE_ADD_ONE="$(python3 "$HELPER" download-enqueue --title "Queue One" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR" --download-file-name-template "%T.%S")"
 if ! echo "$QUEUE_ADD_ONE" | jq -e '.status == "ok"' >/dev/null; then
     echo "ERROR: download-enqueue failed"
     echo "$QUEUE_ADD_ONE"
     exit 1
 fi
-QUEUE_ADD_TWO="$(python3 "$HELPER" download-enqueue --title "Queue Two" --url "$QUEUE_URL_TWO" --folder "$QUEUE_DOWNLOAD_DIR")"
+QUEUE_ADD_TWO="$(python3 "$HELPER" download-enqueue --title "Queue Two" --url "$QUEUE_URL_TWO" --folder "$QUEUE_DOWNLOAD_DIR" --download-file-name-template "%T.%S")"
 if ! echo "$QUEUE_ADD_TWO" | jq -e '.status == "ok"' >/dev/null; then
     echo "ERROR: second download-enqueue failed"
     echo "$QUEUE_ADD_TWO"
     exit 1
 fi
-QUEUE_ADD_ONE_AGAIN="$(python3 "$HELPER" download-enqueue --title "Queue One Updated" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR")"
+QUEUE_ADD_ONE_AGAIN="$(python3 "$HELPER" download-enqueue --title "Queue One Updated" --url "$QUEUE_URL_ONE" --folder "$QUEUE_DOWNLOAD_DIR" --download-file-name-template "%T.%S")"
 if ! echo "$QUEUE_ADD_ONE_AGAIN" | jq -e '.status == "ok"' >/dev/null; then
     echo "ERROR: download-enqueue dedupe update failed"
     echo "$QUEUE_ADD_ONE_AGAIN"
     exit 1
 fi
-QUEUE_ADD_META="$(python3 "$HELPER" download-enqueue --title "Queue Meta" --sender "S" --genre "G" --topic "T" --date "2026-06-04" --time "08:00" --duration "00:30" --description "Queue beschreibung" --url "$QUEUE_URL_TWO" --folder "$QUEUE_DOWNLOAD_DIR")"
+QUEUE_ADD_META="$(python3 "$HELPER" download-enqueue --title "Queue Meta" --sender "S" --genre "G" --topic "T" --date "2026-06-04" --time "08:00" --duration "00:30" --description "Queue beschreibung" --url "$QUEUE_URL_TWO" --folder "$QUEUE_DOWNLOAD_DIR" --download-file-name-template "%s-%t-%T.%S")"
 if ! echo "$QUEUE_ADD_META" | jq -e '.status == "ok"' >/dev/null; then
     echo "ERROR: download-enqueue with metadata failed"
     echo "$QUEUE_ADD_META"
@@ -2049,7 +2078,7 @@ if [[ "$QUEUE_INDEX_ONE_BEFORE" == "" ]]; then
     echo "ERROR: queue-list ordering check failed: could not locate first URL"
     exit 1
 fi
-if ! echo "$QUEUE_LIST" | jq -e --arg q "$QUEUE_URL_TWO" '.results | map(select(.url==$q and .date=="2026-06-04" and .time=="08:00" and .duration=="00:30" and .description=="Queue beschreibung")) | length > 0' >/dev/null; then
+if ! echo "$QUEUE_LIST" | jq -e --arg q "$QUEUE_URL_TWO" '.results | map(select(.url==$q and .date=="2026-06-04" and .time=="08:00" and .duration=="00:30" and .description=="Queue beschreibung" and .download_file_name_template=="%s-%t-%T.%S")) | length > 0' >/dev/null; then
     echo "ERROR: queue metadata fields not persisted"
     echo "$QUEUE_LIST"
     exit 1
@@ -2281,6 +2310,7 @@ QUEUE_INFO_ENQUEUE="$(python3 "$HELPER" download-enqueue \
     --description "Warteschlangen-Download mit Infodatei" \
     --url "$QUEUE_URL_INFO" \
     --folder "$QUEUE_DOWNLOAD_DIR" \
+    --download-file-name-template "%s-%t-%T.%S" \
     --info-file=true)"
 if ! echo "$QUEUE_INFO_ENQUEUE" | jq -e '.status == "ok"' >/dev/null; then
     echo "ERROR: download-enqueue with info-file=true failed"
@@ -2294,6 +2324,11 @@ if ! echo "$QUEUE_INFO_RUN" | jq -e '.status == "ok" and .result.status == "fini
     exit 1
 fi
 QUEUE_INFO_PATH="$(echo "$QUEUE_INFO_RUN" | jq -r '.result.path')"
+QUEUE_INFO_NAME="$(basename "$QUEUE_INFO_PATH")"
+if [[ "$QUEUE_INFO_NAME" != "Sender_Q-Thema_Q-Queue_mit_Infodatei.mp3" ]]; then
+    echo "ERROR: queue download file name template was not applied: $QUEUE_INFO_NAME"
+    exit 1
+fi
 QUEUE_INFO_TEXT="${QUEUE_INFO_PATH%.mp3}.txt"
 if [[ ! -f "$QUEUE_INFO_PATH" ]]; then
     echo "ERROR: queue run output file missing: $QUEUE_INFO_PATH"

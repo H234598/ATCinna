@@ -156,7 +156,7 @@ if [[ "$meta_version" != "$VERSION" ]]; then
     exit 1
 fi
 
-for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-info-file" "download-show-notification" "download-dialog-error-show"; do
+for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filter" "min-duration-filter" "max-duration-filter" "only-new-filter" "only-bookmarks-filter" "hide-history-filter" "podcast-filter" "show-filter-section" "show-info-section" "download-file-name-template" "download-info-file" "download-show-notification" "download-dialog-error-show"; do
     if ! jq -e --arg key "$key" 'has($key)' "$SETTINGS_SCHEMA" >/dev/null; then
         echo "ERROR: settings-schema key missing: $key"
         exit 1
@@ -164,6 +164,18 @@ for key in "title-filter" "theme-title-filter" "somewhere-filter" "max-days-filt
 done
 if ! rg -q -F 'this.settings.bind("download-dialog-error-show", "downloadDialogErrorShow", null);' "$APPLET_JS"; then
     echo "ERROR: installed applet does not bind download-dialog-error-show"
+    exit 1
+fi
+if ! rg -q -F 'this.settings.bind("download-file-name-template", "downloadFileNameTemplate", null);' "$APPLET_JS"; then
+    echo "ERROR: installed applet does not bind download-file-name-template"
+    exit 1
+fi
+if ! rg -q -F '"download-file-name-template": "%t-%T-%Z.mp4"' "$APPLET_JS"; then
+    echo "ERROR: installed applet reset defaults do not restore download-file-name-template"
+    exit 1
+fi
+if ! rg -q -F 'this.settings.setValue("download-file-name-template", defaults["download-file-name-template"]);' "$APPLET_JS"; then
+    echo "ERROR: installed applet reset does not persist download-file-name-template"
     exit 1
 fi
 if ! rg -q -F '"download-dialog-error-show": true' "$APPLET_JS"; then
@@ -413,6 +425,10 @@ if ! rg -q -F -- "--theme-title" "$HELPER"; then
 fi
 if ! rg -q -F -- "--info-file" "$HELPER"; then
     echo "ERROR: installed helper does not define --info-file in help output"
+    exit 1
+fi
+if ! rg -q -F -- "--download-file-name-template" "$HELPER"; then
+    echo "ERROR: installed helper does not define --download-file-name-template"
     exit 1
 fi
 for blacklist_dialog_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Gelöschte wieder anlegen"; do

@@ -10,8 +10,9 @@ import re
 import shutil
 import subprocess
 import sqlite3
+import hashlib
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 import lzma
 import sys
 import time
@@ -45,6 +46,9 @@ FILTER_PROFILE_DEFAULT_MAX_DURATION = 150
 FILTER_PROFILE_DEFAULT_PODCAST_MODE = "all"
 ATPLAYER_FORMAT_SEPARATOR = " |#| "
 ATPLAYER_META_SEPARATOR = "  |###|  "
+DOWNLOAD_FILE_NAME_TEMPLATE_DEFAULT = "%t-%T-%Z.mp4"
+DOWNLOAD_FILE_NAME_MAX_LENGTH = 120
+DOWNLOAD_FILE_NAME_URL_HASH_LEN = 16
 ATPLAYER_FORMAT_RE = re.compile(
     r"^\s*(?P<date>.*?) \|#\| (?P<topic>.*?) \|#\| (?P<title>.*?)  \|###\|  (?P<url>.*)$"
 )
@@ -597,6 +601,7 @@ def _entry_from_args(args):
         "description": _normalize_entry_value(getattr(args, "description", "")),
         "url": _normalize_entry_value(args.url),
         "website": _normalize_entry_value(args.website),
+        "download_file_name_template": _normalize_download_file_name_template(getattr(args, "download_file_name_template", "")),
         "info_file": _parse_bool_arg(getattr(args, "info_file", None), "info-file") if getattr(args, "info_file", None) is not None else False,
         "timestamp": int(time.time()),
     }
@@ -1204,6 +1209,7 @@ def _normalize_queue_entry(entry):
         "path": _normalize_entry_value(entry.get("path")),
         "error": _normalize_entry_value(entry.get("error")),
         "info_file": _normalize_bool_value(entry.get("info_file"), False),
+        "download_file_name_template": _normalize_download_file_name_template(entry.get("download_file_name_template", "")),
     }
 
 
@@ -1311,21 +1317,96 @@ def _resolve_updated_folder(raw_folder):
     return str(folder_path)
 
 
-def _download_file_path(url, folder, title):
+def _normalize_download_file_name_template(raw_template):
+    template = _normalize_entry_value(raw_template)
+    return template or DOWNLOAD_FILE_NAME_TEMPLATE_DEFAULT
+
+
+def _safe_download_template_field(value):
+    cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", _normalize_entry_value(value)).strip("._-")
+    return cleaned[:DOWNLOAD_FILE_NAME_MAX_LENGTH]
+
+
+def _download_file_name_hash(url):
+    normalized = _normalize_entry_value(url)
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:DOWNLOAD_FILE_NAME_URL_HASH_LEN]
+
+
+def _download_template_values(url, item):
     parsed = urlparse(url)
-    stem = _safe_filename(_normalize_entry_value(title) or Path(parsed.path).name or "stream")
-    suffix = Path(parsed.path).suffix or ".mp3"
-    file_name = f"{stem}{suffix}"
-    destination = folder / file_name
-    candidate = 1
-    while destination.exists():
-        destination = folder / f"{stem}_{candidate}{suffix}"
-        candidate += 1
+    path_name = unquote(parsed.path or "")
+    parsed_name = Path(path_name).name
+    parsed_suffix = Path(path_name).suffix
+    return {
+        "t": _safe_download_template_field(item.get("topic", "")),
+        "T": _safe_download_template_field(item.get("title", "")),
+        "s": _safe_download_template_field(item.get("sender", "")),
+        "N": _safe_download_template_field(parsed_name or "stream"),
+        "S": _safe_download_template_field(parsed_suffix.lstrip(".")),
+        "Z": _download_file_name_hash(url),
+    }
+
+
+def _render_download_file_name(url, folder, item, template):
+    parsed = urlparse(url)
+    parsed_suffix = _safe_download_template_field(Path(unquote(parsed.path or "")).suffix.lstrip(".")) or "mp3"
+
+    template = _normalize_download_file_name_template(template)
+    tokens = _download_template_values(url, item)
+    file_name = template
+    for token, value in tokens.items():
+        file_name = file_name.replace(f"%{token}", value)
+    file_name = file_name.replace("%", "_")
+    file_name = _safe_filename(file_name)
+
+    if not file_name or file_name in {".", "..", "atcinnaradio"}:
+        file_name = _safe_filename(
+            _normalize_entry_value(item.get("title", ""))
+            or _safe_download_template_field(Path(unquote(parsed.path or "")).name)
+            or "stream"
+        )
+
+    if file_name == "atcinnaradio" and parsed_suffix:
+        file_name = f"stream.{parsed_suffix}"
+    elif Path(file_name).suffix == "" and file_name:
+        file_name = f"{file_name}.{parsed_suffix}"
+
+    file_name = _safe_filename(file_name)
+    if file_name == "atcinnaradio" and parsed_suffix:
+        file_name = f"stream.{parsed_suffix}"
+
+    if Path(file_name).suffix == "":
+        file_name = f"{file_name}.{parsed_suffix}"
+
+    folder_path = folder
+    destination = folder_path / file_name
+    try:
+        destination.resolve().relative_to(folder_path.resolve())
+    except ValueError:
+        die("invalid download file name")
+
+    if not destination.parent.exists():
+        die("download folder does not exist")
+
+    if destination.exists():
+        stem = Path(file_name).stem
+        extension = Path(file_name).suffix
+        counter = 1
+        while destination.exists():
+            destination = folder_path / f"{stem}_{counter}{extension}"
+            counter += 1
 
     return str(destination)
 
 
-def _download_to_file(url, folder, title):
+def _download_file_path(url, folder, item):
+    folder_path = folder
+    if isinstance(folder, str):
+        folder_path = Path(folder).expanduser()
+    return _render_download_file_name(url, folder_path, item, item.get("download_file_name_template", "")) or ""
+
+
+def _download_to_file(url, folder, item):
     if not _is_http_url(url):
         die("invalid URL scheme")
 
@@ -1333,7 +1414,7 @@ def _download_to_file(url, folder, title):
     if not curl:
         die("curl not found")
 
-    destination = Path(_download_file_path(url, folder, title))
+    destination = Path(_download_file_path(url, folder, item))
     try:
         subprocess.run(
             [curl, "--fail", "--location", "--silent", "--show-error", "-L", "-o", str(destination), url],
@@ -1402,7 +1483,7 @@ def _remove_file_if_exists(path):
 
 
 def _download_with_info(item, folder):
-    destination = _download_to_file(item.get("url", ""), folder, item.get("title", ""))
+    destination = _download_to_file(item.get("url", ""), folder, item)
     try:
         if item.get("info_file", False):
             _write_info_file(destination, item)
@@ -2461,6 +2542,7 @@ def parse_args():
     download.add_argument("--folder", default="", help="Download folder")
     download.add_argument("--website", default="", help="Optional website URL")
     download.add_argument("--info-file", default="false", help="Whether to write metadata info file")
+    download.add_argument("--download-file-name-template", default="", help="ATPlayer-style download file name template")
 
     download_enqueue = sub.add_parser("download-enqueue", help="Add media URL to download queue")
     download_enqueue.add_argument("--title", default="", help="Optional title")
@@ -2475,6 +2557,7 @@ def parse_args():
     download_enqueue.add_argument("--website", default="", help="Optional website URL")
     download_enqueue.add_argument("--folder", default="", help="Download folder")
     download_enqueue.add_argument("--info-file", default="false", help="Whether to write metadata info file")
+    download_enqueue.add_argument("--download-file-name-template", default="", help="ATPlayer-style download file name template")
 
     sub.add_parser("download-list", help="List queue entries")
     sub.add_parser("download-error-list", help="List persistent download errors")
