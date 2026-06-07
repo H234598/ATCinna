@@ -305,7 +305,7 @@ def _select_download_folder(parent_window, folder_entry, gtk_module):
         dialog.destroy()
 
 
-def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website, info_file):
+def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, description, website, file_name_template, info_file):
     try:
         import gi
 
@@ -366,6 +366,8 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
     duration_entry.set_text(duration)
     website_entry = Gtk.Entry()
     website_entry.set_text(website)
+    file_name_template_entry = Gtk.Entry()
+    file_name_template_entry.set_text(file_name_template)
 
     description_view = Gtk.TextView()
     description_view.set_monospace(False)
@@ -391,6 +393,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
         ("Uhrzeit", time_entry, 6),
         ("Dauer", duration_entry, 7),
         ("Website", website_entry, 8),
+        ("Dateinamensvorlage", file_name_template_entry, 9),
     ]:
         label = Gtk.Label(label=f"{label_text}:", xalign=0)
         label.set_hexpand(False)
@@ -398,9 +401,9 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
         grid.attach(widget, 1, row, 1, 1)
 
     description_label = Gtk.Label(label="Beschreibung:", xalign=0)
-    grid.attach(description_label, 0, 9, 1, 1)
-    grid.attach(description_scroller, 1, 9, 1, 1)
-    grid.attach(info_file_checkbox, 1, 10, 1, 1)
+    grid.attach(description_label, 0, 10, 1, 1)
+    grid.attach(description_scroller, 1, 10, 1, 1)
+    grid.attach(info_file_checkbox, 1, 11, 1, 1)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     root.pack_start(actions, False, False, 0)
@@ -420,6 +423,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
         "time": time_entry,
         "duration": duration_entry,
         "website": website_entry,
+        "file_name_template": file_name_template_entry,
         "description": description_view,
         "info_file": info_file_checkbox,
     }
@@ -437,6 +441,7 @@ def run_dialog(url, title, folder, sender, genre, topic, date, time, duration, d
             f"--duration={_collect_field(controls['duration'])}",
             f"--description={_text_from_buffer(controls['description'])}",
             f"--website={_collect_field(controls['website'])}",
+            f"--download-file-name-template={_collect_field(controls['file_name_template'])}",
             f"--info-file={'true' if controls['info_file'].get_active() else 'false'}",
         ]
         folder_value = _collect_field(controls["folder"])
@@ -485,6 +490,7 @@ def main():
     parser.add_argument("--duration", default="", help="Duration")
     parser.add_argument("--description", default="", help="Description")
     parser.add_argument("--website", default="", help="Website")
+    parser.add_argument("--download-file-name-template", default="", help="Download file name template")
     parser.add_argument("--info-file", default=None, help="Whether to write metadata info file")
     args = parser.parse_args()
 
@@ -508,6 +514,7 @@ def main():
         args.duration,
         args.description,
         args.website,
+        args.download_file_name_template,
         info_file,
     )
     return 0

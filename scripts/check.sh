@@ -825,8 +825,16 @@ if ! rg -q -F -- '--info-file=' "$APPLET_JS"; then
     echo "ERROR: applet queue edit dialog call is missing --info-file argument"
     STATUS=1
 fi
+if ! rg -q -F -- '--download-file-name-template=' "$APPLET_JS"; then
+    echo "ERROR: applet queue edit dialog call is missing --download-file-name-template argument"
+    STATUS=1
+fi
 if ! rg -q -F 'Infodatei anlegen: "Name.txt"' "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog label is missing: Infodatei anlegen: \"Name.txt\""
+    STATUS=1
+fi
+if ! rg -q -F "Dateinamensvorlage" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog label is missing: Dateinamensvorlage"
     STATUS=1
 fi
 if ! rg -q -F "Liste der Pfade löschen" "$QUEUE_EDIT_DIALOG"; then
@@ -841,6 +849,14 @@ for queue_edit_dialog_handler in "_select_download_folder" "_propose_download_fo
 done
 if ! rg -q -F -- "--info-file" "$QUEUE_EDIT_DIALOG"; then
     echo "ERROR: queue edit dialog argument is missing: --info-file"
+    STATUS=1
+fi
+if ! rg -q -F -- "--download-file-name-template" "$QUEUE_EDIT_DIALOG"; then
+    echo "ERROR: queue edit dialog argument is missing: --download-file-name-template"
+    STATUS=1
+fi
+if ! rg -q -F 'download_update.add_argument("--download-file-name-template"' "$HELPER"; then
+    echo "ERROR: helper download-update parser is missing --download-file-name-template"
     STATUS=1
 fi
 if ! python3 - "$QUEUE_EDIT_DIALOG" "$TMP_DIR" <<'PY'; then
@@ -2017,6 +2033,7 @@ QUEUE_URL_ONE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-one.mp3"
 QUEUE_URL_TWO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3"
 QUEUE_URL_INFO="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-info.mp3"
 QUEUE_URL_THREE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-three.mp3"
+QUEUE_URL_TEMPLATE="http://127.0.0.1:${QUEUE_HTTP_PORT}/audio-two.mp3?template-check"
 
 DIRECT_ERROR_TITLE="Direkter Downloadfehler"
 if python3 "$HELPER" download \
@@ -2182,6 +2199,37 @@ QUEUE_LIST_AFTER_UPDATE_FALSE="$(python3 "$HELPER" download-list)"
 if ! echo "$QUEUE_LIST_AFTER_UPDATE_FALSE" | jq -e --arg one "$QUEUE_URL_ONE" '.results | map(select(.url == $one and .info_file == false)) | length == 1' >/dev/null; then
     echo "ERROR: download-update did not clear info_file"
     echo "$QUEUE_LIST_AFTER_UPDATE_FALSE"
+    exit 1
+fi
+QUEUE_TEMPLATE_ENQUEUE="$(python3 "$HELPER" download-enqueue --title "Queue Vorlage" --sender "VorlageSender" --topic "Vorlage Thema" --url "$QUEUE_URL_TEMPLATE" --folder "$QUEUE_DOWNLOAD_DIR" --download-file-name-template "%T.%S")"
+if ! echo "$QUEUE_TEMPLATE_ENQUEUE" | jq -e '.status == "ok"' >/dev/null; then
+    echo "ERROR: download-enqueue with template fixture failed"
+    echo "$QUEUE_TEMPLATE_ENQUEUE"
+    exit 1
+fi
+QUEUE_TEMPLATE_UPDATE="$(python3 "$HELPER" download-update --url "$QUEUE_URL_TEMPLATE" --download-file-name-template "%s-%t-%T.%S")"
+if ! echo "$QUEUE_TEMPLATE_UPDATE" | jq -e '.status == "ok" and .updated == 1' >/dev/null; then
+    echo "ERROR: download-update failed for download-file-name-template"
+    echo "$QUEUE_TEMPLATE_UPDATE"
+    exit 1
+fi
+QUEUE_TEMPLATE_LIST="$(python3 "$HELPER" download-list)"
+if ! echo "$QUEUE_TEMPLATE_LIST" | jq -e --arg t "$QUEUE_URL_TEMPLATE" '.results | map(select(.url == $t and .download_file_name_template == "%s-%t-%T.%S")) | length == 1' >/dev/null; then
+    echo "ERROR: download-update did not persist download-file-name-template"
+    echo "$QUEUE_TEMPLATE_LIST"
+    exit 1
+fi
+QUEUE_TEMPLATE_RUN="$(python3 "$HELPER" download-run --url "$QUEUE_URL_TEMPLATE")"
+if ! echo "$QUEUE_TEMPLATE_RUN" | jq -e '.status == "ok" and .result.status == "finished" and (.result.path | endswith(".mp3"))' >/dev/null; then
+    echo "ERROR: download-run did not execute for template-updated queue entry"
+    echo "$QUEUE_TEMPLATE_RUN"
+    exit 1
+fi
+QUEUE_TEMPLATE_PATH="$(echo "$QUEUE_TEMPLATE_RUN" | jq -r '.result.path')"
+QUEUE_TEMPLATE_BASENAME="${QUEUE_TEMPLATE_PATH##*/}"
+if [[ "$QUEUE_TEMPLATE_BASENAME" != "VorlageSender-Vorlage_Thema-Queue_Vorlage.mp3" ]]; then
+    echo "ERROR: queue template was not applied during queue download"
+    echo "$QUEUE_TEMPLATE_PATH"
     exit 1
 fi
 if ! echo "$QUEUE_LIST_AFTER_UPDATE" | jq -e --arg one "$QUEUE_URL_ONE" --argjson before "$QUEUE_INDEX_ONE_BEFORE" '.results | map(.url) | index($one) == $before' >/dev/null; then
@@ -2414,7 +2462,7 @@ if ! jq -e '.status == "error" and .message == "url is required unless --all or 
     exit 1
 fi
 QUEUE_CLEAR="$(python3 "$HELPER" download-clear)"
-if ! echo "$QUEUE_CLEAR" | jq -e '.status == "ok" and .removed == 3' >/dev/null; then
+if ! echo "$QUEUE_CLEAR" | jq -e '.status == "ok" and .removed == 4' >/dev/null; then
     echo "ERROR: download-clear did not remove finished/cancelled entries"
     echo "$QUEUE_CLEAR"
     exit 1

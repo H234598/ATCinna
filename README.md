@@ -58,6 +58,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Das Script `atcinna@H234598/scripts/atcinna-queue-edit-dialog` bietet einen optionalen GTK-Dialog fuer **Download ändern** und nutzt `download-update` im Helper.
 - Im Queue-Edit-Dialog wurde der Zielordnerbereich um den ATPlayer-nahen Button **Pfad auswählen** ergänzt, der den GTK3-Ordnerdialog (`SELECT_FOLDER`) für lokale Ordner öffnet.
 - Der Queue-Edit-Dialog bietet zusätzlich **Pfad vorschlagen**: der Button setzt den Zielordner auf den XDG-Downloadordner, `~/Downloads` oder das Home-Verzeichnis und nutzt einen vorhandenen Themen-Unterordner nur, wenn er bereits existiert.
+- Im Queue-Edit-Dialog kann die **Dateinamensvorlage** pro Queue-Eintrag gepflegt und geändert werden; die Änderung wird per `download-update --download-file-name-template=...` im Queue-Eintrag persistiert und wird beim Download verwendet.
 - Der Queue-Edit-Dialog besitzt zusätzlich die per-Download-Option **Infodatei anlegen: "Name.txt"**. Der Applet-Aufruf von „Download ändern“ übergibt den aktuellen `item.info_file`-Wert als `--info-file=true|false`, und `download-update` aktualisiert das Queue-Feld entsprechend.
 - Der Zielordner im Queue-Edit-Dialog ist jetzt eine editierbare Pfadliste. Erfolgreich gespeicherte `download-update --folder`-Pfade werden lokal als neueste zuerst gemerkt; **Liste der Pfade löschen** leert diese Dialog-History.
 - Headless-Selbsttest für die Dialoge: `python3 atcinna@H234598/scripts/atcinna-search-dialog --self-test`, `python3 atcinna@H234598/scripts/atcinna-queue-edit-dialog --self-test`, `python3 atcinna@H234598/scripts/atcinna-blacklist-dialog --self-test` und `python3 atcinna@H234598/scripts/atcinna-filter-profiles-dialog --self-test` melden `gtk3: true/false`; das Applet bleibt auch ohne GTK3 über die interne Popup-Suche nutzbar.
@@ -69,7 +70,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.66`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.67`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`

@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.67
+
+- Queue-Edit-Dialog ergänzt nun das Feld **Dateinamensvorlage** (Initialisierung aus `--download-file-name-template`/Queue-Wert) und übergibt die Änderung per `download-update --download-file-name-template=...`.
+- `download-update` akzeptiert `--download-file-name-template` als robustes Updatefeld und speichert es im Queue-Eintrag; bei Änderung wird der Queue-Eintrags-Pfadstatus korrekt zurückgesetzt.
+- Zusätzliche `scripts/check.sh` und `scripts/validate-installed.sh`-Checks für Queue-Dialog-Argumente/Labels und Persistenz/Rendering von per-Download-Dateinamensvorlagen.
+- Versionssprung auf `0.3.67`; `metadata.json`, `VERSION`, `README.md` und `CHANGELOG.md` aktualisiert.
+
 ## 0.3.66
 
 - ATPlayer-nahe Zielordner-History ergänzt: Der Queue-Edit-Dialog nutzt jetzt eine editierbare Pfadliste statt eines reinen Textfelds.
