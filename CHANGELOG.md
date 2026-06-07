@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.45
+
+- Top-Level-Trefferaktionen ergänzt: **Filminformation anzeigen**, **Thema in die Zwischenablage kopieren**, **Titel in die Zwischenablage kopieren** auf den ersten markierten sichtbaren Treffer umgesetzt.
+- Bei fehlender Treffer-Auswahl liefern die neuen Top-Level-Aktionen klare Statusmeldungen; bei fehlendem Titel/Thema werden bestehende Clipboard-Meldungen verwendet.
+- Version auf `0.3.45`; `metadata.json`, `VERSION`, README, Checkskripte und Installvalidierung aktualisiert.
+
 ## 0.3.44
 
 - Treffer-Top-Level ergänzt: **Film abspielen** und **Film speichern** greifen jetzt auf den ersten markierten sichtbaren Treffer zu.

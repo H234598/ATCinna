@@ -59,6 +59,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionSaveSelected = null;
         this._resultActionPlayFirstSelected = null;
         this._resultActionSaveFirstSelected = null;
+        this._resultActionShowInfoFirstSelected = null;
+        this._resultActionCopyTopicFirstSelected = null;
+        this._resultActionCopyTitleFirstSelected = null;
         this._queueSection = null;
         this._queueListSection = null;
         this._queueSelectionItems = new Set();
@@ -1390,6 +1393,18 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         saveMovie.connect("activate", () => this._runResultSaveFirstSelected());
         this._resultsSection.addMenuItem(saveMovie);
 
+        const showInfoMovie = new PopupMenu.PopupMenuItem("Filminformation anzeigen");
+        showInfoMovie.connect("activate", () => this._runResultShowInfoFirstSelected());
+        this._resultsSection.addMenuItem(showInfoMovie);
+
+        const copyTopic = new PopupMenu.PopupMenuItem("Thema in die Zwischenablage kopieren");
+        copyTopic.connect("activate", () => this._runResultCopyTopicFirstSelected());
+        this._resultsSection.addMenuItem(copyTopic);
+
+        const copyTitle = new PopupMenu.PopupMenuItem("Titel in die Zwischenablage kopieren");
+        copyTitle.connect("activate", () => this._runResultCopyTitleFirstSelected());
+        this._resultsSection.addMenuItem(copyTitle);
+
         const markShownSelected = new PopupMenu.PopupMenuItem("Markierte als gesehen markieren");
         markShownSelected.connect("activate", () => this._runResultMarkShownSelected());
         this._resultsSection.addMenuItem(markShownSelected);
@@ -1413,6 +1428,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._resultActionSaveSelected = saveSelected;
         this._resultActionPlayFirstSelected = playMovie;
         this._resultActionSaveFirstSelected = saveMovie;
+        this._resultActionShowInfoFirstSelected = showInfoMovie;
+        this._resultActionCopyTopicFirstSelected = copyTopic;
+        this._resultActionCopyTitleFirstSelected = copyTitle;
         this._resultActionMarkShownSelected = markShownSelected;
         this._resultActionMarkUnshownSelected = markUnshownSelected;
         this._resultActionBookmarkSelected = bookmarkSelected;
@@ -1506,6 +1524,33 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             return;
         }
         this._runDownloadEnqueue(selectedItems[0]);
+    }
+
+    _runResultShowInfoFirstSelected() {
+        const selectedItems = this._getSelectedResultItems();
+        if (!selectedItems.length) {
+            this._setStatus("Filminformation anzeigen: keine Auswahl");
+            return;
+        }
+        this._setInfoSection(selectedItems[0]);
+    }
+
+    _runResultCopyTopicFirstSelected() {
+        const selectedItems = this._getSelectedResultItems();
+        if (!selectedItems.length) {
+            this._setStatus("Thema in die Zwischenablage kopieren: keine Auswahl");
+            return;
+        }
+        this._copyToClipboard(selectedItems[0].topic, "Thema in die Zwischenablage kopieren");
+    }
+
+    _runResultCopyTitleFirstSelected() {
+        const selectedItems = this._getSelectedResultItems();
+        if (!selectedItems.length) {
+            this._setStatus("Titel in die Zwischenablage kopieren: keine Auswahl");
+            return;
+        }
+        this._copyToClipboard(selectedItems[0].title, "Titel in die Zwischenablage kopieren");
     }
 
     _runResultBookmarkSelected() {
@@ -1645,6 +1690,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._resultActionSaveFirstSelected) {
             this._resultActionSaveFirstSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionShowInfoFirstSelected) {
+            this._resultActionShowInfoFirstSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionCopyTopicFirstSelected) {
+            this._resultActionCopyTopicFirstSelected.setSensitive(hasSelection);
+        }
+        if (this._resultActionCopyTitleFirstSelected) {
+            this._resultActionCopyTitleFirstSelected.setSensitive(hasSelection);
         }
         if (this._resultActionMarkShownSelected) {
             this._resultActionMarkShownSelected.setSensitive(hasSelection);

@@ -304,6 +304,15 @@
   - Extend source/installed checks for new top-level labels and handler symbols.
   - Bump version to `0.3.44`, update metadata/version/readme/changelog.
 
+### Task 45: Add Result Top-Level Info/Copy Actions for Selected Item (0.3.45)
+
+- [x] **Top-Level Treffer-Aktionserweiterung**
+  - Ergänze die Treffer-Toplevel-Aktionen um **Filminformation anzeigen**, **Thema in die Zwischenablage kopieren**, **Titel in die Zwischenablage kopieren** und nutze den ersten markierten sichtbaren Treffer.
+  - Bei fehlender Auswahl immer explizite Statusmeldungen setzen; bei fehlendem Thema/Titel weiterhin klare Clipboard-Fehlermeldungen liefern.
+- [x] **Checks/docs/version**
+  - Erweitere Source-/Installed-Checks um die neuen Top-Level-Labels, Handler und Applet-Version.
+  - Bump auf `0.3.45`; update `metadata.json`, `VERSION`, `README` und `CHANGELOG`.
+
 
 ### ATPlayer Parity Audit
 
