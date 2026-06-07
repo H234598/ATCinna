@@ -266,6 +266,12 @@ for applet_queue_entry_action in 'const remove = new PopupMenu.PopupMenuItem("Do
         exit 1
     fi
 done
+for applet_queue_entry_action in 'const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' 'queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());'; do
+    if ! rg -q -F "${applet_queue_entry_action}" "$APPLET_JS"; then
+        echo "ERROR: installed applet queue entry action wiring is missing: ${applet_queue_entry_action}"
+        exit 1
+    fi
+done
 for applet_label in "Hilfedialog" "Anleitung im Web" "Blacklist verwalten" "Alle Programmeinstellungen zurücksetzen" "Gibt's ein Update?" "Über dieses Programm"; do
     if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${applet_label}\")" "$APPLET_JS"; then
         echo "ERROR: installed help menu label is missing: ${applet_label}"
@@ -275,6 +281,12 @@ done
 for applet_top_action in 'const playSelected = new PopupMenu.PopupMenuItem("Audio (URL) abspielen");' 'const editSelected = new PopupMenu.PopupMenuItem("Download ändern");' 'const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");'; do
     if ! rg -q -F "${applet_top_action}" "$APPLET_JS"; then
         echo "ERROR: installed applet queue top-level selected media action is missing: ${applet_top_action}"
+        exit 1
+    fi
+done
+for applet_result_entry_action in 'const resultEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' 'resultEntryResetSelection.connect("activate", () => this._runResultResetSelection());'; do
+    if ! rg -q -F "${applet_result_entry_action}" "$APPLET_JS"; then
+        echo "ERROR: installed applet result entry action wiring is missing: ${applet_result_entry_action}"
         exit 1
     fi
 done

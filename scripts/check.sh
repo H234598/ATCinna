@@ -359,6 +359,12 @@ for queue_entry_action in 'const remove = new PopupMenu.PopupMenuItem("Downloads
         STATUS=1
     fi
 done
+for queue_entry_action in 'const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' 'queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());'; do
+    if ! rg -q -F "${queue_entry_action}" "$APPLET_JS"; then
+        echo "ERROR: applet queue entry action wiring is missing: ${queue_entry_action}"
+        STATUS=1
+    fi
+done
 for queue_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Downloads starten" "Audio (URL) abspielen" "Download ändern" "Download (URL) kopieren" "Downloads vorziehen" "Downloads zurückstellen" "Downloads stoppen" "Downloads aus Liste entfernen" "Auswahl umschalten"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue selection label is missing: ${queue_label}"
@@ -380,6 +386,12 @@ done
 for result_label in "Alles auswählen" "Auswahl umkehren" "Tabelle zurücksetzen" "Alle markierten Audios abspielen" "Markierte Audios speichern" "Filme als gesehen markieren" "Filme als ungesehen markieren" "Neue Bookmarks anlegen" "Bookmarks löschen" "Auswahl umschalten"; do
     if ! rg -q -F "${result_label}" "$APPLET_JS"; then
         echo "ERROR: applet result selection label is missing: ${result_label}"
+        STATUS=1
+    fi
+done
+for result_entry_action in 'const resultEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");' 'resultEntryResetSelection.connect("activate", () => this._runResultResetSelection());'; do
+    if ! rg -q -F "${result_entry_action}" "$APPLET_JS"; then
+        echo "ERROR: applet result entry action wiring is missing: ${result_entry_action}"
         STATUS=1
     fi
 done

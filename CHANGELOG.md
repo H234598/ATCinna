@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.52
+
+- Treffer-Untermenüs erhalten die neue ATPlayer-nahe Kontextaktion **Tabelle zurücksetzen**, die `this._runResultResetSelection()` für die Treffer-Zeilenauswahl aufruft.
+- Queue-Untermenüs erhalten die neue Kontextaktion **Tabelle zurücksetzen**, die `this._runQueueResetSelection()` für die sichtbare Queue-Auswahl aufruft.
+- `scripts/check.sh` und `scripts/validate-installed.sh` prüfen jetzt die neuen Entry-level-Konstanten und die konkreten `connect`-Handler-Zeilen (`resultEntryResetSelection`, `queueEntryResetSelection`) statt nur allgemeiner Label-Prüfungen.
+- Versionssprung auf `0.3.52`; `metadata.json`, `VERSION`, README und Plan aktualisiert.
+
 ## 0.3.51
 
 - Katalog-Leseweg auf optionalen SQLite-Cache umgestellt: `action_refresh` baut nach erfolgreichem `audios.xz`-Update atomar `catalog.sqlite` in `XDG_CACHE_HOME/atcinna@H234598` auf.

@@ -1325,6 +1325,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             toggleSelection.connect("activate", () => this._runResultToggleSelection(item));
             entry.menu.addMenuItem(toggleSelection);
 
+            const resultEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");
+            resultEntryResetSelection.connect("activate", () => this._runResultResetSelection());
+            entry.menu.addMenuItem(resultEntryResetSelection);
+
             const play = new PopupMenu.PopupMenuItem("Abspielen");
             play.connect("activate", () => this._playItem(item));
             entry.menu.addMenuItem(play);
@@ -2224,6 +2228,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             const toggleSelection = new PopupMenu.PopupMenuItem("Auswahl umschalten");
             toggleSelection.connect("activate", () => this._runQueueToggleSelection(item));
             row.menu.addMenuItem(toggleSelection);
+
+            const queueEntryResetSelection = new PopupMenu.PopupMenuItem("Tabelle zurücksetzen");
+            queueEntryResetSelection.connect("activate", () => this._runQueueResetSelection());
+            row.menu.addMenuItem(queueEntryResetSelection);
 
             const run = new PopupMenu.PopupMenuItem("Download starten");
             if (status !== "queued") {

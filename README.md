@@ -28,6 +28,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Blacklist-Modus (`blacklist-mode`) fuer Suche: aus, passende Treffer ausblenden oder nur Whitelist/Invers-Treffer anzeigen.
 - Play-Aktion über `xdg-open`.
 - Trefferliste mit ATPlayer-naher sichtbarer Auswahl: Treffer auswählen, Auswahl umkehren/zurücksetzen, alle markierten Audios abspielen, markierte Audios speichern (in die Download-Warteschlange legen), Filme als gesehen/ungesehen markieren, neue Bookmarks anlegen und Bookmarks löschen.
+- Treffer-Untermenüs enthalten zusätzlich die Kontextaktion **Tabelle zurücksetzen**.
 - Top-Level trefferbezogene ATPlayer-nähere Aktionen ergänzt: **Film abspielen**, **Film speichern**, **Filminformation anzeigen**, **Thema in die Zwischenablage kopieren**, **Titel in die Zwischenablage kopieren**, **Blacklist-Eintrag für den Film erstellen** und **Thema direkt in die Blacklist einfügen**.
 - Die beiden neuen Top-Level-Blacklist-Aktionen verarbeiten den ersten markierten sichtbaren Treffer, melden **keine Auswahl** sowie **kein Thema** klar und verwenden weiterhin `blacklist-add` ohne Backend- oder Untermenüänderung.
 - Beim Abspielen eines Eintrags wird er zusätzlich im Verlauf gespeichert; Kontextmenüs können Einträge über **Filme als gesehen markieren** direkt als gesehen markieren oder über **Filme als ungesehen markieren** wieder aus dem Verlauf entfernen.
@@ -38,7 +39,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Download per sicherem Helper mit `curl` in konfigurierbaren Zielordner.
 - Download-Warteschlange: Treffer können in eine FIFO-Warteschlange gelegt werden; das Menü kann den nächsten, markierte oder alle Downloads starten, alle Downloads stoppen, nur wartende Downloads stoppen, die Queue anzeigen/aktualisieren, erledigte Einträge entfernen, die Liste der Downloads aufräumen und gelöschte Einträge wiederherstellen.
 - Warteschlangen-Menü mit ATPlayer-nahen Auswahlaktionen für die sichtbare Queue-Liste: Alles auswählen, Auswahl umkehren, Tabelle zurücksetzen, Audio (URL) abspielen, Download ändern, Download (URL) kopieren, Downloads starten, Downloads vorziehen/Downloads zurückstellen, Downloads stoppen und Downloads aus Liste entfernen.
-- Warteschlange im Applet kann per Untermenü pro Eintrag bearbeitet werden: Download starten, Download ändern, Download stoppen, Audio (URL) abspielen, Download (URL) kopieren, gespeichertes Audio (Datei) abspielen, gespeicherte Datei löschen, Zielordner öffnen, Downloads aus Liste entfernen, Downloads vorziehen und Downloads zurückstellen.
+- Warteschlange im Applet kann per Untermenü pro Eintrag bearbeitet werden: Download starten, Download ändern, Download stoppen, Audio (URL) abspielen, Download (URL) kopieren, gespeichertes Audio (Datei) abspielen, gespeicherte Datei löschen, Zielordner öffnen, Downloads aus Liste entfernen, Downloads vorziehen, Downloads zurückstellen und **Tabelle zurücksetzen**.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen zeigen jetzt zusätzliche Metadatenaktion:
   "Audioinformation anzeigen", plus Kopieraktionen für Audio-URL, Titel, Genre und Thema.
 - Kontextmenüs in Treffer-, Verlauf-, Favoriten- und Warteschlange-Einträgen besitzen zusätzlich das Untermenü **Filter** mit filtern- und kombinierten Filteraktionen im ATPlayer-Stil:
@@ -57,7 +58,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.51`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.52`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`
