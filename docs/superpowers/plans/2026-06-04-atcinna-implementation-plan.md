@@ -281,6 +281,18 @@
   - Extend source and installed validations to match the new labels and keep `status`/selection behavior unchanged.
   - Bump version to `0.3.42` and document that full ATPlayer parity is still open.
 
+### Task 43: Add Top-Level Queue Edit Action (0.3.43)
+
+- [x] **ATPlayer-nahe Queue-Top-Aktion**
+  - Add top-level queue action **Download ändern** to the queue action section.
+  - Use the existing visible selection and existing `_runQueueEditDialog()` path to open the first selected visible queue entry.
+- [x] **Defensive status behavior**
+  - Set explicit status for empty queue selection and for running selected entries (`Download läuft (nicht änderbar)`).
+  - Preserve helper/backend paths; no new dialog/helper methods.
+- [x] **Checks/docs/version**
+  - Extend static checks/installed validation for `Download ändern`, `_runQueueEditSelected()`, `_queueActionEditSelected`, and wiring.
+  - Bump version to `0.3.43`, update metadata/version/readme/changelog.
+
 
 ### ATPlayer Parity Audit
 

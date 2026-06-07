@@ -1,4 +1,11 @@
 # Changelog
+## 0.3.43
+
+- ATPlayer-nahe Queue-Top-Aktion ergänzt: **Download ändern** öffnet nun den vorhandenen Edit-Dialog für den ersten markierten sichtbaren Queue-Eintrag.
+- Die Top-Level-Aktion ist defensiv: bei fehlender Auswahl wird klarer Status gesetzt, bei bereits `running` markierten Einträgen wird `Download läuft (nicht änderbar)` zurückgemeldet.
+- Selektion-Zustand und Auswahlprüfung wurden unverändert wiederverwendet, es wurden keine neuen Helper-/Backend-Flows eingeführt.
+- Versionssprung auf `0.3.43`; `metadata.json`, `VERSION`, README, Checkskripte und Installvalidierung aktualisiert.
+
 ## 0.3.42
 
 - Queue-Auswahl-Aktionen im Warteschlangen-Menü auf ATPlayer-nahe Labels umgestellt: **Downloads starten**, **Downloads stoppen**, **Downloads vorziehen**, **Downloads zurückstellen**, **Downloads aus Liste entfernen**.

@@ -66,6 +66,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionResetSelection = null;
         this._queueActionRunSelected = null;
         this._queueActionPlaySelected = null;
+        this._queueActionEditSelected = null;
         this._queueActionCopySelected = null;
         this._queueActionPreferSelected = null;
         this._queueActionPutBackSelected = null;
@@ -1659,6 +1660,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         playSelected.connect("activate", () => this._runQueuePlaySelected());
         this._queueSection.addMenuItem(playSelected);
 
+        const editSelected = new PopupMenu.PopupMenuItem("Download ändern");
+        editSelected.connect("activate", () => this._runQueueEditSelected());
+        this._queueSection.addMenuItem(editSelected);
+
         const copySelected = new PopupMenu.PopupMenuItem("Download (URL) kopieren");
         copySelected.connect("activate", () => this._runQueueCopySelected());
         this._queueSection.addMenuItem(copySelected);
@@ -1720,6 +1725,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionResetSelection = resetSelection;
         this._queueActionRunSelected = runSelected;
         this._queueActionPlaySelected = playSelected;
+        this._queueActionEditSelected = editSelected;
         this._queueActionCopySelected = copySelected;
         this._queueActionPreferSelected = preferSelected;
         this._queueActionPutBackSelected = putBackSelected;
@@ -2197,6 +2203,22 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._playItem(selectedItems[0]);
     }
 
+    _runQueueEditSelected() {
+        const selectedItems = this._getSelectedQueueItems();
+        if (!selectedItems.length) {
+            this._setStatus("Download ändern: keine Auswahl");
+            return;
+        }
+
+        const first = selectedItems[0];
+        if ((first.status || "queued") === "running") {
+            this._setStatus("Download läuft (nicht änderbar)");
+            return;
+        }
+
+        this._runQueueEditDialog(first);
+    }
+
     _runQueueCopySelected() {
         const selectedItems = this._getSelectedQueueItems();
         if (!selectedItems.length) {
@@ -2327,6 +2349,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._queueActionPlaySelected) {
             this._queueActionPlaySelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionEditSelected) {
+            this._queueActionEditSelected.setSensitive(hasSelection);
         }
         if (this._queueActionCopySelected) {
             this._queueActionCopySelected.setSensitive(hasSelection);
