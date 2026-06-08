@@ -2206,17 +2206,23 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         infoSelected.connect("activate", () => this._runQueueShowInfoFirstSelected());
         this._queueSection.addMenuItem(infoSelected);
 
+        const allDownloads = new PopupMenu.PopupSubMenuMenuItem("Alle Downloads");
+
         const runAll = new PopupMenu.PopupMenuItem("Alle Downloads starten");
         runAll.connect("activate", () => this._runQueueRunAll());
-        this._queueSection.addMenuItem(runAll);
+        allDownloads.menu.addMenuItem(runAll);
 
         const stopAll = new PopupMenu.PopupMenuItem("Alle Downloads stoppen");
         stopAll.connect("activate", () => this._runQueueCancelAll());
-        this._queueSection.addMenuItem(stopAll);
+        allDownloads.menu.addMenuItem(stopAll);
 
         const stopQueued = new PopupMenu.PopupMenuItem("Alle wartenden Downloads stoppen");
         stopQueued.connect("activate", () => this._runQueueCancelQueued());
-        this._queueSection.addMenuItem(stopQueued);
+        allDownloads.menu.addMenuItem(stopQueued);
+
+        const tidyDownloads = new PopupMenu.PopupMenuItem("Liste der Downloads aufräumen");
+        tidyDownloads.connect("activate", () => this._runQueueClear());
+        allDownloads.menu.addMenuItem(tidyDownloads);
 
         const selectAll = new PopupMenu.PopupMenuItem("Alles auswählen");
         selectAll.connect("activate", () => this._runQueueSelectAll());
@@ -2246,13 +2252,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         removeSelected.connect("activate", () => this._runQueueRemoveSelected());
         this._queueSection.addMenuItem(removeSelected);
 
+        this._queueSection.addMenuItem(allDownloads);
+
         const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");
         clearDone.connect("activate", () => this._runQueueClear());
         this._queueSection.addMenuItem(clearDone);
-
-        const tidyDownloads = new PopupMenu.PopupMenuItem("Liste der Downloads aufräumen");
-        tidyDownloads.connect("activate", () => this._runQueueClear());
-        this._queueSection.addMenuItem(tidyDownloads);
 
         const restore = new PopupMenu.PopupMenuItem("Gelöschte wieder anlegen");
         restore.connect("activate", () => this._runQueueUndo());

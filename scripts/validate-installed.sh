@@ -602,12 +602,78 @@ for applet_result_action in 'const playMovie = new PopupMenu.PopupMenuItem("Film
         exit 1
     fi
 done
-for applet_label in "Download starten" "Downloads aktualisieren" "Downloads starten" "Audio (URL) abspielen" "Audioinformation anzeigen" "Download ändern" "Download (URL) kopieren" "Downloads vorziehen" "Downloads zurückstellen" "Downloads stoppen" "Downloads aus Liste entfernen" "Liste der Downloads aufräumen"; do
+for applet_label in "Download starten" "Downloads aktualisieren" "Downloads starten" "Audio (URL) abspielen" "Audioinformation anzeigen" "Download ändern" "Download (URL) kopieren" "Downloads vorziehen" "Downloads zurückstellen" "Downloads stoppen" "Downloads aus Liste entfernen" "Erledigte entfernen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS"; then
         echo "ERROR: installed applet label is missing: ${applet_label}"
         exit 1
     fi
 done
+if ! rg -q -F 'new PopupMenu.PopupSubMenuMenuItem("Alle Downloads")' "$APPLET_JS"; then
+    echo "ERROR: installed applet is missing queue bulk submenu"
+    exit 1
+fi
+if ! rg -q -F 'const allDownloads = new PopupMenu.PopupSubMenuMenuItem("Alle Downloads");' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue bulk submenu declaration is missing"
+    exit 1
+fi
+for applet_queue_bulk_action in \
+    'const runAll = new PopupMenu.PopupMenuItem("Alle Downloads starten");' \
+    'const stopAll = new PopupMenu.PopupMenuItem("Alle Downloads stoppen");' \
+    'const stopQueued = new PopupMenu.PopupMenuItem("Alle wartenden Downloads stoppen");' \
+    'const tidyDownloads = new PopupMenu.PopupMenuItem("Liste der Downloads aufräumen");'; do
+    if ! rg -q -F "${applet_queue_bulk_action}" "$APPLET_JS"; then
+        echo "ERROR: installed applet queue bulk submenu action is missing or mislabeled: ${applet_queue_bulk_action}"
+        exit 1
+    fi
+done
+if ! rg -q -F 'allDownloads.menu.addMenuItem(runAll);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue bulk submenu misses run-all action"
+    exit 1
+fi
+if ! rg -q -F 'allDownloads.menu.addMenuItem(stopAll);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue bulk submenu misses stop-all action"
+    exit 1
+fi
+if ! rg -q -F 'allDownloads.menu.addMenuItem(stopQueued);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue bulk submenu misses pending-stop action"
+    exit 1
+fi
+if ! rg -q -F 'allDownloads.menu.addMenuItem(tidyDownloads);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue bulk submenu misses tidy action"
+    exit 1
+fi
+if ! rg -q -F 'this._queueSection.addMenuItem(allDownloads);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue bulk submenu is not added to queue section"
+    exit 1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(runAll);' "$APPLET_JS"; then
+    echo "ERROR: installed applet should place \"Alle Downloads starten\" in submenu"
+    exit 1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(stopAll);' "$APPLET_JS"; then
+    echo "ERROR: installed applet should place \"Alle Downloads stoppen\" in submenu"
+    exit 1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(stopQueued);' "$APPLET_JS"; then
+    echo "ERROR: installed applet should place \"Alle wartenden Downloads stoppen\" in submenu"
+    exit 1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(tidyDownloads);' "$APPLET_JS"; then
+    echo "ERROR: installed applet should place \"Liste der Downloads aufräumen\" in submenu"
+    exit 1
+fi
+if ! rg -q -F 'const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue flat done-clear action is missing or mislabeled"
+    exit 1
+fi
+if ! rg -q -F 'this._queueSection.addMenuItem(clearDone);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue flat done-clear action is not added to queue section"
+    exit 1
+fi
+if rg -q -F 'allDownloads.menu.addMenuItem(clearDone);' "$APPLET_JS"; then
+    echo "ERROR: installed applet should keep \"Erledigte entfernen\" outside the bulk submenu"
+    exit 1
+fi
 for applet_label in "Downloadfehler anzeigen" "Downloadfehler löschen" "Downloadfehler nicht mehr automatisch anzeigen"; do
     if ! rg -q -F "${applet_label}" "$APPLET_JS" "$SETTINGS_SCHEMA"; then
         echo "ERROR: installed download error label is missing: ${applet_label}"

@@ -406,11 +406,73 @@ if ! rg -q -F 'new PopupMenu.PopupMenuItem("Nächsten Download starten")' "$APPL
     echo "ERROR: applet menu does not contain queue run-next item"
     STATUS=1
 fi
-if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Downloads starten")' "$APPLET_JS"; then
-    echo "ERROR: applet menu does not contain queue run-all item"
+if ! rg -q -F 'new PopupMenu.PopupSubMenuMenuItem("Alle Downloads")' "$APPLET_JS"; then
+    echo "ERROR: applet menu does not contain queue bulk submenu"
     STATUS=1
 fi
-for applet_label in "Download starten" "Downloads aktualisieren" "Liste der Downloads aufräumen"; do
+if ! rg -q -F 'allDownloads.menu.addMenuItem(runAll);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk submenu does not include run-all item"
+    STATUS=1
+fi
+if ! rg -q -F 'allDownloads.menu.addMenuItem(stopAll);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk submenu does not include stop-all item"
+    STATUS=1
+fi
+if ! rg -q -F 'allDownloads.menu.addMenuItem(stopQueued);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk submenu does not include stop-queued item"
+    STATUS=1
+fi
+if ! rg -q -F 'allDownloads.menu.addMenuItem(tidyDownloads);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk submenu does not include tidy item"
+    STATUS=1
+fi
+if ! rg -q -F 'const allDownloads = new PopupMenu.PopupSubMenuMenuItem("Alle Downloads");' "$APPLET_JS"; then
+    echo "ERROR: queue bulk submenu declaration is missing"
+    STATUS=1
+fi
+for queue_bulk_action in \
+    'const runAll = new PopupMenu.PopupMenuItem("Alle Downloads starten");' \
+    'const stopAll = new PopupMenu.PopupMenuItem("Alle Downloads stoppen");' \
+    'const stopQueued = new PopupMenu.PopupMenuItem("Alle wartenden Downloads stoppen");' \
+    'const tidyDownloads = new PopupMenu.PopupMenuItem("Liste der Downloads aufräumen");'; do
+    if ! rg -q -F "${queue_bulk_action}" "$APPLET_JS"; then
+        echo "ERROR: queue bulk submenu action is missing or mislabeled: ${queue_bulk_action}"
+        STATUS=1
+    fi
+done
+if ! rg -q -F 'this._queueSection.addMenuItem(allDownloads);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk submenu is not added to queue section"
+    STATUS=1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(runAll);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk action \"Alle Downloads starten\" should be in submenu"
+    STATUS=1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(stopAll);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk action \"Alle Downloads stoppen\" should be in submenu"
+    STATUS=1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(stopQueued);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk action \"Alle wartenden Downloads stoppen\" should be in submenu"
+    STATUS=1
+fi
+if rg -q -F 'this._queueSection.addMenuItem(tidyDownloads);' "$APPLET_JS"; then
+    echo "ERROR: queue bulk action \"Liste der Downloads aufräumen\" should be in submenu"
+    STATUS=1
+fi
+if ! rg -q -F 'const clearDone = new PopupMenu.PopupMenuItem("Erledigte entfernen");' "$APPLET_JS"; then
+    echo "ERROR: queue flat done-clear action is missing or mislabeled"
+    STATUS=1
+fi
+if ! rg -q -F 'this._queueSection.addMenuItem(clearDone);' "$APPLET_JS"; then
+    echo "ERROR: queue flat done-clear action is not added to queue section"
+    STATUS=1
+fi
+if rg -q -F 'allDownloads.menu.addMenuItem(clearDone);' "$APPLET_JS"; then
+    echo "ERROR: queue flat action \"Erledigte entfernen\" should not be in bulk submenu"
+    STATUS=1
+fi
+for applet_label in "Download starten" "Downloads aktualisieren" "Erledigte entfernen"; do
     if ! rg -q -F "new PopupMenu.PopupMenuItem(\"${applet_label}\")" "$APPLET_JS"; then
         echo "ERROR: applet queue label is missing: ${applet_label}"
         STATUS=1
@@ -787,14 +849,6 @@ if ! rg -q -F 'this._copyToClipboard(value, "Kopieren");' "$APPLET_JS"; then
 fi
 if ! rg -q -F "_copyToClipboard" "$APPLET_JS"; then
     echo "ERROR: applet clipboard helper is missing"
-    STATUS=1
-fi
-if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle Downloads stoppen")' "$APPLET_JS"; then
-    echo "ERROR: applet menu does not contain queue stop-all item"
-    STATUS=1
-fi
-if ! rg -q -F 'new PopupMenu.PopupMenuItem("Alle wartenden Downloads stoppen")' "$APPLET_JS"; then
-    echo "ERROR: applet menu does not contain queue pending-stop item"
     STATUS=1
 fi
 if ! rg -q -F '_queueFolderCandidate(item)' "$APPLET_JS"; then

@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.93
+
+- Die Queue-Aktionen **Alle Downloads starten**, **Alle Downloads stoppen**, **Alle wartenden Downloads stoppen** und **Liste der Downloads aufräumen** wurden unter ein sichtbares Top-Level-Untermenü **Alle Downloads** verschoben, wobei die bestehenden Handler (`_runQueueRunAll`, `_runQueueCancelAll`, `_runQueueCancelQueued`, `_runQueueClear`) unverändert bleiben.
+- **Erledigte entfernen** bleibt als eigener flacher Menüpunkt erhalten.
+- `scripts/check.sh`, `scripts/validate-installed.sh`, `atcinna@H234598/applet.js`, `metadata.json`, `VERSION`, `README.md` und den Umsetzungsplan wurden auf `0.3.93` angehoben.
+
 ## 0.3.92
 
 - Die Queue-Eintrag-Kontextmenüs zeigen jetzt die drei gespeicherten Audio-Aktionen **Gespeichertes Audio (Datei) abspielen**, **Gespeichertes Audio (Datei) löschen** und **Zielordner öffnen** unter dem sichtbaren Untermenü **Gespeicherte Audios**, während **Download starten**, **Download ändern**, **Download stoppen**, **Audio (URL) abspielen**, **Download (URL) kopieren**, **Audioinformation anzeigen** und **Tabelle zurücksetzen** am Flachniveau bleiben.
