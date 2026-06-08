@@ -2839,17 +2839,21 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             openFolder.connect("activate", () => this._openQueuePathFolder(item));
             row.menu.addMenuItem(openFolder);
 
+            const queueDownloadActions = new PopupMenu.PopupSubMenuMenuItem("Downloads");
+
             const remove = new PopupMenu.PopupMenuItem("Downloads aus Liste entfernen");
             remove.connect("activate", () => this._runQueueRemove(item));
-            row.menu.addMenuItem(remove);
+            queueDownloadActions.menu.addMenuItem(remove);
 
             const prefer = new PopupMenu.PopupMenuItem("Downloads vorziehen");
             prefer.connect("activate", () => this._runQueuePrefer(item));
-            row.menu.addMenuItem(prefer);
+            queueDownloadActions.menu.addMenuItem(prefer);
 
             const putBack = new PopupMenu.PopupMenuItem("Downloads zurückstellen");
             putBack.connect("activate", () => this._runQueuePutBack(item));
-            row.menu.addMenuItem(putBack);
+            queueDownloadActions.menu.addMenuItem(putBack);
+
+            row.menu.addMenuItem(queueDownloadActions);
 
             this._queueListSection.addMenuItem(row);
         }

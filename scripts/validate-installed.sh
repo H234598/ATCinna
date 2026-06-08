@@ -657,6 +657,17 @@ for applet_queue_entry_action in \
         exit 1
     fi
 done
+for applet_queue_download_submenu in \
+    'const queueDownloadActions = new PopupMenu.PopupSubMenuMenuItem("Downloads");' \
+    'queueDownloadActions.menu.addMenuItem(remove);' \
+    'queueDownloadActions.menu.addMenuItem(prefer);' \
+    'queueDownloadActions.menu.addMenuItem(putBack);' \
+    'row.menu.addMenuItem(queueDownloadActions);'; do
+    if ! rg -q -F "${applet_queue_download_submenu}" "$APPLET_JS"; then
+        echo "ERROR: installed applet queue entry downloads submenu wiring is missing: ${applet_queue_download_submenu}"
+        exit 1
+    fi
+done
 for applet_queue_entry_action in \
     'const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");' \
     'queueEntrySelectAll.connect("activate", () => this._runQueueSelectAll());' \

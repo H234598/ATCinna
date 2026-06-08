@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.91
+
+- Die drei Queue-Eintrag-Aktionen **Downloads aus Liste entfernen**, **Downloads vorziehen** und **Downloads zurückstellen** wurden von der flachen Reihenfolge in ein sichtbares Row-Submenü **Downloads** verschoben, während **Download starten**, **Download stoppen** und **Download ändern** am Flachniveau bleiben.
+- Die bestehenden Handler `_runQueueRemove`, `_runQueuePrefer` und `_runQueuePutBack` bleiben unverändert; es wurde keine Helper-/DB-/Downloader-/D-Bus-/Filter-/Blacklist-Logik geändert.
+- `scripts/check.sh`, `scripts/validate-installed.sh`, `atcinna@H234598/applet.js`, `metadata.json`, `VERSION`, `README.md` und den Umsetzungsplan wurden auf `0.3.91` angehoben.
+
 ## 0.3.90
 
 - Für die sichtbare Queue-Auswahlliste wurde die Top-Level-Action **Audioinformation anzeigen** ergänzt und zeigt die bestehende `_setInfoSection(item)`-Ansicht für den ersten markierten Queue-Eintrag.
