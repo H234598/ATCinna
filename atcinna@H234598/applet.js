@@ -2822,9 +2822,11 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             copy.connect("activate", () => this._copyQueueUrl(item));
             row.menu.addMenuItem(copy);
 
+            const queueStoredActions = new PopupMenu.PopupSubMenuMenuItem("Gespeicherte Audios");
+
             const openFile = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) abspielen");
             openFile.connect("activate", () => this._openQueueFile(item));
-            row.menu.addMenuItem(openFile);
+            queueStoredActions.menu.addMenuItem(openFile);
 
             const trashFile = new PopupMenu.PopupMenuItem("Gespeichertes Audio (Datei) löschen");
             if (status === "running") {
@@ -2833,11 +2835,12 @@ class ATCinnaApplet extends Applet.TextIconApplet {
             } else {
                 trashFile.connect("activate", () => this._runQueueTrashFile(item));
             }
-            row.menu.addMenuItem(trashFile);
+            queueStoredActions.menu.addMenuItem(trashFile);
 
             const openFolder = new PopupMenu.PopupMenuItem("Zielordner öffnen");
             openFolder.connect("activate", () => this._openQueuePathFolder(item));
-            row.menu.addMenuItem(openFolder);
+            queueStoredActions.menu.addMenuItem(openFolder);
+            row.menu.addMenuItem(queueStoredActions);
 
             const queueDownloadActions = new PopupMenu.PopupSubMenuMenuItem("Downloads");
 

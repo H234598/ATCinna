@@ -668,6 +668,29 @@ for applet_queue_download_submenu in \
         exit 1
     fi
 done
+for applet_queue_stored_submenu in \
+    'const queueStoredActions = new PopupMenu.PopupSubMenuMenuItem("Gespeicherte Audios");' \
+    'queueStoredActions.menu.addMenuItem(openFile);' \
+    'queueStoredActions.menu.addMenuItem(trashFile);' \
+    'queueStoredActions.menu.addMenuItem(openFolder);' \
+    'row.menu.addMenuItem(queueStoredActions);'; do
+    if ! rg -q -F "${applet_queue_stored_submenu}" "$APPLET_JS"; then
+        echo "ERROR: installed applet queue entry stored submenu wiring is missing: ${applet_queue_stored_submenu}"
+        exit 1
+    fi
+done
+if rg -q -F 'row.menu.addMenuItem(openFile);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue entry should not add open stored file directly to row menu"
+    exit 1
+fi
+if rg -q -F 'row.menu.addMenuItem(trashFile);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue entry should not add trash stored file directly to row menu"
+    exit 1
+fi
+if rg -q -F 'row.menu.addMenuItem(openFolder);' "$APPLET_JS"; then
+    echo "ERROR: installed applet queue entry should not add open folder directly to row menu"
+    exit 1
+fi
 for applet_queue_entry_action in \
     'const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");' \
     'queueEntrySelectAll.connect("activate", () => this._runQueueSelectAll());' \

@@ -490,7 +490,7 @@ if ! rg -q -F '"--blacklist-mode"' "$HELPER"; then
     echo "ERROR: helper search action is missing --blacklist-mode argument"
     STATUS=1
 fi
-for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Downloads aus Liste entfernen" "Downloads vorziehen" "Downloads zurückstellen" "Gelöschte wieder anlegen"; do
+for queue_label in "Download stoppen" "Download ändern" "Audio (URL) abspielen" "Download (URL) kopieren" "Gespeichertes Audio (Datei) abspielen" "Gespeichertes Audio (Datei) löschen" "Zielordner öffnen" "Gespeicherte Audios" "Downloads aus Liste entfernen" "Downloads vorziehen" "Downloads zurückstellen" "Gelöschte wieder anlegen"; do
     if ! rg -q -F "${queue_label}" "$APPLET_JS"; then
         echo "ERROR: applet queue menu label is missing: ${queue_label}"
         STATUS=1
@@ -518,6 +518,29 @@ for queue_entry_download_menu in \
         STATUS=1
     fi
 done
+for queue_entry_stored_menu in \
+    'const queueStoredActions = new PopupMenu.PopupSubMenuMenuItem("Gespeicherte Audios");' \
+    'queueStoredActions.menu.addMenuItem(openFile);' \
+    'queueStoredActions.menu.addMenuItem(trashFile);' \
+    'queueStoredActions.menu.addMenuItem(openFolder);' \
+    'row.menu.addMenuItem(queueStoredActions);'; do
+    if ! rg -q -F "${queue_entry_stored_menu}" "$APPLET_JS"; then
+        echo "ERROR: applet queue entry stored submenu wiring is missing: ${queue_entry_stored_menu}"
+        STATUS=1
+    fi
+done
+if rg -q -F 'row.menu.addMenuItem(openFile);' "$APPLET_JS"; then
+    echo "ERROR: applet queue entry should not add Gespeichertes Audio (Datei) abspielen directly to row menu"
+    STATUS=1
+fi
+if rg -q -F 'row.menu.addMenuItem(trashFile);' "$APPLET_JS"; then
+    echo "ERROR: applet queue entry should not add Gespeichertes Audio (Datei) löschen directly to row menu"
+    STATUS=1
+fi
+if rg -q -F 'row.menu.addMenuItem(openFolder);' "$APPLET_JS"; then
+    echo "ERROR: applet queue entry should not add Zielordner öffnen directly to row menu"
+    STATUS=1
+fi
 for queue_entry_action in \
     'const queueEntrySelectAll = new PopupMenu.PopupMenuItem("Alles auswählen");' \
     'queueEntrySelectAll.connect("activate", () => this._runQueueSelectAll());' \

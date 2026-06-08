@@ -12,7 +12,7 @@
 
 ## Current Baseline
 
-- `VERSION` is `0.3.91`.
+- `VERSION` is `0.3.92`.
 - `atcinna@H234598/applet.js` provides the Cinnamon applet shell, popup search input, filter summary, refresh action, result rendering, history/bookmark sections, and play/open/download handoff.
 - `atcinna@H234598/scripts/atcinna-catalog` provides `refresh`, filtered `search`, Blacklist search modes including `blacklist-count`, direct `download`, `download-*` queue actions including targeted `download-run --url`, `download-update`, `history-*`, and `bookmark-*`.
 - `atcinna@H234598/scripts/atcinna-search-dialog`, `atcinna@H234598/scripts/atcinna-queue-edit-dialog`, `atcinna@H234598/scripts/atcinna-blacklist-dialog`, and `atcinna@H234598/scripts/atcinna-filter-profiles-dialog` provide optional external GTK dialogs used by popup actions; the primary in-popup search remains active when GTK is unavailable.
@@ -134,6 +134,13 @@
   - Reuse unchanged handlers `_runQueueRemove`, `_runQueuePrefer`, and `_runQueuePutBack`.
   - Keep Helper-/DB-/Downloader-/Filter-/Blacklist-/CI-Logik untouched.
   - Update `scripts/check.sh`, `scripts/validate-installed.sh`, `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.91`.
+
+- [x] **Task 92: Move queue entry stored media actions into visible Gespeicherte-Audios submenu (0.3.92)**
+  - Move **Gespeichertes Audio (Datei) abspielen**, **Gespeichertes Audio (Datei) löschen** and **Zielordner öffnen** from the flat queue-row context into a visible queue-entry submenu **Gespeicherte Audios** in `atcinna@H234598/applet.js`.
+  - Keep **Download starten**, **Download stoppen**, **Download ändern**, **Audio (URL) abspielen**, **Download (URL) kopieren**, **Audioinformation anzeigen**, and **Tabelle zurücksetzen** at the flat queue-row level.
+  - Reuse unchanged handlers `_openQueueFile`, `_runQueueTrashFile`, `_openQueuePathFolder`; preserve running-state sensitivity for delete.
+  - Keep Helper-/DB-/Downloader-/Filter-/Blacklist-/CI-Logik untouched.
+  - Update `scripts/check.sh`, `scripts/validate-installed.sh`, `VERSION`, `atcinna@H234598/metadata.json`, `README.md`, and `CHANGELOG.md` to `0.3.92`.
 
 ### Task 51: Optional SQLite Catalog Cache (0.3.51)
 
