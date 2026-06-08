@@ -85,6 +85,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionPlayStoredSelected = null;
         this._queueActionEditSelected = null;
         this._queueActionCopySelected = null;
+        this._queueActionShowInfoSelected = null;
         this._queueActionPreferSelected = null;
         this._queueActionPutBackSelected = null;
         this._queueActionCancelSelected = null;
@@ -2201,6 +2202,10 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         copySelected.connect("activate", () => this._runQueueCopySelected());
         this._queueSection.addMenuItem(copySelected);
 
+        const infoSelected = new PopupMenu.PopupMenuItem("Audioinformation anzeigen");
+        infoSelected.connect("activate", () => this._runQueueShowInfoFirstSelected());
+        this._queueSection.addMenuItem(infoSelected);
+
         const runAll = new PopupMenu.PopupMenuItem("Alle Downloads starten");
         runAll.connect("activate", () => this._runQueueRunAll());
         this._queueSection.addMenuItem(runAll);
@@ -2261,6 +2266,7 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._queueActionPlayStoredSelected = playStoredSelected;
         this._queueActionEditSelected = editSelected;
         this._queueActionCopySelected = copySelected;
+        this._queueActionShowInfoSelected = infoSelected;
         this._queueActionPreferSelected = preferSelected;
         this._queueActionPutBackSelected = putBackSelected;
         this._queueActionCancelSelected = cancelSelected;
@@ -2937,6 +2943,15 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         this._copyQueueUrl(selectedItems[0]);
     }
 
+    _runQueueShowInfoFirstSelected() {
+        const selectedItems = this._getSelectedQueueItems();
+        if (!selectedItems.length) {
+            this._setStatus("Audioinformation anzeigen: keine Auswahl");
+            return;
+        }
+        this._setInfoSection(selectedItems[0]);
+    }
+
     _runQueuePreferSelected() {
         this._runQueueBatchAction(
             "Downloads vorziehen",
@@ -3067,6 +3082,9 @@ class ATCinnaApplet extends Applet.TextIconApplet {
         }
         if (this._queueActionCopySelected) {
             this._queueActionCopySelected.setSensitive(hasSelection);
+        }
+        if (this._queueActionShowInfoSelected) {
+            this._queueActionShowInfoSelected.setSensitive(hasSelection);
         }
         if (this._queueActionPreferSelected) {
             this._queueActionPreferSelected.setSensitive(hasSelection);

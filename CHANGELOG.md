@@ -1,4 +1,10 @@
 # Changelog
+## 0.3.90
+
+- Für die sichtbare Queue-Auswahlliste wurde die Top-Level-Action **Audioinformation anzeigen** ergänzt und zeigt die bestehende `_setInfoSection(item)`-Ansicht für den ersten markierten Queue-Eintrag.
+- Die Aktion ist nur aktiv bei sichtbarer Queue-Auswahl und meldet **Audioinformation anzeigen: keine Auswahl** bei leerer Markierung.
+- `scripts/check.sh`, `scripts/validate-installed.sh`, `metadata.json`, `VERSION`, `README.md` und den Umsetzungsplan wurden auf `0.3.90` angehoben.
+
 ## 0.3.89
 
 - Audioinformationszeilen, die keine URL/Website sind, sind jetzt per sichtbarem Untermenü **Kopieren** direkt aus dem Info-Bereich bedienbar; URL und Website bleiben unverändert klickbar.

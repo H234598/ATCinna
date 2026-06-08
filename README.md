@@ -48,8 +48,8 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
 - Der neue Applet-Schalter `download-show-notification` kontrolliert Benachrichtigungen über `Download beendet`; direkte Downloads und Queue-Downloads melden nach `finished`/`error` die Ergebnisse, während **Alle Downloads starten** nur noch eine Zusammenfassung (Erledigt/Fehler) zeigt.
 - Direkte Downloadfehler und Queue-Downloadfehler werden persistent in `download-errors.json` gespeichert. Die Applet-Aktionen **Downloadfehler anzeigen** und **Downloadfehler löschen** zeigen bzw. leeren die Liste; `download-dialog-error-show` steuert, ob die Fehlerliste bei neuen Fehlern automatisch eingeblendet wird. Die Fehlersektion zeigt ATPlayer-nahe Details mit **Keine Fehler**, **Titel: ...** und **Programmausgabe: ...**.
 - Download-Warteschlange: Treffer können in eine FIFO-Warteschlange gelegt werden; das Menü kann den nächsten, markierte oder alle Downloads starten, alle Downloads stoppen, nur wartende Downloads stoppen, die Queue anzeigen/aktualisieren, erledigte Einträge entfernen, die Liste der Downloads aufräumen und gelöschte Einträge wiederherstellen.
-- Warteschlangen-Menü mit ATPlayer-nahen Auswahlaktionen für die sichtbare Queue-Liste: Alles auswählen, Auswahl umkehren, Tabelle zurücksetzen, Audio (URL) abspielen, gespeichertes Audio (Datei) abspielen, Download ändern, Download (URL) kopieren, Downloads starten, Downloads vorziehen/Downloads zurückstellen, Downloads stoppen und Downloads aus Liste entfernen.
-- Warteschlange im Applet kann per Untermenü pro Eintrag bearbeitet werden: Download starten, Download ändern, Download stoppen, Audio (URL) abspielen, Download (URL) kopieren, gespeichertes Audio (Datei) abspielen, gespeicherte Datei löschen, Zielordner öffnen, Downloads aus Liste entfernen, Downloads vorziehen, Downloads zurückstellen und **Tabelle zurücksetzen**.
+- Warteschlangen-Menü mit ATPlayer-nahen Auswahlaktionen für die sichtbare Queue-Liste: Alles auswählen, Auswahl umkehren, Tabelle zurücksetzen, Audio (URL) abspielen, Audioinformation anzeigen, gespeichertes Audio (Datei) abspielen, Download ändern, Download (URL) kopieren, Downloads starten, Downloads vorziehen/Downloads zurückstellen, Downloads stoppen und Downloads aus Liste entfernen.
+- Warteschlange im Applet kann per Untermenü pro Eintrag bearbeitet werden: Download starten, Download ändern, Download stoppen, Audio (URL) abspielen, Download (URL) kopieren, Audioinformation anzeigen, gespeichertes Audio (Datei) abspielen, gespeicherte Datei löschen, Zielordner öffnen, Downloads aus Liste entfernen, Downloads vorziehen, Downloads zurückstellen und **Tabelle zurücksetzen**.
 - Kontextmenüs in Treffer-, Verlauf-, Bookmark- und Warteschlange-Einträgen zeigen jetzt zusätzliche Metadatenaktion:
   "Audioinformation anzeigen", plus Kopieraktionen für Audio-URL, Titel, Genre und Thema.
 - Kontextmenüs in Treffer-, Verlauf-, Bookmark- und Warteschlange-Einträgen besitzen zusätzlich das Untermenü **Filter** mit filtern- und kombinierten Filteraktionen im ATPlayer-Stil:
@@ -77,7 +77,7 @@ GNOME/Cinnamon-UI-Elemente plus einen kleinen Python-Helper.
   - mit alternativer Basis: `./scripts/install-local.sh --target-dir <pfad>`
   - im Dry-Run: `./scripts/install-local.sh --dry-run --target-dir <pfad>`
   - optionale Installvalidierung nach erfolgreichem Kopiervorgang: `./scripts/validate-installed.sh --target-dir <pfad>`
-- Paketierung (`0.3.89`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
+- Paketierung (`0.3.90`): `./scripts/package.sh` erzeugt `dist/atcinna@H234598-<version>.tar.gz`.
 - Runtime-Smoke:
   - Nicht mutierend: `./scripts/runtime-smoke.sh`
   - Temporär aktivierend (mit automatischem Zurücksetzen): `./scripts/runtime-smoke.sh --activate-temporarily`
